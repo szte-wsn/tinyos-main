@@ -60,6 +60,8 @@ module RFA1DriverLayerP
     interface LinkPacketMetadata;
 
     interface McuPowerOverride;
+    
+    interface AtmelRadioTest;
   }
 
   uses
@@ -115,6 +117,8 @@ implementation
     STATE_TRX_OFF_2_RX_ON = 4,
     STATE_RX_ON = 5,
     STATE_BUSY_TX_2_RX_ON = 6,
+    STATE_TEST = 7,
+    STATE_TEST_STOP = 8,
   };
 
   tasklet_norace uint8_t cmd;
@@ -172,50 +176,178 @@ implementation
 
     return SUCCESS;
   }
-
-  command error_t SoftwareInit.init()
-  {
+  
+  static inline void initRadio(){
     CCA_THRES=RFA1_CCA_THRES_VALUE;
-
-#ifdef RFA1_ENABLE_PA
-    SET_BIT(DDRG,0);	// DIG3
+    
+    #ifdef RFA1_ENABLE_PA
+    SET_BIT(DDRG,0);  // DIG3
     CLR_BIT(PORTG,0);
-    SET_BIT(DDRF, 3);	// DIG0
+    SET_BIT(DDRF, 3); // DIG0
     CLR_BIT(PORTF, 3);
-#endif
-#ifdef RFA1_ENABLE_EXT_ANT_SW
+    #endif
+    #ifdef RFA1_ENABLE_EXT_ANT_SW
     SET_BIT(DDRG, 1);// DIG1
     CLR_BIT(PORTG,1);
     SET_BIT(DDRF, 2); // DIG2
     CLR_BIT(PORTF, 2);
-#endif
-#ifdef RFA1_DATA_RATE
-    #if RFA1_DATA_RATE == 250
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 0;
-    #elif RFA1_DATA_RATE == 500
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 1;
-    #elif RFA1_DATA_RATE == 1000
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 2;
-    #elif RFA1_DATA_RATE == 2000
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3;
-    #else
-      #error Unsupported RFA1_DATA_RATE (supported: 250, 500, 1000, 2000. default is 250)
     #endif
-#endif
+    #ifdef RFA1_DATA_RATE
+    #if RFA1_DATA_RATE == 250
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 0;
+    #elif RFA1_DATA_RATE == 500
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 1;
+    #elif RFA1_DATA_RATE == 1000
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 2;
+    #elif RFA1_DATA_RATE == 2000
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3;
+    #else
+    #error Unsupported RFA1_DATA_RATE (supported: 250, 500, 1000, 2000. default is 250)
+    #endif
+    #endif
     PHY_TX_PWR = RFA1_PA_BUF_LT | RFA1_PA_LT | (RFA1_DEF_RFPOWER&RFA1_TX_PWR_MASK)<<TX_PWR0;
-
+    
     txPower = RFA1_DEF_RFPOWER & RFA1_TX_PWR_MASK;
     channel = RFA1_DEF_CHANNEL & RFA1_CHANNEL_MASK;
     TRX_CTRL_1 |= 1<<TX_AUTO_CRC_ON;
     PHY_CC_CCA = RFA1_CCA_MODE_VALUE | channel;
-
+    
     SET_BIT(TRXPR,SLPTR);
-
+    
     call SfdCapture.setMode(ATMRFA1_CAPSC_ON);
+    
+    if ( state == STATE_TEST_STOP ){
+      state = STATE_SLEEP;
+      signal AtmelRadioTest.stopTestDone();
+    } else
+      state = STATE_SLEEP;
+  }
 
-    state = STATE_SLEEP;
-
+  command error_t SoftwareInit.init()
+  {
+    initRadio();
     return SUCCESS;
+  }
+  
+  /*-------------------- AtmelRadioTest ------------------*/
+  norace void* testBuffer;
+  norace uint8_t testChannel, testPower, testMode, testLen;
+  
+  task void signalTestStart(){
+    if(testMode != RFA1_TEST_MODE_MODE_MODULATED)
+      signal AtmelRadioTest.startCWTestDone(testChannel, testPower, testMode);
+    else
+      signal AtmelRadioTest.startModulatedTestDone(testChannel, testPower, testMode, testBuffer, testLen);
+  }
+  
+  void testRadio(){
+    #ifdef RADIO_DEBUG
+    if(call DiagMsg.record()){
+      call DiagMsg.str("test");
+      call DiagMsg.send();
+    }
+    #endif
+    if( state == STATE_TEST ){ //test start
+      if( testChannel == 0xff )
+        testChannel = channel;
+      if( testPower == 0xff )
+        testPower = txPower;
+      
+      SET_BIT(TRXPR, TRXRST);
+      while(TRXPR & (1<<TRXRST)); //only thre CLK, don't need BusyWait
+      
+      IRQ_MASK = 0; // we will poll for PLL_LOCK
+      TRX_CTRL_1 = 0; //disable aut crc
+      TRX_STATE = CMD_FORCE_TRX_OFF; 
+      PHY_CC_CCA = RFA1_CCA_MODE_VALUE | testChannel;
+      PHY_TX_PWR = testPower;
+      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )
+        call BusyWait.wait(100);
+      
+      TST_CTRL_DIGI = 0x0F; //Enable test mode step #1
+      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3; //2Mb/s mode
+      RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
+      
+      if(testMode != RFA1_TEST_MODE_MODE_MODULATED){
+        TRXFBST = testMode; //0x00 or 0xff
+      } else {
+        uint8_t offset = 0;
+        TRXFBST = testLen;
+        while( offset < testLen ){
+          TRXFBST = *((uint8_t*)testBuffer + offset);
+        }
+      }
+      
+      PART_NUM = 0x54; //Enable test mode step #2
+      PART_NUM = 0x46; //Enable test mode step #3
+      TRX_STATE = CMD_PLL_ON;
+      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != PLL_ON )
+        call BusyWait.wait(100);
+      
+      TRX_STATE = CMD_TX_START;
+      post signalTestStart();
+    } else { //test stop
+      PART_NUM = 0; //disable test mode
+      SET_BIT(TRXPR, TRXRST);
+      while(TRXPR & (1<<TRXRST)); //only thre CLK, don't need BusyWait
+      initRadio();
+    }
+  }
+  
+  async command error_t AtmelRadioTest.startModulatedTest(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){
+    #ifdef RADIO_DEBUG
+    if(call DiagMsg.record()){
+      call DiagMsg.str("mtest");
+      call DiagMsg.uint8(state);
+      call DiagMsg.send();
+    }
+    #endif
+    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+      
+      state = STATE_TEST;
+      
+      testChannel = ch;
+      testPower = power;
+      testMode = mode;
+      testBuffer = data;
+      testLen = len;
+      
+      testRadio();
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+  
+  async command error_t AtmelRadioTest.startCWTest(uint8_t ch, uint8_t power, uint8_t mode){
+    #ifdef RADIO_DEBUG
+    if(call DiagMsg.record()){
+      call DiagMsg.str("ctest");
+      call DiagMsg.uint8(state);
+      call DiagMsg.send();
+    }
+    #endif
+    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+      
+      state = STATE_TEST;
+      
+      testChannel = ch;
+      testPower = power;
+      testMode = mode;
+      
+      testRadio();
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+  
+  async command error_t AtmelRadioTest.stopTest(){
+    if( state == STATE_TEST_STOP )
+      return EALREADY;
+    
+    if( state != STATE_TEST )
+      return EOFF;
+    
+    testRadio();
   }
 
   /*----------------- CHANNEL -----------------*/
@@ -936,4 +1068,8 @@ implementation
   default async command error_t ExtAmpControl.stop(){
     return SUCCESS;
   }
+  
+  async default event void AtmelRadioTest.startModulatedTestDone(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){}
+  async default event void AtmelRadioTest.startCWTestDone(uint8_t ch, uint8_t power, uint8_t mode){}
+  async default event void AtmelRadioTest.stopTestDone(){}
 }

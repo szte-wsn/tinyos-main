@@ -54,6 +54,8 @@ configuration RFA1DriverLayerC
 
 		interface LocalTime<TRadio> as LocalTimeRadio;
 		interface Alarm<TRadio, tradio_size>;
+    
+		interface AtmelRadioTest;
 	}
 
 	uses
@@ -78,6 +80,8 @@ implementation
 	RadioReceive = RFA1DriverLayerP;
 	RadioCCA = RFA1DriverLayerP;
 	RadioPacket = RFA1DriverLayerP;
+ 
+	AtmelRadioTest = RFA1DriverLayerP;
 
 	LocalTimeRadio = LocalTime62khzC;
 

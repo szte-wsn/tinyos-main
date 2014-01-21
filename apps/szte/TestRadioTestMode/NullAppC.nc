@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Vanderbilt University
+ * Copyright (c) 2000-2005 The Regents of the University  of California.  
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ * - Neither the name of the University of California nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -28,36 +28,40 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+/*
+ * Copyright (c) 2002-2005 Intel Corporation
+ * All rights reserved.
  *
- * Author: Miklos Maroti
- * Author: Andras Biro
+ * This file is distributed under the terms in the attached INTEL-LICENSE     
+ * file. If you do not find these files, copies can be found by writing to
+ * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
+ * 94704.  Attention:  Intel License Inquiry.
  */
 
-#ifndef __RFA1DRIVERLAYER_H__
-#define __RFA1DRIVERLAYER_H__
+/**
+ * Null is an empty skeleton application.  It is useful to test that the
+ * build environment is functional in its most minimal sense, i.e., you
+ * can correctly compile an application. It is also useful to test the
+ * minimum power consumption of a node when it has absolutely no 
+ * interrupts or resources active.
+ *
+ * @author Cory Sharp <cssharp@eecs.berkeley.edu>
+ * @date February 4, 2006
+ */
 
-typedef nx_struct rfa1_header_t
-{
-	nxle_uint8_t length;
-} rfa1_header_t;
-
-typedef struct rfa1_metadata_t
-{
-	uint8_t lqi;
-	union
-	{
-		uint8_t power;
-		uint8_t rssi;
-	};
-} rfa1_metadata_t;
-
-enum rfa1_test_modes
-{
-  RFA1_TEST_MODE_MODE_MODULATED = 0x01,
+configuration NullAppC{}
+implementation {
+  components MainC, NullC, LedsC, ActiveMessageC;
   
-  //these values goes directly to the framebuffer
-  RFA1_TEST_MODE_CW_MINUS = 0x00,
-  RFA1_TEST_MODE_CW_PLUS = 0xFF,
-};
+  #ifdef DEFAULT_RADIO_RF212
+  components RF212DriverLayerC as DriverLayerC;
+  #else
+  components RFA1DriverLayerC as DriverLayerC;
+  #endif
 
-#endif//__RFA1DRIVERLAYER_H__
+  MainC.Boot <- NullC;
+	NullC.Leds -> LedsC;
+	NullC.AtmelRadioTest -> DriverLayerC;
+}
+

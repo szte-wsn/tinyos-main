@@ -58,6 +58,8 @@ module RF212DriverLayerP
 		interface PacketField<uint8_t> as PacketTimeSyncOffset;
 		interface PacketField<uint8_t> as PacketLinkQuality;
 		interface LinkPacketMetadata;
+		
+		interface AtmelRadioTest;
 	}
 
 	uses
@@ -121,6 +123,8 @@ implementation
 		STATE_TRX_OFF_2_RX_ON = 4,
 		STATE_RX_ON = 5,
 		STATE_BUSY_TX_2_RX_ON = 6,
+		STATE_TEST = 7,
+		STATE_TEST_STOP = 8,
 	};
 
 	tasklet_norace uint8_t cmd;
@@ -284,7 +288,166 @@ implementation
 		writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | channel);
 
 		call SLP_TR.set();
-		state = STATE_SLEEP;
+		
+		if ( state == STATE_TEST_STOP ){
+			state = STATE_SLEEP;
+			signal AtmelRadioTest.stopTestDone();
+		} else
+			state = STATE_SLEEP;
+	}
+	
+	/*-------------------- AtmelRadioTest ------------------*/
+	bool isSpiAcquired();
+	
+	norace void* testBuffer;
+	norace uint8_t testChannel, testPower, testMode, testLen;
+	
+	enum{
+		RF212_TEST_MODE_CW_LIMIT = 0xE0,
+		RF212_TEST_MODE_CW_BIGSTEP_LIMIT = 0xF0,
+		
+		RF212_TEST_MODE_CW_BIG_STEP = 0x0E,
+		RF212_TEST_MODE_CW_SMALL_STEP = 0x0A,
+		RF212_TEST_MODE_CW_MINUS = 0x00,
+		RF212_TEST_MODE_CW_PLUS = 0xFF,
+		
+		RF212_TEST_MODE_CW_PLUSMINUS_MASK = 0x0F,
+		RF212_TEST_MODE_CW_PLUS_CMD = 0x0F,
+		RF212_TEST_MODE_CW_MINUS_CMD = 0x00,
+	};
+	
+	task void signalTestStart(){
+		if( testMode >= RF212_TEST_MODE_CW_LIMIT )
+			signal AtmelRadioTest.startCWTestDone(testChannel, testPower, testMode);
+		else
+			signal AtmelRadioTest.startModulatedTestDone(testChannel, testPower, testMode, testBuffer, testLen);
+	}
+	
+	void testRadio(){
+		if( state == STATE_TEST ){ //test start
+			//reset
+			call IRQ.disable();
+			call RSTN.clr();
+			call SLP_TR.clr();
+			call BusyWait.wait(15);
+			call RSTN.set();
+			call BusyWait.wait(1000);
+			
+			if( testChannel == 0xff )
+				testChannel = channel;
+			if( testPower == 0xff )
+				testPower = txPower;
+			
+			writeRegister(RF212_IRQ_MASK, 0);  // we will poll for PLL_LOCK
+			writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
+			writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | testChannel);
+			writeRegister(RF212_PHY_TX_PWR, testPower);
+			writeRegister(RF212_RF_CTRL_0, 2);
+			while( (readRegister(RF212_TRX_STATUS) & RF212_TRX_STATUS_MASK) != RF212_TRX_OFF )
+				call BusyWait.wait(100);
+			writeRegister(0x36, 0x0F);//Enable test mode step #1
+			if( testMode >= RF212_TEST_MODE_CW_LIMIT ){
+				if( testMode >= RF212_TEST_MODE_CW_BIGSTEP_LIMIT )
+					writeRegister(RF212_TRX_CTRL_2, RF212_TEST_MODE_CW_BIG_STEP);
+				else
+					writeRegister(RF212_TRX_CTRL_2, RF212_TEST_MODE_CW_SMALL_STEP);
+			} else {
+				writeRegister(RF212_TRX_CTRL_2, testMode);
+			}
+			
+			//frame buffer access
+			call SELN.clr();
+			call FastSpiByte.splitWrite(RF212_CMD_FRAME_WRITE);
+			if( testMode >= RF212_TEST_MODE_CW_LIMIT ){
+				call FastSpiByte.splitReadWrite(0x01);
+				if( (testMode & RF212_TEST_MODE_CW_PLUSMINUS_MASK) == RF212_TEST_MODE_CW_PLUS_CMD )
+					call FastSpiByte.splitReadWrite(RF212_TEST_MODE_CW_PLUS);
+				else
+					call FastSpiByte.splitReadWrite(RF212_TEST_MODE_CW_MINUS);
+			} else {
+				uint8_t offset = 0;
+				call FastSpiByte.splitReadWrite(testLen);
+				while( offset < testLen ){
+					call FastSpiByte.splitReadWrite( *(((uint8_t*)testBuffer + offset)) );
+					offset++;
+				}
+			}
+			call FastSpiByte.splitRead();
+			call SELN.set();
+			
+			writeRegister(0x1C, 0x54);//Enable test mode step #2
+			writeRegister(0x1C, 0x46);//Enable test mode step #3
+			
+			writeRegister(RF212_TRX_STATE, RF212_PLL_ON);
+			
+			while( (readRegister(RF212_TRX_STATUS) & RF212_TRX_STATUS_MASK) != RF212_PLL_ON )
+				call BusyWait.wait(100);
+			
+			writeRegister(RF212_TRX_STATE, RF212_BUSY_TX);
+			post signalTestStart();
+		} else { //test stop
+			writeRegister(0x1C, 0x00);
+			initRadio();
+		}
+	}
+	
+	async command error_t AtmelRadioTest.startModulatedTest(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){
+		#ifdef RADIO_DEBUG
+		if(call DiagMsg.record()){
+			call DiagMsg.str("mtest");
+			call DiagMsg.uint8(state);
+			call DiagMsg.send();
+		}
+		#endif
+		if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+			
+			state = STATE_TEST;
+			
+			testChannel = ch;
+			testPower = power;
+			testMode = mode;
+			testBuffer = data;
+			testLen = len;
+			
+			if(isSpiAcquired())
+				testRadio();
+			return SUCCESS;
+		} else
+			return EBUSY;
+	}
+	
+	async command error_t AtmelRadioTest.startCWTest(uint8_t ch, uint8_t power, uint8_t mode){
+		#ifdef RADIO_DEBUG
+		if(call DiagMsg.record()){
+			call DiagMsg.str("mtest");
+			call DiagMsg.uint8(state);
+			call DiagMsg.send();
+		}
+		#endif
+		if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+			
+			state = STATE_TEST;
+			
+			testChannel = ch;
+			testPower = power;
+			testMode = mode;
+			
+			if(isSpiAcquired())
+				testRadio();
+			return SUCCESS;
+		} else
+			return EBUSY;
+	}
+	
+	async command error_t AtmelRadioTest.stopTest(){
+		if( state == STATE_TEST_STOP )
+			return EALREADY;
+		
+		if( state != STATE_TEST )
+			return EOFF;
+		
+		if(isSpiAcquired())
+			testRadio();
 	}
 
 /*----------------- SPI -----------------*/
@@ -1075,4 +1238,7 @@ implementation
 	{
 		return call PacketLinkQuality.get(msg) > 200;
 	}
+	
+	async default event void AtmelRadioTest.startModulatedTestDone(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){}
+	async default event void AtmelRadioTest.startCWTestDone(uint8_t ch, uint8_t power, uint8_t mode){}
 }

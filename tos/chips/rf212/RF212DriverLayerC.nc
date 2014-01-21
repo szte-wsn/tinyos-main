@@ -53,6 +53,8 @@ configuration RF212DriverLayerC
 
 		interface LocalTime<TRadio> as LocalTimeRadio;
 		interface Alarm<TRadio, tradio_size>;
+		
+		interface AtmelRadioTest;
 	}
 
 	uses
@@ -76,6 +78,8 @@ implementation
 	RadioReceive = RF212DriverLayerP;
 	RadioCCA = RF212DriverLayerP;
 	RadioPacket = RF212DriverLayerP;
+	
+	AtmelRadioTest = RF212DriverLayerP;
 
 	LocalTimeRadio = HplRF212C;
 
