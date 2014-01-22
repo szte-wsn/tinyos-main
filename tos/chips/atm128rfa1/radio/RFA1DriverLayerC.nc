@@ -56,6 +56,7 @@ configuration RFA1DriverLayerC
 		interface Alarm<TRadio, tradio_size>;
     
 		interface AtmelRadioTest;
+		interface RssiMonitor;
 	}
 
 	uses
@@ -82,6 +83,7 @@ implementation
 	RadioPacket = RFA1DriverLayerP;
  
 	AtmelRadioTest = RFA1DriverLayerP;
+	RssiMonitor = RFA1DriverLayerP;
 
 	LocalTimeRadio = LocalTime62khzC;
 

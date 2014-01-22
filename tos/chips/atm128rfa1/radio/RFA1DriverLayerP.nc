@@ -62,6 +62,7 @@ module RFA1DriverLayerP
     interface McuPowerOverride;
     
     interface AtmelRadioTest;
+		interface RssiMonitor;
   }
 
   uses
@@ -119,6 +120,7 @@ implementation
     STATE_BUSY_TX_2_RX_ON = 6,
     STATE_TEST = 7,
     STATE_TEST_STOP = 8,
+    STATE_RSSI_MON = 9,
   };
 
   tasklet_norace uint8_t cmd;
@@ -229,6 +231,27 @@ implementation
     return SUCCESS;
   }
   
+  /*----------------------RssiMonitor---------------------*/
+  async command error_t RssiMonitor.start(void* buffer, uint16_t len){
+    if( state == STATE_RX_ON && cmd == CMD_NONE ){
+      uint16_t i;
+      uint8_t *bufPtr;
+      state = STATE_RSSI_MON;
+      bufPtr = (uint8_t*)buffer;
+      atomic{
+        for(i=0; i<len; i++){
+          *(bufPtr+i) = PHY_RSSI;
+        }
+      }
+      for(i=0; i<len; i++){
+        *(bufPtr+i) = *(bufPtr+i) & RFA1_RSSI_MASK;
+      }
+      state = STATE_RX_ON;
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+  
   /*-------------------- AtmelRadioTest ------------------*/
   norace void* testBuffer;
   norace uint8_t testChannel, testPower, testMode, testLen;
@@ -254,8 +277,10 @@ implementation
         testPower = txPower;
       
       SET_BIT(TRXPR, TRXRST);
-      while(TRXPR & (1<<TRXRST)); //only thre CLK, don't need BusyWait
-      
+      CLR_BIT(TRXPR, SLPTR); //this has to be done manually
+      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
+        call BusyWait.wait(100);
+
       IRQ_MASK = 0; // we will poll for PLL_LOCK
       TRX_CTRL_1 = 0; //disable aut crc
       TRX_STATE = CMD_FORCE_TRX_OFF; 
@@ -263,7 +288,6 @@ implementation
       PHY_TX_PWR = testPower;
       while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )
         call BusyWait.wait(100);
-      
       TST_CTRL_DIGI = 0x0F; //Enable test mode step #1
       TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3; //2Mb/s mode
       RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
@@ -289,7 +313,9 @@ implementation
     } else { //test stop
       PART_NUM = 0; //disable test mode
       SET_BIT(TRXPR, TRXRST);
-      while(TRXPR & (1<<TRXRST)); //only thre CLK, don't need BusyWait
+      CLR_BIT(TRXPR, SLPTR); //this has to be done manually
+      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
+        call BusyWait.wait(100);
       initRadio();
     }
   }
