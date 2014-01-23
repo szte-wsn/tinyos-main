@@ -73,6 +73,7 @@ implementation
 	
 	uint8_t buffer[BUFFER_LEN];
 	uint16_t offset = 0;
+	uint32_t time;
 	message_t msg;
 	
 	task void startMeasure();
@@ -109,10 +110,10 @@ implementation
 	#endif
 	
 	task void startMeasure(){
-		error_t err = FAIL;		
+		time = 0;		
 		call Leds.led1On();
-		while( err != SUCCESS ){
-			err = call RssiMonitor.start(buffer, BUFFER_LEN);
+		while( time == 0 ){
+			time = call RssiMonitor.start(buffer, BUFFER_LEN);
 		}
 		offset = 0;
 		call Leds.led1Off();
@@ -124,6 +125,7 @@ implementation
 		uint8_t i;
 		rssiMessage *payload = (rssiMessage*)call Packet.getPayload(&msg, sizeof(rssiMessage));
 		call Leds.led3Toggle();
+		payload->time = time;
 		payload->index = offset;
 		for( i=0; i<MSG_BUF_LEN; i++){
 			payload->data[i] = buffer[offset+i];

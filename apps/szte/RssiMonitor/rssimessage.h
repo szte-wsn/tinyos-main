@@ -6,6 +6,7 @@ enum{
 };
 
 typedef nx_struct rssiMessage{
+	nx_uint32_t time;
 	nx_uint16_t index;
 	nx_uint8_t data[MSG_BUF_LEN];
 } rssiMessage;

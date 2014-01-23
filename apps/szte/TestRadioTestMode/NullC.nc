@@ -60,15 +60,9 @@ implementation
 {
 
   event void Boot.booted() {
-		call Leds.set(0xff);
     call AtmelRadioTest.startCWTest(0, 0, RFA1_TEST_MODE_CW_PLUS);
+		call Leds.set(0xff);
   }
-  
-  async event void AtmelRadioTest.startCWTestDone(uint8_t ch, uint8_t power, uint8_t mode){
-		call Leds.set(0);
-	}
-	
-	async event void AtmelRadioTest.startModulatedTestDone(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){}
-  async event void AtmelRadioTest.stopTestDone(){}
+
 }
 

@@ -218,11 +218,7 @@ implementation
     
     call SfdCapture.setMode(ATMRFA1_CAPSC_ON);
     
-    if ( state == STATE_TEST_STOP ){
-      state = STATE_SLEEP;
-      signal AtmelRadioTest.stopTestDone();
-    } else
-      state = STATE_SLEEP;
+    state = STATE_SLEEP;
   }
 
   command error_t SoftwareInit.init()
@@ -232,36 +228,33 @@ implementation
   }
   
   /*----------------------RssiMonitor---------------------*/
-  async command error_t RssiMonitor.start(void* buffer, uint16_t len){
+  async command uint32_t RssiMonitor.start(void* buffer, uint16_t len){
     if( state == STATE_RX_ON && cmd == CMD_NONE ){
       uint16_t i;
       uint8_t *bufPtr;
+			uint32_t time;
       state = STATE_RSSI_MON;
       bufPtr = (uint8_t*)buffer;
       atomic{
+        time = call LocalTime.get();
         for(i=0; i<len; i++){
           *(bufPtr+i) = PHY_RSSI;
         }
+        time = call LocalTime.get() - time;
       }
+//       time = (uint32_t)((float)time/RADIO_ALARM_MICROSEC);
       for(i=0; i<len; i++){
         *(bufPtr+i) = *(bufPtr+i) & RFA1_RSSI_MASK;
       }
       state = STATE_RX_ON;
-      return SUCCESS;
+      return time;
     } else
-      return EBUSY;
+      return 0;
   }
   
   /*-------------------- AtmelRadioTest ------------------*/
   norace void* testBuffer;
   norace uint8_t testChannel, testPower, testMode, testLen;
-  
-  task void signalTestStart(){
-    if(testMode != RFA1_TEST_MODE_MODE_MODULATED)
-      signal AtmelRadioTest.startCWTestDone(testChannel, testPower, testMode);
-    else
-      signal AtmelRadioTest.startModulatedTestDone(testChannel, testPower, testMode, testBuffer, testLen);
-  }
   
   void testRadio(){
     #ifdef RADIO_DEBUG
@@ -309,7 +302,6 @@ implementation
         call BusyWait.wait(100);
       
       TRX_STATE = CMD_TX_START;
-      post signalTestStart();
     } else { //test stop
       PART_NUM = 0; //disable test mode
       SET_BIT(TRXPR, TRXRST);
@@ -373,7 +365,9 @@ implementation
     if( state != STATE_TEST )
       return EOFF;
     
+    state = STATE_TEST_STOP;
     testRadio();
+    return SUCCESS;
   }
 
   /*----------------- CHANNEL -----------------*/
@@ -1094,8 +1088,4 @@ implementation
   default async command error_t ExtAmpControl.stop(){
     return SUCCESS;
   }
-  
-  async default event void AtmelRadioTest.startModulatedTestDone(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){}
-  async default event void AtmelRadioTest.startCWTestDone(uint8_t ch, uint8_t power, uint8_t mode){}
-  async default event void AtmelRadioTest.stopTestDone(){}
 }
