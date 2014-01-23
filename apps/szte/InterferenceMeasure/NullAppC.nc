@@ -67,7 +67,9 @@ implementation {
 
 	components new AMSenderC(AM_RSSIMESSAGE_T), new AMReceiverC(AM_COMMANDMESSAGE_T), new TimerMilliC();	
 	NullC.AMSend -> AMSenderC;
+  NullC.AMPacket -> AMSenderC;
 	NullC.Packet -> AMSenderC;
+  NullC.PacketAcknowledgements -> AMSenderC;
 	NullC.Receive -> AMReceiverC;
 	NullC.Timer -> TimerMilliC;
 	

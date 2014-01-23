@@ -59,7 +59,9 @@ module NullC @safe()
 	uses interface AtmelRadioTest;
 	uses interface SplitControl;
 	uses interface AMSend;
+  uses interface AMPacket;
 	uses interface Packet;
+  uses interface PacketAcknowledgements;
 	uses interface Receive;
 	uses interface Leds;
 	uses interface Timer<TMilli>;
@@ -86,6 +88,7 @@ implementation
 	uint32_t time;
 	uint32_t waitAfter;
 	uint8_t state = S_IDLE;
+  uint16_t controller;
 	
 	message_t msg;
 	
@@ -108,6 +111,7 @@ implementation
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len) {
 		if( state == S_IDLE ){
 			commandMessage_t* cmd = (commandMessage_t*)payload;
+      controller = call AMPacket.source(bufPtr);
 			if( cmd->cw[0] == TOS_NODE_ID || cmd->cw[1] == TOS_NODE_ID ){
 				call Leds.led0On();
 				state = S_CW_WAIT;
@@ -163,12 +167,13 @@ implementation
 		for( i=0; i<MSG_BUF_LEN; i++){
 			payload->data[i] = buffer[offset+i];
 		}
-		if( call AMSend.send(AM_BROADCAST_ADDR, &msg, sizeof(rssiMessage_t)) != SUCCESS )
+		call PacketAcknowledgements.requestAck(&msg);
+		if( call AMSend.send(controller, &msg, sizeof(rssiMessage_t)) != SUCCESS )
 			post sendData();
 	}
 	
 	event void AMSend.sendDone(message_t* bufPtr, error_t error) {
-		if( error == SUCCESS )
+		if( error == SUCCESS && call PacketAcknowledgements.wasAcked(bufPtr) )
 			offset+= MSG_BUF_LEN;
 		
 		if(offset < BUFFER_LEN)
