@@ -60,7 +60,7 @@ implementation
 {
 
   event void Boot.booted() {
-    call AtmelRadioTest.startCWTest(0, 0, RFA1_TEST_MODE_CW_PLUS);
+    call AtmelRadioTest.startCWTest(0xff, 0xff, RFA1_TEST_MODE_CW_PLUS);
 		call Leds.set(0xff);
   }
 
