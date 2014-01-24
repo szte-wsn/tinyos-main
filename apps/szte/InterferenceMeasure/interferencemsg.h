@@ -3,14 +3,18 @@
 enum{
 	AM_RSSIMESSAGE_T = 10,
 	AM_COMMANDMESSAGE_T = 11,
+  AM_RSSIDATADONE_T = 12,
 	MSG_BUF_LEN = 16,
 };
 
 typedef nx_struct rssiMessage_t{
-	nx_uint32_t time;
 	nx_uint16_t index;
 	nx_uint8_t data[MSG_BUF_LEN];
 } rssiMessage_t;
+
+typedef nx_struct rssiDataDone_t{
+  nx_uint32_t time;
+} rssiDataDone_t;
 
 typedef nx_struct commandMessage_t{
 	nx_uint16_t cw[2];

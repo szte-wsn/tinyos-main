@@ -59,6 +59,7 @@ module NullC @safe()
 	uses interface AtmelRadioTest;
 	uses interface SplitControl;
 	uses interface AMSend;
+  uses interface AMSend as RssiDone;
   uses interface AMPacket;
 	uses interface Packet;
   uses interface PacketAcknowledgements;
@@ -162,7 +163,6 @@ implementation
 		uint8_t i;
 		rssiMessage_t *payload = (rssiMessage_t*)call Packet.getPayload(&msg, sizeof(rssiMessage_t));
 		call Leds.led3Toggle();
-		payload->time = time;
 		payload->index = offset;
 		for( i=0; i<MSG_BUF_LEN; i++){
 			payload->data[i] = buffer[offset+i];
@@ -172,18 +172,35 @@ implementation
 			post sendData();
 	}
 	
+	task void sendDone(){
+    rssiDataDone_t *payload = (rssiDataDone_t*)call Packet.getPayload(&msg, sizeof(rssiDataDone_t));
+    call Leds.led3Toggle();
+    payload->time = time;
+    call PacketAcknowledgements.requestAck(&msg);
+    if( call RssiDone.send(controller, &msg, sizeof(rssiDataDone_t)) != SUCCESS )
+      post sendDone();
+  }
+	
 	event void AMSend.sendDone(message_t* bufPtr, error_t error) {
 		if( error == SUCCESS && call PacketAcknowledgements.wasAcked(bufPtr) )
 			offset+= MSG_BUF_LEN;
 		
-		if(offset < BUFFER_LEN)
+		if(offset < BUFFER_LEN){
 			post sendData();
-		else{
-			state = S_IDLE;
-			call Leds.led1Off();
-			call Leds.led3Off();
-		}
+    }else {
+      post sendDone();
+    }
 	}
+	
+	event void RssiDone.sendDone(message_t* bufPtr, error_t error) {
+    if( error == SUCCESS && call PacketAcknowledgements.wasAcked(bufPtr) ){
+      state = S_IDLE;
+      call Leds.led1Off();
+      call Leds.led3Off();
+    } else {
+      post sendDone();
+    }
+  }
 	
 	event void SplitControl.stopDone(error_t err){}
 }
