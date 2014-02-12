@@ -286,13 +286,11 @@ implementation
       RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
       
       if(testMode != RFA1_TEST_MODE_MODE_MODULATED){
-        TRXFBST = testMode; //0x00 or 0xff
+        TRXFBST=1;
+        *((uint8_t*)(&TRXFBST+1)) = testMode; //0x00 or 0xff. This will be repeated, until we stop the test
       } else {
-        uint8_t offset = 0;
         TRXFBST = testLen;
-        while( offset < testLen ){
-          TRXFBST = *((uint8_t*)testBuffer + offset);
-        }
+        memcpy((void*)(&TRXFBST+1), testBuffer, testLen);
       }
       
       PART_NUM = 0x54; //Enable test mode step #2
