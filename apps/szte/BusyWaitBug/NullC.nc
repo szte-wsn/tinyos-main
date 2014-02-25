@@ -57,11 +57,27 @@ module NullC @safe()
 }
 implementation
 {
+	enum{
+		WAIT = 100,
+	};
+	
   event void Boot.booted() {
-		for(;;){
-			call Leds.set(call Leds.get()+1);
-			atomic{
-				call BusyWait.wait(40000U);//stops after a few round. works fine with 30000U
+		//TEST A: stops after a few round with 40000U. works fine with 30000U
+// 		for(;;){
+// 			call Leds.set(call Leds.get()+1);
+// 			atomic{
+// 				call BusyWait.wait(WAIT);
+// 			}
+// 		}
+		
+		//TEST B: doesn't work for too much time, but works without busywait
+		atomic{
+			for(;;){
+				if( call Leds.get() == 10 )
+					call Leds.set(5);
+				else
+					call Leds.set(10);
+					call BusyWait.wait(WAIT);
 			}
 		}
   }
