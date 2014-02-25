@@ -66,11 +66,13 @@ module NullC @safe()
 	uses interface Receive;
 	uses interface Leds;
 	uses interface Timer<TMilli>;
+	
+	uses interface SetNow<uint8_t> as SetXtalTrim;
 }
 implementation
 {
 	enum{
-		BUFFER_LEN = 8192,
+		BUFFER_LEN = 100,
 	};
 	
 	enum{
@@ -112,17 +114,19 @@ implementation
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len) {
 		if( state == S_IDLE ){
 			commandMessage_t* cmd = (commandMessage_t*)payload;
-      controller = call AMPacket.source(bufPtr);
+			controller = call AMPacket.source(bufPtr);
 			if( cmd->cw[0] == TOS_NODE_ID || cmd->cw[1] == TOS_NODE_ID ){
 				call Leds.led0On();
 				state = S_CW_WAIT;
 				waitAfter = cmd->cwLength;
-				call SplitControl.stop();
 				if( cmd->cw[0] == TOS_NODE_ID ){
 					cwMode = cmd->cwMode[0];
+					call SetXtalTrim.setNow(cmd->trim[0]);
 				} else if( cmd->cw[1] == TOS_NODE_ID ){
 					cwMode = cmd->cwMode[1];
+					call SetXtalTrim.setNow(cmd->trim[1]);
 				}
+				call SplitControl.stop();
 				call Timer.startOneShot(cmd->waitBeforeCw);
 			} else {
 				call Leds.led1On();

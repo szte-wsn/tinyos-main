@@ -19,6 +19,7 @@ typedef nx_struct rssiDataDone_t{
 typedef nx_struct commandMessage_t{
 	nx_uint16_t cw[2];
 	nx_uint8_t cwMode[2];
+	nx_uint8_t trim[2];
 	nx_uint32_t cwLength;
 	nx_uint32_t waitBeforeCw;
 	nx_uint32_t waitBeforeMeasure;

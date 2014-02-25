@@ -1,5 +1,6 @@
 COMPONENT=NullAppC
-CFLAGS+= -DUCMINI_REV=101
+# CFLAGS+= -DUCMINI_REV=101
+CFLAGS+=-DDIAGMSG_RECORDED_MSGS=100
 BUILD_EXTRA_DEPS += Send.class Receive.class
 CLEAN_EXTRA = *.class RssiMsg.java CommandMsg.java RssiDoneMsg.java RssiMsg.py *.pyc
 

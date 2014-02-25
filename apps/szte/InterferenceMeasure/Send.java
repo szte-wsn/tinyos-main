@@ -63,14 +63,16 @@ public class Send {
 		CommandMsg msg = new CommandMsg();
 		msg.setElement_cw(0, Integer.parseInt(args[0]));
 		msg.setElement_cw(1, Integer.parseInt(args[1]));
-		if( args[2].equals("+") )
+		if( args[2].startsWith("+") )
 			msg.setElement_cwMode(0, (short)0xff);
 		else
 			msg.setElement_cwMode(0, (short)0);
-		if( args[3].equals("+") )
+		msg.setElement_trim(0, Short.parseShort(args[2].substring(1)));
+		if( args[3].startsWith("+") )
 			msg.setElement_cwMode(1, (short)0xff);
 		else
 			msg.setElement_cwMode(1, (short)0);
+		msg.setElement_trim(1, Short.parseShort(args[3].substring(1)));
 		msg.set_cwLength(Integer.parseInt(args[4]));
 		msg.set_waitBeforeCw(Integer.parseInt(args[5]));
 		msg.set_waitBeforeMeasure(Integer.parseInt(args[6]));

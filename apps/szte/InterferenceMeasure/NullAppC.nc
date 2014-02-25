@@ -64,6 +64,7 @@ implementation {
 	NullC.SplitControl -> ActiveMessageC;
 	NullC.RssiMonitor -> DriverLayerC;
 	NullC.AtmelRadioTest -> DriverLayerC;
+	NullC.SetXtalTrim -> DriverLayerC;
 
   components new AMSenderC(AM_RSSIMESSAGE_T), new AMReceiverC(AM_COMMANDMESSAGE_T), new TimerMilliC(), new AMSenderC(AM_RSSIDATADONE_T) as RssiDone;	
 	NullC.AMSend -> AMSenderC;
@@ -73,6 +74,7 @@ implementation {
   NullC.PacketAcknowledgements -> AMSenderC;
 	NullC.Receive -> AMReceiverC;
 	NullC.Timer -> TimerMilliC;
+
 	
 	components LedsC;
 	NullC.Leds -> LedsC;

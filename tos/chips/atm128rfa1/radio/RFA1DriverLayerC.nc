@@ -57,6 +57,8 @@ configuration RFA1DriverLayerC
     
 		interface AtmelRadioTest;
 		interface RssiMonitor;
+		interface SetNow<uint8_t> as SetXtalTrim;
+		interface GetNow<uint8_t> as GetXtalTrim;
 	}
 
 	uses
@@ -84,6 +86,9 @@ implementation
  
 	AtmelRadioTest = RFA1DriverLayerP;
 	RssiMonitor = RFA1DriverLayerP;
+	
+	SetXtalTrim = RFA1DriverLayerP;
+	GetXtalTrim = RFA1DriverLayerP;
 
 	LocalTimeRadio = LocalTime62khzC;
 

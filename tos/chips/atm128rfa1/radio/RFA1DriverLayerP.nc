@@ -62,7 +62,9 @@ module RFA1DriverLayerP
     interface McuPowerOverride;
     
     interface AtmelRadioTest;
-		interface RssiMonitor;
+    interface RssiMonitor;
+    interface SetNow<uint8_t> as SetXtalTrim;
+    interface GetNow<uint8_t> as GetXtalTrim;
   }
 
   uses
@@ -225,6 +227,15 @@ implementation
   {
     initRadio();
     return SUCCESS;
+  }
+  
+  async command error_t SetXtalTrim.setNow(uint8_t trim){
+    XOSC_CTRL= (XOSC_CTRL&0xf0) | trim;
+    return SUCCESS;
+  }
+  
+  async command uint8_t GetXtalTrim.getNow(){
+    return XOSC_CTRL&0x0f;
   }
   
   /*----------------------RssiMonitor---------------------*/
