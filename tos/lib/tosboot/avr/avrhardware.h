@@ -56,6 +56,10 @@
 #ifndef TOSH_AVRHARDWARE_H
 #define TOSH_AVRHARDWARE_H
 
+#ifndef TOSBOOT_END
+#define TOSBOOT_END 0
+#endif
+
 // check for a new-look avr-libc
 #if defined(DTOSTR_ALWAYS_SIGN) && !defined(TOSH_NEW_AVRLIBC)
 #define TOSH_NEW_AVRLIBC
@@ -124,6 +128,23 @@ static inline int TOSH_READ_##name##_PIN() \
   {return (inp(PIN##port) & (1 << bit)) != 0;} \
 static inline void TOSH_MAKE_##name##_OUTPUT() {sbi(DDR##port , bit);} \
 static inline void TOSH_MAKE_##name##_INPUT() {cbi(DDR##port , bit);} 
+
+#define TOSH_ASSIGN_DUMMY_PIN(name, pinValue) \
+static inline void TOSH_SET_##name##_PIN() {;} \
+static inline void TOSH_CLR_##name##_PIN() {;} \
+static inline int TOSH_READ_##name##_PIN() \
+  {return pinValue;} \
+static inline void TOSH_MAKE_##name##_OUTPUT() {;} \
+static inline void TOSH_MAKE_##name##_INPUT() {;} 
+
+#define TOSH_ASSIGN_INVERTED_PIN(name, port, bit) \
+static inline void TOSH_SET_##name##_PIN() {cbi(PORT##port , bit);} \
+static inline void TOSH_CLR_##name##_PIN() {sbi(PORT##port , bit);} \
+static inline int TOSH_READ_##name##_PIN() \
+  {return (inp(PIN##port) & (1 << bit)) == 0;} \
+static inline void TOSH_MAKE_##name##_OUTPUT() {sbi(DDR##port , bit);} \
+static inline void TOSH_MAKE_##name##_INPUT() {cbi(DDR##port , bit);} 
+
 
 #define TOSH_ASSIGN_OUTPUT_ONLY_PIN(name, port, bit) \
 static inline void TOSH_SET_##name##_PIN() {sbi(PORT##port , bit);} \

@@ -39,6 +39,8 @@
  * @author Jonathan Hui <jwhui@cs.berkeley.edu>
  */
 
+#include <avr/wdt.h>
+
 module HardwareC {
   provides {
     interface Hardware;
@@ -47,10 +49,13 @@ module HardwareC {
 
 implementation {
 
-  command void Hardware.init() {}
+  command void Hardware.init() {
+    MCUSR = 0;
+    wdt_disable();
+  }
   
   command void Hardware.reboot() {
-    wdt_enable(1);
+    wdt_enable(WDTO_1S);
     while(1);
   }
 

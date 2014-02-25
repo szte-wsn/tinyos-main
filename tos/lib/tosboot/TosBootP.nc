@@ -42,6 +42,7 @@
 
 #include "crc.h"
 #include <hardware.h>
+#include "TosBoot.h"
 
 module TosBootP {
   uses {
@@ -156,14 +157,11 @@ implementation {
     secLength = extFlashReadAddr();
     curAddr = curAddr + 8;
 
-#if defined(PLATFORM_TELOSB) || defined (PLATFORM_EPIC) || defined (PLATFORM_TINYNODE)
-    if (intAddr != TOSBOOT_END) {
-#elif defined(PLATFORM_MICAZ) || defined(PLATFORM_IRIS)
-    if (intAddr != 0) {
-#elif defined(PLATFORM_MULLE)
+
+#ifdef PLATFORM_MULLE
     if (intAddr != 0xA0000) {
 #else
-  #error "Target platform is not currently supported by Deluge T2"
+    if (intAddr != TOSBOOT_INT_ADDRESS) {
 #endif
       call ExtFlash.stopRead();
       return R_INVALID_IMAGE_ERROR;

@@ -22,3 +22,8 @@ program: FORCE
 	@echo "    installing $(PLATFORM) binary using dragonjtag"
 	$(PROGRAMMER) $(PROGRAMMER_FLAGS) $(PROGRAMMER_INSTALL_SREC_FLAGS)
 
+program_bl: FORCE
+	sleep 2 #wait for dragon restart after programing
+	@echo "    installing $(PLATFORM) bootloader using dragonjtag"
+	$(PROGRAMMER) $(PROGRAMMER_FLAGS) $(PROGRAMMER_INSTALL_BOOTLOADER_FLAGS)
+
