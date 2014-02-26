@@ -50,8 +50,6 @@
 * @date February 4, 2006
 */
 
-#include "UserButton.h"
-
 module NullC @safe()
 {
 	uses interface Boot;
@@ -72,7 +70,7 @@ module NullC @safe()
 implementation
 {
 	enum{
-		BUFFER_LEN = 100,
+		BUFFER_LEN = 8096,
 	};
 	
 	enum{
@@ -115,11 +113,11 @@ implementation
 		if( state == S_IDLE ){
 			commandMessage_t* cmd = (commandMessage_t*)payload;
 			controller = call AMPacket.source(bufPtr);
-			if( cmd->cw[0] == TOS_NODE_ID || cmd->cw[1] == TOS_NODE_ID ){
+			if( cmd->cw[0] == TOS_NODE_ID || cmd->cw[1] == TOS_NODE_ID || cmd->cw[0] == AM_BROADCAST_ADDR ){
 				call Leds.led0On();
 				state = S_CW_WAIT;
 				waitAfter = cmd->cwLength;
-				if( cmd->cw[0] == TOS_NODE_ID ){
+				if( cmd->cw[0] == TOS_NODE_ID || cmd->cw[0] == AM_BROADCAST_ADDR ){
 					cwMode = cmd->cwMode[0];
 					call SetXtalTrim.setNow(cmd->trim[0]);
 				} else if( cmd->cw[1] == TOS_NODE_ID ){

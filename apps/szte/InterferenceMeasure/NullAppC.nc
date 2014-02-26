@@ -78,5 +78,9 @@ implementation {
 	
 	components LedsC;
 	NullC.Leds -> LedsC;
+	
+	components DelugeC;
+	DelugeC.Leds -> LedsC;
+	
 }
 
