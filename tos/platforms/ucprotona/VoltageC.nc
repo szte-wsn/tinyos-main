@@ -1,7 +1,4 @@
-// $Id: TOSBoot_platform.h,v 1.4 2010-06-29 22:07:50 scipio Exp $
-
-/*
- * Copyright (c) 2000-2005 The Regents of the University  of California.  
+/* Copyright (c) 2007 Johns Hopkins University.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,20 +28,22 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 /**
- * @author  Jonathan Hui <jwhui@cs.berkeley.edu>
+ * Battery Voltage. The returned value represents the difference
+ * between the battery voltage and V_BG (1.23V). The formula to convert
+ * it to mV is: 1223 * 1024 / value.
+ *
+ * @author Razvan Musaloiu-E.
  */
 
-#ifndef __TOSBOOT_PLATFORM_H__
-#define __TOSBOOT_PLATFORM_H__
+generic configuration VoltageC()
+{
+  provides interface Read<uint16_t>;
+}
 
-enum {
-  TOSBOOT_ARGS_ADDR = 0xff0,      // address of TOSBoot args in internal flash
-  TOSBOOT_GESTURE_MAX_COUNT = 3,  // number of resets to force golden image
-  TOSBOOT_GOLDEN_IMG_ADDR = 0x0L, // address of the golden image in external flash
-  TOSBOOT_INT_PAGE_SIZE = SPM_PAGESIZE, // size of each internal program flash page
-  TOSBOOT_INT_ADDRESS = 0,
-};
-
-#endif
+implementation
+{
+	components new ConstantSensorC(uint16_t, 0);
+	Read = ConstantSensorC;
+	#warning "The Voltage Sensor on Proton DRD A doesn't work. Please remove this component"
+}

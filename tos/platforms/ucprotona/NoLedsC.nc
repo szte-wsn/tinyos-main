@@ -1,4 +1,4 @@
-// $Id: TOSBoot_platform.h,v 1.4 2010-06-29 22:07:50 scipio Exp $
+// $Id: NoLedsC.nc,v 1.1 2010-11-19 10:02:09 andrasbiro Exp $
 
 /*
  * Copyright (c) 2000-2005 The Regents of the University  of California.  
@@ -14,7 +14,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holders nor the names of
+ * - Neither the name of the University of California nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -33,18 +33,43 @@
  */
 
 /**
- * @author  Jonathan Hui <jwhui@cs.berkeley.edu>
+ * A null operation replacement for the LedsC component. As many
+ * components might concurrently signal information through LEDs,
+ * using LedsC and NoLedsC allows an application builder to select
+ * which components control the LEDs.
+ *
+ * @author Philip Levis
+ * @date   March 19, 2005
  */
 
-#ifndef __TOSBOOT_PLATFORM_H__
-#define __TOSBOOT_PLATFORM_H__
+module NoLedsC {
+  provides interface Init;
+  provides interface Leds;
+}
+implementation {
 
-enum {
-  TOSBOOT_ARGS_ADDR = 0xff0,      // address of TOSBoot args in internal flash
-  TOSBOOT_GESTURE_MAX_COUNT = 3,  // number of resets to force golden image
-  TOSBOOT_GOLDEN_IMG_ADDR = 0x0L, // address of the golden image in external flash
-  TOSBOOT_INT_PAGE_SIZE = SPM_PAGESIZE, // size of each internal program flash page
-  TOSBOOT_INT_ADDRESS = 0,
-};
+  command error_t Init.init() {return SUCCESS;}
 
-#endif
+  async command void Leds.led0On() {}
+  async command void Leds.led0Off() {}
+  async command void Leds.led0Toggle() {}
+
+  async command void Leds.led1On() {}
+  async command void Leds.led1Off() {}
+  async command void Leds.led1Toggle() {}
+
+  async command void Leds.led2On() {}
+  async command void Leds.led2Off() {}
+  async command void Leds.led2Toggle() {}
+  
+  async command void Leds.led3On() {}
+  async command void Leds.led3Off() {}
+  async command void Leds.led3Toggle() {}
+  
+  async command void Leds.led4On() {}
+  async command void Leds.led4Off() {}
+  async command void Leds.led4Toggle() {}
+
+  async command uint8_t Leds.get() {return 0;}
+  async command void Leds.set(uint8_t val) {}
+}

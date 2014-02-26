@@ -1,6 +1,7 @@
-// $Id: TOSBoot_platform.h,v 1.4 2010-06-29 22:07:50 scipio Exp $
+// $Id: LedsC.nc,v 1.1 2010-11-18 21:57:02 andrasbiro Exp $
 
 /*
+ * Copyright (c) 2006 ETH Zurich.  
  * Copyright (c) 2000-2005 The Regents of the University  of California.  
  * All rights reserved.
  *
@@ -14,7 +15,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holders nor the names of
+ * - Neither the name of the University of California nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -31,20 +32,30 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 /**
- * @author  Jonathan Hui <jwhui@cs.berkeley.edu>
+ * @author Joe Polastre
+ * @author Jan Beutel
  */
+#include "hardware.h"
 
-#ifndef __TOSBOOT_PLATFORM_H__
-#define __TOSBOOT_PLATFORM_H__
+configuration LedsC {
+  provides interface Leds;
+}
+implementation {
+  components PlatformLedsC;
 
-enum {
-  TOSBOOT_ARGS_ADDR = 0xff0,      // address of TOSBoot args in internal flash
-  TOSBOOT_GESTURE_MAX_COUNT = 3,  // number of resets to force golden image
-  TOSBOOT_GOLDEN_IMG_ADDR = 0x0L, // address of the golden image in external flash
-  TOSBOOT_INT_PAGE_SIZE = SPM_PAGESIZE, // size of each internal program flash page
-  TOSBOOT_INT_ADDRESS = 0,
-};
-
+#ifdef LEDS_INVERT
+  components LedsInvP as LedsP;
+#else
+  components LedsP;
 #endif
+
+  Leds = LedsP;
+
+  LedsP.Init <- PlatformLedsC.Init;
+  LedsP.Led0 -> PlatformLedsC.Led0;
+  LedsP.Led1 -> PlatformLedsC.Led1;
+  LedsP.Led2 -> PlatformLedsC.Led2;
+  LedsP.Led3 -> PlatformLedsC.Led3;
+}
+

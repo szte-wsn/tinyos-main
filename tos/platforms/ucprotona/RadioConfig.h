@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2010, University of Szeged
+ * Copyright (c) 2007, Vanderbilt University
+ * Copyright (c) 2010, Univeristy of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,84 +31,62 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Miklos Maroti
+ * Author: Andras Biro
  */
 
+#ifndef __RADIOCONFIG_H__
+#define __RADIOCONFIG_H__
+
+#include <RFA1DriverLayer.h>
 #include "TimerConfig.h"
-module McuInitP @safe()
+
+enum
 {
-	provides interface Init;
+	/**
+	 * This is the default value of the CCA_MODE field in the PHY_CC_CCA register
+	 * which is used to configure the default mode of the clear channel assesment
+	 */
+	RFA1_CCA_MODE_VALUE = CCA_CS<<CCA_MODE0,
 
-	uses
-	{
-		interface Init as MeasureClock;
-		interface Init as TimerInit;
-		interface Init as AdcInit;
-		interface Init as RadioInit;
-	}
-}
+	/**
+	 * This is the value of the CCA_THRES register that controls the
+	 * energy levels used for clear channel assesment
+	 */
+	RFA1_CCA_THRES_VALUE = 0xC7,	//TODO to avr-libc values
+	
+	RFA1_PA_BUF_LT=3<<PA_BUF_LT0,
+	RFA1_PA_LT=0<<PA_LT0,
+};
 
-implementation
-{
-	error_t systemClockInit()
-	{
-		// set the clock prescaler
-		atomic
-		{
-			// enable changing the prescaler
-			CLKPR = 0x80;
-
-#if PLATFORM_MHZ == 16
-			CLKPR = 0x0F;	
-#elif PLATFORM_MHZ == 8
-			CLKPR = 0x00;
-#elif PLATFORM_MHZ == 4
-			CLKPR = 0x01;
-#elif PLATFORM_MHZ == 2
-			CLKPR = 0x02;
-#elif PLATFORM_MHZ == 1
-			CLKPR = 0x03;
-#else
-	#error "Unsupported MHZ"
+/* This is the default value of the TX_PWR field of the PHY_TX_PWR register. */
+#ifndef RFA1_DEF_RFPOWER
+#define RFA1_DEF_RFPOWER	0
 #endif
-		}
 
-		return SUCCESS;
-	}
-
-	command error_t Init.init()
-	{
-		error_t ok;
-#ifdef BOOTLOADER_INTERRUPTS
-		uint8_t temp;
+/* This is the default value of the CHANNEL field of the PHY_CC_CCA register. */
+#ifndef RFA1_DEF_CHANNEL
+#define RFA1_DEF_CHANNEL	11
 #endif
-		
-		DRTRAM0 |= 1<<ENDRT;
-		DRTRAM1 |= 1<<ENDRT;
-		DRTRAM2 |= 1<<ENDRT;
-		DRTRAM3 |= 1<<ENDRT;
-#ifndef ENABLE_JTAG_DEBUG
-		MCUCR |= 1<<JTD;
-		MCUCR |= 1<<JTD;
-#else
-		#warning "JTAG DEBUG ENABLED (ENABLE_JTAG_DEBUG)"
-#endif
-		
-#ifdef BOOTLOADER_INTERRUPTS
-		#warning "Interrupt table in bootloader area"
-		temp = MCUCR;
-		MCUCR = temp | (1<<IVCE);
-		MCUCR = temp | (1<<IVSEL);
-#endif
-		
-		ok = systemClockInit();
-		ok = ecombine(ok, call MeasureClock.init());
-		ok = ecombine(ok, call TimerInit.init());
-		ok = ecombine(ok, call AdcInit.init());
-		ok = ecombine(ok, call RadioInit.init());
 
-		return ok;
-	}
+/* The number of microseconds a sending mote will wait for an acknowledgement */
+#ifndef SOFTWAREACK_TIMEOUT
+#define SOFTWAREACK_TIMEOUT	1000
+#endif
 
-	default command error_t TimerInit.init() { return SUCCESS; }
-	default command error_t AdcInit.init() { return SUCCESS; }
-}
+/**
+ * This is the timer type of the radio alarm interface
+ */
+typedef T62khz TRadio;
+typedef uint32_t tradio_size;
+
+/**
+ * The number of radio alarm ticks per one microsecond
+ */
+#define RADIO_ALARM_MICROSEC	0.0625
+
+/**
+ * The base two logarithm of the number of radio alarm ticks per one millisecond
+ */
+#define RADIO_ALARM_MILLI_EXP	6
+
+#endif//__RADIOCONFIG_H__

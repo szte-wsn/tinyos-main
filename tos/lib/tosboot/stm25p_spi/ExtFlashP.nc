@@ -1,4 +1,4 @@
-// $Id: TOSBoot_platform.h,v 1.4 2010-06-29 22:07:50 scipio Exp $
+// $Id: ExtFlashP.nc,v 1.2 2010-06-29 22:07:50 scipio Exp $
 
 /*
  * Copyright (c) 2000-2005 The Regents of the University  of California.  
@@ -33,18 +33,88 @@
  */
 
 /**
- * @author  Jonathan Hui <jwhui@cs.berkeley.edu>
+ * @author Jonathan Hui <jwhui@cs.berkeley.edu>
  */
 
-#ifndef __TOSBOOT_PLATFORM_H__
-#define __TOSBOOT_PLATFORM_H__
+module ExtFlashP {
+  provides {
+    interface StdControl;
+    interface Init;
+    interface ExtFlash;
+  }
+  uses {
+    interface StdControl as SpiControl;
+    interface SpiByte;
+  }
+}
 
-enum {
-  TOSBOOT_ARGS_ADDR = 0xff0,      // address of TOSBoot args in internal flash
-  TOSBOOT_GESTURE_MAX_COUNT = 3,  // number of resets to force golden image
-  TOSBOOT_GOLDEN_IMG_ADDR = 0x0L, // address of the golden image in external flash
-  TOSBOOT_INT_PAGE_SIZE = SPM_PAGESIZE, // size of each internal program flash page
-  TOSBOOT_INT_ADDRESS = 0,
-};
+implementation {
 
-#endif
+  command error_t Init.init() {
+    TOSH_MAKE_FLASH_HOLD_OUTPUT();
+    TOSH_MAKE_FLASH_CS_OUTPUT();
+    TOSH_MAKE_FLASH_POWER_OUTPUT();
+    TOSH_SET_FLASH_HOLD_PIN();
+    TOSH_SET_FLASH_CS_PIN();
+    TOSH_SET_FLASH_POWER_PIN();
+    wait(10000U);
+    return SUCCESS;
+  }
+
+  command error_t StdControl.start() { 
+    return call SpiControl.start();
+  }
+
+  command error_t StdControl.stop() { 
+
+    TOSH_CLR_FLASH_CS_PIN();
+    
+    call SpiByte.write(0xb9);
+
+    TOSH_SET_FLASH_CS_PIN();
+
+    return call SpiControl.stop();
+  }
+
+  void powerOnFlash() {
+
+    uint8_t i;
+
+    TOSH_CLR_FLASH_CS_PIN();
+
+    // command byte + 3 dummy bytes + signature
+    for ( i = 0; i < 5; i++ ) {
+      call SpiByte.write(0xab);
+    }
+    
+    TOSH_SET_FLASH_CS_PIN();
+
+  }
+
+  command void ExtFlash.startRead(uint32_t addr) {
+
+    uint8_t i;
+    
+    powerOnFlash();
+    
+    TOSH_CLR_FLASH_CS_PIN();
+    
+    // add command byte to address
+    addr |= (uint32_t)0x3 << 24;
+    
+    // address
+    for ( i = 4; i > 0; i-- ) {
+      call SpiByte.write((addr >> (i-1)*8) & 0xff);
+    }    
+
+  }
+
+  command uint8_t ExtFlash.readByte() {
+    return call SpiByte.write(0);
+  }
+
+  command void ExtFlash.stopRead() {
+    TOSH_SET_FLASH_CS_PIN();
+  }
+
+}

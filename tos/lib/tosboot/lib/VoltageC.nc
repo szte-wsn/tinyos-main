@@ -1,7 +1,9 @@
-// $Id: TOSBoot_platform.h,v 1.4 2010-06-29 22:07:50 scipio Exp $
+// $Id: VoltageC.nc,v 1.3 2010-06-29 22:07:50 scipio Exp $
 
 /*
- * Copyright (c) 2000-2005 The Regents of the University  of California.  
+ *
+ *
+ * Copyright (c) 2000-2004 The Regents of the University  of California.  
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,21 +32,23 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 /**
- * @author  Jonathan Hui <jwhui@cs.berkeley.edu>
+ * @author Jonathan Hui <jwhui@cs.berkeley.edu>
  */
 
-#ifndef __TOSBOOT_PLATFORM_H__
-#define __TOSBOOT_PLATFORM_H__
+module VoltageC {
+  provides {
+    interface Voltage;
+  }
+}
 
-enum {
-  TOSBOOT_ARGS_ADDR = 0xff0,      // address of TOSBoot args in internal flash
-  TOSBOOT_GESTURE_MAX_COUNT = 3,  // number of resets to force golden image
-  TOSBOOT_GOLDEN_IMG_ADDR = 0x0L, // address of the golden image in external flash
-  TOSBOOT_INT_PAGE_SIZE = SPM_PAGESIZE, // size of each internal program flash page
-  TOSBOOT_INT_ADDRESS = 0,
-};
+implementation {
 
-#endif
+  command bool Voltage.okToProgram() {
+      return TRUE;
+  }
+
+}

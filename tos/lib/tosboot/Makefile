@@ -105,6 +105,22 @@ ifeq ($(MAKECMDGOALS),tinynode)
   POST_BUILD_EXTRA_DEPS += strip_iv 
 endif
 
+ifeq ($(MAKECMDGOALS),ucmini)
+  CFLAGS += -I../net/Deluge
+  CFLAGS += -Iucmini
+  CFLAGS += -Iavr -Istm25p_spi -Ilib
+  CFLAGS += -DTOSBOOT_START=0x1f000 -DTOSBOOT_END=0x20000
+  CFLAGS += -Wl,--section-start=.text=0x1f000 
+endif
+
+ifneq (, $(filter $(MAKECMDGOALS), ucprotona ucprotonb))
+  CFLAGS += -I../net/Deluge
+  CFLAGS += -Iucproton
+  CFLAGS += -Iavr -Istm25p_spi -Ilib
+  CFLAGS += -DTOSBOOT_START=0x1f000 -DTOSBOOT_END=0x20000
+  CFLAGS += -Wl,--section-start=.text=0x1f000
+endif
+
 
 
 strip_iv: FORCE

@@ -55,6 +55,24 @@ ifeq ($(BOOTLOADER),tosboot)
     BOOTLOADER_IMG ?= $(TOSBOOT_DIR)/iris/main.ihex
     AVR_FUSE_H ?= 0xda
   endif
+  
+  ifeq ($(TARGETS),ucmini)
+    CFLAGS += -I$(DELUGE_EXTRA)/iris -I$(DELUGE_EXTRA)/micaz -I$(DELUGE_EXTRA)/mica2 -I$(DELUGE_EXTRA)/avr -I$(DELUGE_EXTRA)
+    BOOTLOADER_IMG ?= $(TOSBOOT_DIR)/ucmini/main.ihex
+    AVR_FUSE_H ?= 0x98
+  endif
+ 
+ ifeq ($(TARGETS),ucprotonb)
+    CFLAGS += -I$(DELUGE_EXTRA)/iris -I$(DELUGE_EXTRA)/micaz -I$(DELUGE_EXTRA)/mica2 -I$(DELUGE_EXTRA)/avr -I$(DELUGE_EXTRA)
+    BOOTLOADER_IMG ?= $(TOSBOOT_DIR)/ucprotonb/main.ihex
+    AVR_FUSE_H ?= 0x98
+  endif
+
+  ifeq ($(TARGETS),ucprotona)
+    CFLAGS += -I$(DELUGE_EXTRA)/iris -I$(DELUGE_EXTRA)/micaz -I$(DELUGE_EXTRA)/mica2 -I$(DELUGE_EXTRA)/avr -I$(DELUGE_EXTRA)
+    BOOTLOADER_IMG ?= $(TOSBOOT_DIR)/ucprotona/main.ihex
+    AVR_FUSE_H ?= 0x98
+  endif
 
    ifeq ($(TARGETS),tinynode)
 		CFLAGS += -I$(DELUGE_EXTRA)/tinynode

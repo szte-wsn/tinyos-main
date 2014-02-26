@@ -32,82 +32,44 @@
  * Author: Miklos Maroti
  */
 
-#include "TimerConfig.h"
-module McuInitP @safe()
+configuration PlatformC
 {
-	provides interface Init;
-
+	provides
+	{
+		interface Init;
+		
+		// TODO: this should be moved to McuInit, but HplAtm128UartC wants it here
+		interface Atm128Calibrate;
+	}
+	
 	uses
 	{
-		interface Init as MeasureClock;
-		interface Init as TimerInit;
-		interface Init as AdcInit;
-		interface Init as RadioInit;
+		interface Init as LedsInit;
 	}
+	
 }
-
 implementation
 {
-	error_t systemClockInit()
-	{
-		// set the clock prescaler
-		atomic
-		{
-			// enable changing the prescaler
-			CLKPR = 0x80;
-
-#if PLATFORM_MHZ == 16
-			CLKPR = 0x0F;	
-#elif PLATFORM_MHZ == 8
-			CLKPR = 0x00;
-#elif PLATFORM_MHZ == 4
-			CLKPR = 0x01;
-#elif PLATFORM_MHZ == 2
-			CLKPR = 0x02;
-#elif PLATFORM_MHZ == 1
-			CLKPR = 0x03;
-#else
-	#error "Unsupported MHZ"
-#endif
-		}
-
-		return SUCCESS;
-	}
-
-	command error_t Init.init()
-	{
-		error_t ok;
-#ifdef BOOTLOADER_INTERRUPTS
-		uint8_t temp;
-#endif
-		
-		DRTRAM0 |= 1<<ENDRT;
-		DRTRAM1 |= 1<<ENDRT;
-		DRTRAM2 |= 1<<ENDRT;
-		DRTRAM3 |= 1<<ENDRT;
-#ifndef ENABLE_JTAG_DEBUG
-		MCUCR |= 1<<JTD;
-		MCUCR |= 1<<JTD;
-#else
-		#warning "JTAG DEBUG ENABLED (ENABLE_JTAG_DEBUG)"
-#endif
-		
-#ifdef BOOTLOADER_INTERRUPTS
-		#warning "Interrupt table in bootloader area"
-		temp = MCUCR;
-		MCUCR = temp | (1<<IVCE);
-		MCUCR = temp | (1<<IVSEL);
-#endif
-		
-		ok = systemClockInit();
-		ok = ecombine(ok, call MeasureClock.init());
-		ok = ecombine(ok, call TimerInit.init());
-		ok = ecombine(ok, call AdcInit.init());
-		ok = ecombine(ok, call RadioInit.init());
-
-		return ok;
-	}
-
-	default command error_t TimerInit.init() { return SUCCESS; }
-	default command error_t AdcInit.init() { return SUCCESS; }
+	components PlatformP, McuInitC, MeasureClockC, Stm25pOffC, Si443xOffC;
+	components HplStm25pPinsC;
+	components HplAtm128GeneralIOC as GPIO;
+	
+	PlatformP.SilabsEn -> GPIO.PortF0; 
+	PlatformP.SpiSSN -> HplStm25pPinsC.CSN;
+	PlatformP.SiInit -> Si443xOffC;
+	Init = PlatformP;
+	Atm128Calibrate = MeasureClockC;
+	
+	LedsInit = PlatformP.LedsInit;
+	PlatformP.McuInit -> McuInitC;
+	
+	PlatformP.Stm25pInit -> Stm25pOffC;
+	
+	#ifdef SERIAL_AUTO_ENABLE
+	components SerialAutoControlC;
+	#endif
+	components SerialActiveMessageC;
+// 	#ifdef SERIAL_RESET_ENABLE
+// 	components SerialResetC;
+// 	#endif
 }

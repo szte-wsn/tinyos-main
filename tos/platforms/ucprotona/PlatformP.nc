@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2010, University of Szeged
- * All rights reserved.
+ * Copyright (c) 2004-2005 Crossbow Technology, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -12,7 +11,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ * - Neither the name of Crossbow Technology nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -29,85 +28,52 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Miklos Maroti
+ * @author Martin Turon <mturon@xbow.com>
+ * @author Miklos Maroti
  */
 
-#include "TimerConfig.h"
-module McuInitP @safe()
+#include "hardware.h"
+
+module PlatformP @safe()
 {
 	provides interface Init;
 
 	uses
 	{
-		interface Init as MeasureClock;
-		interface Init as TimerInit;
-		interface Init as AdcInit;
-		interface Init as RadioInit;
+		interface Init as McuInit;
+		interface Init as LedsInit;
+		interface Init as Stm25pInit;
+		interface GeneralIO as SpiSSN;
+		interface GeneralIO as SilabsEn;
+		interface Init as SiInit;
 	}
 }
 
 implementation
 {
-	error_t systemClockInit()
-	{
-		// set the clock prescaler
-		atomic
-		{
-			// enable changing the prescaler
-			CLKPR = 0x80;
-
-#if PLATFORM_MHZ == 16
-			CLKPR = 0x0F;	
-#elif PLATFORM_MHZ == 8
-			CLKPR = 0x00;
-#elif PLATFORM_MHZ == 4
-			CLKPR = 0x01;
-#elif PLATFORM_MHZ == 2
-			CLKPR = 0x02;
-#elif PLATFORM_MHZ == 1
-			CLKPR = 0x03;
-#else
-	#error "Unsupported MHZ"
-#endif
-		}
-
-		return SUCCESS;
-	}
 
 	command error_t Init.init()
 	{
 		error_t ok;
-#ifdef BOOTLOADER_INTERRUPTS
-		uint8_t temp;
-#endif
 		
-		DRTRAM0 |= 1<<ENDRT;
-		DRTRAM1 |= 1<<ENDRT;
-		DRTRAM2 |= 1<<ENDRT;
-		DRTRAM3 |= 1<<ENDRT;
-#ifndef ENABLE_JTAG_DEBUG
-		MCUCR |= 1<<JTD;
-		MCUCR |= 1<<JTD;
-#else
-		#warning "JTAG DEBUG ENABLED (ENABLE_JTAG_DEBUG)"
-#endif
+    		call SpiSSN.makeOutput();
+    		call SpiSSN.set();
 		
-#ifdef BOOTLOADER_INTERRUPTS
-		#warning "Interrupt table in bootloader area"
-		temp = MCUCR;
-		MCUCR = temp | (1<<IVCE);
-		MCUCR = temp | (1<<IVSEL);
-#endif
-		
-		ok = systemClockInit();
-		ok = ecombine(ok, call MeasureClock.init());
-		ok = ecombine(ok, call TimerInit.init());
-		ok = ecombine(ok, call AdcInit.init());
-		ok = ecombine(ok, call RadioInit.init());
+		call SilabsEn.makeOutput();
+		call SilabsEn.set();
 
+
+
+		ok = call McuInit.init();
+		ok = ecombine(ok, call LedsInit.init());
+    ok = ecombine(ok, call Stm25pInit.init());
+		ok = ecombine(ok, call SiInit.init());
+		
 		return ok;
 	}
 
-	default command error_t TimerInit.init() { return SUCCESS; }
-	default command error_t AdcInit.init() { return SUCCESS; }
+	default command error_t LedsInit.init()
+	{
+		return SUCCESS;
+	}
 }

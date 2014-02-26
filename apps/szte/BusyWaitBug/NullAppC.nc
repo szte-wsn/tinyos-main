@@ -1,5 +1,3 @@
-// $Id: TOSBoot_platform.h,v 1.4 2010-06-29 22:07:50 scipio Exp $
-
 /*
  * Copyright (c) 2000-2005 The Regents of the University  of California.  
  * All rights reserved.
@@ -14,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holders nor the names of
+ * - Neither the name of the University of California nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -31,20 +29,34 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-/**
- * @author  Jonathan Hui <jwhui@cs.berkeley.edu>
+/*
+ * Copyright (c) 2002-2005 Intel Corporation
+ * All rights reserved.
+ *
+ * This file is distributed under the terms in the attached INTEL-LICENSE     
+ * file. If you do not find these files, copies can be found by writing to
+ * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
+ * 94704.  Attention:  Intel License Inquiry.
  */
 
-#ifndef __TOSBOOT_PLATFORM_H__
-#define __TOSBOOT_PLATFORM_H__
+/**
+ * Null is an empty skeleton application.  It is useful to test that the
+ * build environment is functional in its most minimal sense, i.e., you
+ * can correctly compile an application. It is also useful to test the
+ * minimum power consumption of a node when it has absolutely no 
+ * interrupts or resources active.
+ *
+ * @author Cory Sharp <cssharp@eecs.berkeley.edu>
+ * @date February 4, 2006
+ */
 
-enum {
-  TOSBOOT_ARGS_ADDR = 0xff0,      // address of TOSBoot args in internal flash
-  TOSBOOT_GESTURE_MAX_COUNT = 3,  // number of resets to force golden image
-  TOSBOOT_GOLDEN_IMG_ADDR = 0x0L, // address of the golden image in external flash
-  TOSBOOT_INT_PAGE_SIZE = SPM_PAGESIZE, // size of each internal program flash page
-  TOSBOOT_INT_ADDRESS = 0,
-};
+configuration NullAppC{}
+implementation {
+  components MainC, NullC, BusyWaitMicroC, LedsC;
 
-#endif
+  MainC.Boot <- NullC;
+	
+	NullC.BusyWait -> BusyWaitMicroC;
+	NullC.Leds -> LedsC;
+}
+

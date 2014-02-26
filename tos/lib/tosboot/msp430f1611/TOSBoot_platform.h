@@ -44,11 +44,8 @@ enum {
   TOSBOOT_GESTURE_MAX_COUNT = 3, // number of resets to force golden image
   TOSBOOT_GOLDEN_IMG_ADDR = 0xf0000L, // address of the golden image in external flash
   TOSBOOT_INT_PAGE_SIZE = 512L,  // size of each internal program flash page
+	TOSBOOT_INT_ADDRESS = TOSBOOT_END,
 };
 
-enum {
-  DELUGE_MIN_ADV_PERIOD_LOG2 = 9,
-  DELUGE_QSIZE = 1,
-};
 
 #endif
