@@ -131,20 +131,31 @@ implementation{
           signal BootloaderInterface.erase(eraseAddress);
           call AtmelBootloader.erasePage(eraseAddress);
         }break;
-  #define REMOVE_FUSE_AND_LOCK_BIT_SUPPORT
+//   #define REMOVE_FUSE_AND_LOCK_BIT_SUPPORT
   #ifndef REMOVE_FUSE_AND_LOCK_BIT_SUPPORT
         case 'l':{//write lock bits
+          uint8_t tmp;
+          call UartByte.receive(&tmp,255);
+          call AtmelBootloader.setLockBits(tmp);
+          buf[0]='\r';
+          call UartStream.send(buf,1);
         }break;
-  #if defined(_GET_LOCK_BITS)
         case 'r':{//read lock bits
+          buf[0] = call AtmelBootloader.getLockBits();
+          call UartStream.send(buf,1);
         }break;
         case 'F':{//read (low) fuse bits
+          buf[0] = call AtmelBootloader.getLowFuseBits();
+          call UartStream.send(buf,1);
         }break;
         case 'N':{//read high fuse bits
+          buf[0] = call AtmelBootloader.getHighFuseBits();
+          call UartStream.send(buf,1);
         }break;
         case 'Q':{//read extended fuse bits
+          buf[0] = call AtmelBootloader.getExtendedFuseBits();
+          call UartStream.send(buf,1);
         }break;
-  #endif /*defined(_GET_LOCK_BITS)*/
   #endif /*REMOVE_FUSE_AND_LOCK_BIT_SUPPORT*/
   //#define REMOVE_AVRPROG_SUPPORT
   #ifndef REMOVE_AVRPROG_SUPPORT
@@ -212,9 +223,7 @@ implementation{
 //               call AtmelBootloader.writePage(address, (void*)(buf));
             }
           } else { //'E' - EEPROM
-            buf[0] = memtype;
-            busy = FALSE;
-            call UartStream.send(buf, 1);
+            //TODO
           }
         }break;
         case 'g':{//start block flash/eeprom read
@@ -240,7 +249,6 @@ implementation{
         }break;
   #endif
         case 's':{//read signature bytes
-          //FIXME use boot_ functions
           buf[0]=SIGNATURE_2;
           buf[1]=SIGNATURE_1;
           buf[2]=SIGNATURE_0;

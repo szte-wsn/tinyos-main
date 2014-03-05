@@ -2,8 +2,12 @@ interface AtmelBootloader{
   async command uint16_t getPageSize();
   async command uint32_t getFlashSize();
   async command uint32_t getBootloaderStart();
+  async command uint8_t getHighFuseBits();
+  async command uint8_t getLowFuseBits();
+  async command uint8_t getExtendedFuseBits();
+  async command uint8_t getLockBits();
+  async command void setLockBits(uint8_t newLockBits);
   
-  async command error_t disableFlash();
   async command error_t enableFlash();
   
   async command error_t erasePage(uint32_t address);
