@@ -19,9 +19,16 @@ implementation{
 	uint32_t sender_wait[NUMBER_OF_MEASURES];
 	uint32_t sender_send[NUMBER_OF_MEASURES];
 	uint32_t receiver_wait[NUMBER_OF_MEASURES];
+	uint8_t channels[NUMBER_OF_MEASURES];
+	uint8_t modes[NUMBER_OF_MEASURES];
+	uint8_t trim1[NUMBER_OF_MEASURES];
+	uint8_t trim2[NUMBER_OF_MEASURES];
 	uint8_t num_of_measures = 0; //how many measures was configured
+	uint8_t active_measure;
+	bool sender_sends=FALSE, sender_waits=FALSE;
 	bool sender[NUMBER_OF_MEASURES]; //TRUE - if the mote is sender during the Ti. measure
 	bool receiver[NUMBER_OF_MEASURES]; //TRUE - if the mote is receiver during the Ti. measure
+	uint32_t message_received_time;
 	message_t packet;
 	
 	event void Boot.booted(){
@@ -38,61 +45,64 @@ implementation{
 
 	
 	async event void Alarm.fired(){
-		uzenet_t* rcm = (uzenet_t*)call Packet.getPayload(&packet, sizeof(uzenet_t));
-		rcm -> funcid = 0xFA;
-		//rcm -> ido = call LocalTime.get();
-		if (call AMSend.send(AM_BROADCAST_ADDR, &packet, sizeof(uzenet_t)) == SUCCESS) {
-			call Leds.led1Toggle();
-      	}
+		call Leds.set(0);
+		if(sender[active_measure]){ //sender 
+			if(sender_sends){
+				if(active_measure < num_of_measures-1){
+					active_measure++;
+			call Alarm.startAt(message_received_time,sender_wait[active_measure]);
+					sender_sends = FALSE;
+					sender_waits = TRUE;
+					call Leds.led1Toggle();
+				}
+			}else if(sender_waits){
+			call Alarm.startAt(message_received_time,sender_send[active_measure]);	
+				sender_sends = TRUE;
+				sender_waits = FALSE;	
+				call Leds.led2Toggle();		
+			}
+		}else{ //receiver
+			call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
+			if(active_measure < num_of_measures-1)
+					active_measure++;
+			call Leds.led0Toggle();
+		}		
 	}
 
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len){
 			config_msg_t* msg = (config_msg_t*)payload;
-			if(msg->T1sender_send > 0){
-				num_of_measures++;
-				sender[0]=(TOS_NODE_ID == msg->T1sender1ID || TOS_NODE_ID == msg->T1sender2ID);
-				receiver[0] = !sender[0];
-				//tovább fel kell dolgoznom az üzeneteket, majd megcsinálni, hogy az 
-				//idozitések rendben legyenek, és hogy a méréseket sorban egymás után végezze
+			int i;
+			if(call PacketTimeStampRadio.isValid(bufPtr)){
+				message_received_time = call PacketTimeStampRadio.timestamp(bufPtr);
 			}
-
-			if(TOS_NODE_ID == ){
-					sender = TRUE;
-					receiver = FALSE;
-					call Leds.set(7);
-					if(call PacketTimeStampRadio.isValid(bufPtr)){
-					waittime = bufPtr->data[len-1-15]; 
-					waittime |= (uint32_t)bufPtr->data[len-1-14]<<8;
-					waittime |= (uint32_t)bufPtr->data[len-1-13]<<16;
-					waittime |= (uint32_t)bufPtr->data[len-1-12]<<24;
-					sendtime = bufPtr->data[len-1-11]; 
-					sendtime |= (uint32_t)bufPtr->data[len-1-10]<<8;
-					sendtime |= (uint32_t)bufPtr->data[len-1-9]<<16;
-					sendtime |= (uint32_t)bufPtr->data[len-1-8]<<24;
-					call Alarm.startAt(call PacketTimeStampRadio.timestamp(bufPtr),waittime);
+			for(i=0;i<len/sizeof(config_msg_t);i++){
+				if(msg->Tsender_send > 0){
+					num_of_measures++;
+					if(TOS_NODE_ID == msg->Tsender1ID || TOS_NODE_ID == msg->Tsender2ID){
+						sender[i] = TRUE;					
+					}else{
+						sender[i] = FALSE;
 					}
-			}
-			for(i=0;i<receivers;i++){
-				if(TOS_NODE_ID == bufPtr->data[i+2+senders]){
-					receiver = TRUE;
-					sender = FALSE;
-					call Leds.set(6);
-					if(call PacketTimeStampRadio.isValid(bufPtr)){
-					waittime = bufPtr->data[len-1-7]; 
-					waittime |= (uint32_t)bufPtr->data[len-1-6]<<8;
-					waittime |= (uint32_t)bufPtr->data[len-1-5]<<16;
-					waittime |= (uint32_t)bufPtr->data[len-1-4]<<24;
-					sendtime = bufPtr->data[len-1-3]; 
-					sendtime |= (uint32_t)bufPtr->data[len-1-2]<<8;
-					sendtime |= (uint32_t)bufPtr->data[len-1-1]<<16;
-					sendtime |= (uint32_t)bufPtr->data[len-1]<<24;
-					call Alarm.startAt(call PacketTimeStampRadio.timestamp(bufPtr),waittime);
-					}
+					receiver[i] = !sender[i];
+					channels[i] = msg->Tchannel;
+					modes[i] = msg->Tmode;
+					trim1[i] = msg->Ttrim1;
+					trim2[i] = msg->Ttrim2;
+					sender_wait[i] = msg->Tsender_wait;
+					sender_send[i] = msg->Tsender_send;
+					receiver_wait[i] = msg->Treceiver_wait;
+					msg++;		
+				}else{
+					break;				
 				}
-			}
-			
-			
-		}
+			}	
+			if(sender[0]){
+				call Alarm.startAt(message_received_time,sender_wait[0]);
+				sender_waits = TRUE;
+			}else{
+				call Alarm.startAt(message_received_time,receiver_wait[0]);		
+			}		
+		active_measure = 0;
 		return bufPtr;
 	}
 

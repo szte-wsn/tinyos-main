@@ -53,9 +53,6 @@
  * ID compiled into the BaseStation, and messages moving from radio to
  * serial will be filtered by that same group id.
  */
-#include "message_t.h"
-#include "AM.h"
-#include "Serial.h"
 
 module BaseStationP @safe() {
   uses {
@@ -215,17 +212,16 @@ implementation
 	msg->data[len+1] = (uint8_t)((timestamp & 0x0000FF00)>>8);
 	msg->data[len+2] = (uint8_t)((timestamp & 0x00FF0000)>>16);
 	msg->data[len+3] = (uint8_t)((timestamp & 0xFF000000)>>24);
-    call UartPacket.clear(msg);
+   	call UartPacket.clear(msg);
     call UartAMPacket.setSource(msg, src);
     call UartAMPacket.setGroup(msg, grp);
 
     if (call UartSend.send[id](addr, uartQueue[uartOut], len+4) == SUCCESS)
-      call Leds.led1Toggle();
-    else
-      {
-	failBlink();
-	post uartSendTask();
-      }
+      	call Leds.led1Toggle();
+    else{
+		failBlink();
+			post uartSendTask();
+    }
   }
 
   event void UartSend.sendDone[am_id_t id](message_t* msg, error_t error) {

@@ -64,8 +64,8 @@ import java.io.*;
 		this.sender_send = (int)sender_send_l;
 		this.channel_mode = (byte)(channel_l & 0x1F); //5bit
 		this.channel_mode |= (byte)((mode_l<<5)&0x10); //1bit
-		this.trim1_trim2 = (byte)(trim1_l&0x000F);
-		this.trim1_trim2 |= (byte)((trim2_l&0x000F)<<4);
+		this.trim1_trim2 = (byte)(trim2_l&0x000F);
+		this.trim1_trim2 |= (byte)((trim1_l&0x000F)<<4);
 		this.sender1ID = (short)sender1ID_l;
 		this.sender2ID = (short)sender2ID_l;
 	}
@@ -141,24 +141,24 @@ public class Send {
 		//msg[i]
 		int j=8;
 		for(int i=0;i<number_of_messages;i++){
-		packet[j++] = (byte)msg[i].sender1ID;
 		packet[j++] = (byte)(msg[i].sender1ID>>8);
-		packet[j++] = (byte)msg[i].sender2ID;
+		packet[j++] = (byte)msg[i].sender1ID;
 		packet[j++] = (byte)(msg[i].sender2ID>>8);
+		packet[j++] = (byte)msg[i].sender2ID;
 		packet[j++] = (byte)msg[i].channel_mode;
 		packet[j++] = (byte)msg[i].trim1_trim2;
-		packet[j++] = (byte)msg[i].sender_wait;
-		packet[j++] = (byte)(msg[i].sender_wait>>8);
-		packet[j++] = (byte)(msg[i].sender_wait>>16);
 		packet[j++] = (byte)(msg[i].sender_wait>>24);
-		packet[j++] = (byte)msg[i].sender_send;
-		packet[j++] = (byte)(msg[i].sender_send>>8);
-		packet[j++] = (byte)(msg[i].sender_send>>16);
+		packet[j++] = (byte)(msg[i].sender_wait>>16);
+		packet[j++] = (byte)(msg[i].sender_wait>>8);
+		packet[j++] = (byte)msg[i].sender_wait;
 		packet[j++] = (byte)(msg[i].sender_send>>24);
-		packet[j++] = (byte)msg[i].receiver_wait;
-		packet[j++] = (byte)(msg[i].receiver_wait>>8);
-		packet[j++] = (byte)(msg[i].receiver_wait>>16);
+		packet[j++] = (byte)(msg[i].sender_send>>16);
+		packet[j++] = (byte)(msg[i].sender_send>>8);
+		packet[j++] = (byte)msg[i].sender_send;
 		packet[j++] = (byte)(msg[i].receiver_wait>>24);
+		packet[j++] = (byte)(msg[i].receiver_wait>>16);
+		packet[j++] = (byte)(msg[i].receiver_wait>>8);
+		packet[j++] = (byte)msg[i].receiver_wait;
 		}
 		
 		   

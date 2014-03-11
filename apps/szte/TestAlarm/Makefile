@@ -1,4 +1,6 @@
 COMPONENT=TestAlarmC
+CFLAGS += -DTOSH_DATA_LENGTH=114
+CFLAGS += -DUCMINI_REV=101
 CFLAGS += -DDIAGMSG_RADIO
 CFLAGS += -I/opt/tinyos-2.1.2/tos/lib/diagmsg
 include $(MAKERULES)
