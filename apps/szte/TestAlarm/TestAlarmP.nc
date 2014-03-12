@@ -30,6 +30,8 @@ implementation{
 	bool receiver[NUMBER_OF_MEASURES]; //TRUE - if the mote is receiver during the Ti. measure
 	uint32_t message_received_time;
 	message_t packet;
+
+	task void MeasureDone();
 	
 	event void Boot.booted(){
 		call SplitControl.start();
@@ -43,6 +45,11 @@ implementation{
 		
 	}
 
+	/*LEDS:*****/
+	/*LED0 : Waits before receive
+	/*LED1 : Waits before sending
+	/*LED2 : Sending
+	/**/
 	
 	async event void Alarm.fired(){
 		call Leds.set(0);
@@ -50,22 +57,46 @@ implementation{
 			if(sender_sends){
 				if(active_measure < num_of_measures-1){
 					active_measure++;
-			call Alarm.startAt(message_received_time,sender_wait[active_measure]);
+				}else{
+					//post MeasureDone();
+					return;
+				}
+				if(sender[active_measure]){
+					call Alarm.startAt(message_received_time,sender_wait[active_measure]);
 					sender_sends = FALSE;
 					sender_waits = TRUE;
-					call Leds.led1Toggle();
+					call Leds.led1On();
+				}else{
+					call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
+					sender_sends = FALSE;
+					sender_waits = FALSE;
+					call Leds.led0On();
 				}
 			}else if(sender_waits){
-			call Alarm.startAt(message_received_time,sender_send[active_measure]);	
+				call Alarm.startAt(message_received_time,sender_send[active_measure]);	
 				sender_sends = TRUE;
 				sender_waits = FALSE;	
-				call Leds.led2Toggle();		
+				call Leds.led2On();		
 			}
 		}else{ //receiver
-			call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
-			if(active_measure < num_of_measures-1)
+			if(active_measure < num_of_measures-1){
 					active_measure++;
-			call Leds.led0Toggle();
+			}else{
+					post MeasureDone();
+					return;
+			}
+			if(sender[active_measure]){
+				call Alarm.startAt(message_received_time,sender_wait[active_measure]);
+				sender_sends = FALSE;
+				sender_waits = TRUE;
+				call Leds.led1On();
+			}else{
+				call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
+				sender_sends = FALSE;
+				sender_waits = FALSE;
+				call Leds.led0On();
+			}			
+			
 		}		
 	}
 
@@ -99,11 +130,34 @@ implementation{
 			if(sender[0]){
 				call Alarm.startAt(message_received_time,sender_wait[0]);
 				sender_waits = TRUE;
+				call Leds.led1On();
 			}else{
-				call Alarm.startAt(message_received_time,receiver_wait[0]);		
+				call Alarm.startAt(message_received_time,receiver_wait[0]);	
+				call Leds.led0On();	
 			}		
 		active_measure = 0;
 		return bufPtr;
+	}
+
+	task void MeasureDone(){
+		//reset variables
+		int i=0;
+		sender_sends = FALSE;
+		sender_waits = FALSE;
+		for(i=0;i<NUMBER_OF_MEASURES;i++){
+			sender_wait[i]=0;
+			sender_send[i]=0;
+			receiver_wait[i]=0;
+			channels[i]=0;
+			modes[i]=0;
+			trim1[i]=0;
+			trim2[i]=0;
+			sender[i]=FALSE;
+			receiver[i]=FALSE;
+		}
+		active_measure = 0;
+		num_of_measures = 0;
+		message_received_time = 0;
 	}
 
 }
