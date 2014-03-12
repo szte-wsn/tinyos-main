@@ -73,6 +73,7 @@ import java.io.*;
 }
 
 public class Send {
+	static final int TRadioFreq = 625; /* *10^2 */
 	static final int number_of_messages = 3;
 	static final int header_length = 8;
 	static final int config_length = 18;
@@ -96,7 +97,18 @@ public class Send {
 		msg[i] = new Message();
 	}
 	if(argv.length % 9 == 0){
-		if(argv.length >= 9){	
+		for(int i=0;i<argv.length/9;i++){
+		msg[i].set(		(Long.parseLong(argv[i*9+6])*TRadioFreq/10000),
+						(Long.parseLong(argv[i*9+8])*TRadioFreq/10000),
+						(Long.parseLong(argv[i*9+7])*TRadioFreq/10000),
+						Integer.parseInt(argv[i*9+2]),
+						(argv[i*9+3].equals("+"))?1:0,
+						Integer.parseInt(argv[i*9+4]),
+						Integer.parseInt(argv[i*9+5]),
+						Integer.parseInt(argv[i*9+0]),
+						Integer.parseInt(argv[i*9+1]));
+		}
+		/*if(argv.length >= 9){	
 			msg[0].set(	Long.parseLong(argv[6]),
 						Long.parseLong(argv[8]),
 						Long.parseLong(argv[7]),
@@ -128,7 +140,7 @@ public class Send {
 						Integer.parseInt(argv[23]),
 						Integer.parseInt(argv[18]),
 						Integer.parseInt(argv[19]));
-		}
+		}*/
 		//Filling the packet:
 		packet[0] = AM_type_h;
 		packet[1] = (byte)Dest_address_h; 
