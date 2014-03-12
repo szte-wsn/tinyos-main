@@ -57,13 +57,13 @@ import java.io.*;
 		sender1ID = sender2ID = 0;
 	}
 
-	public void set(long sender_wait_l, long receiver_wait_l, long sender_send_l,int channel_l, 					int mode_l, int trim1_l, int trim2_l, int sender1ID_l, int sender2ID_l)
+	public void set(long sender_wait_l, long receiver_wait_l, long sender_send_l,int 			channel_l, int mode_l, int trim1_l, int trim2_l, int sender1ID_l, int sender2ID_l)
 	{
 		this.sender_wait = (int)sender_wait_l;
 		this.receiver_wait = (int)receiver_wait_l;
 		this.sender_send = (int)sender_send_l;
-		this.channel_mode = (byte)(channel_l & 0x1F); //5bit
-		this.channel_mode |= (byte)((mode_l<<5)&0x10); //1bit
+		this.channel_mode = (byte)(channel_l<<3 & 0xF8); //5bit
+		this.channel_mode |= (byte)((mode_l<<2)&0x04); //1bit
 		this.trim1_trim2 = (byte)(trim2_l&0x000F);
 		this.trim1_trim2 |= (byte)((trim1_l&0x000F)<<4);
 		this.sender1ID = (short)sender1ID_l;
@@ -101,7 +101,7 @@ public class Send {
 						Long.parseLong(argv[8]),
 						Long.parseLong(argv[7]),
 						Integer.parseInt(argv[2]),
-						(argv[3]=="+")?1:0,
+						(argv[3].equals("+"))?1:0,
 						Integer.parseInt(argv[4]),
 						Integer.parseInt(argv[5]),
 						Integer.parseInt(argv[0]),

@@ -58,7 +58,7 @@ implementation{
 				if(active_measure < num_of_measures-1){
 					active_measure++;
 				}else{
-					//post MeasureDone();
+					post MeasureDone();
 					return;
 				}
 				if(sender[active_measure]){
@@ -73,6 +73,9 @@ implementation{
 					call Leds.led0On();
 				}
 			}else if(sender_waits){
+				/*Here to start sending the Continious wave*/
+
+				/*******************************************/
 				call Alarm.startAt(message_received_time,sender_send[active_measure]);	
 				sender_sends = TRUE;
 				sender_waits = FALSE;	
@@ -91,6 +94,9 @@ implementation{
 				sender_waits = TRUE;
 				call Leds.led1On();
 			}else{
+				/*Here to start receiving the Continious wave*/
+
+				/*******************************************/
 				call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
 				sender_sends = FALSE;
 				sender_waits = FALSE;
@@ -107,22 +113,22 @@ implementation{
 				message_received_time = call PacketTimeStampRadio.timestamp(bufPtr);
 			}
 			for(i=0;i<len/sizeof(config_msg_t);i++){
-				if(msg->Tsender_send > 0){
-					num_of_measures++;
+				if(msg->Tsender_send > 0){ //if > 0 then this measure is configured
+					num_of_measures++; //how many measures are configured 
 					if(TOS_NODE_ID == msg->Tsender1ID || TOS_NODE_ID == msg->Tsender2ID){
-						sender[i] = TRUE;					
+						sender[i] = TRUE;//in this measure,is the mote a sender				
 					}else{
-						sender[i] = FALSE;
+						sender[i] = FALSE;//not a sender
 					}
-					receiver[i] = !sender[i];
-					channels[i] = msg->Tchannel;
-					modes[i] = msg->Tmode;
-					trim1[i] = msg->Ttrim1;
-					trim2[i] = msg->Ttrim2;
-					sender_wait[i] = msg->Tsender_wait;
-					sender_send[i] = msg->Tsender_send;
-					receiver_wait[i] = msg->Treceiver_wait;
-					msg++;		
+					receiver[i] = !sender[i]; //if sends than not receives and vice versa
+					channels[i] = msg->Tchannel; //wich channel is used
+					modes[i] = msg->Tmode; // + - 0,5MHz
+					trim1[i] = msg->Ttrim1; // Sender1 trim in this measure
+					trim2[i] = msg->Ttrim2; // Sender2 trim in this measure
+					sender_wait[i] = msg->Tsender_wait; // sender waits before i. sending
+					sender_send[i] = msg->Tsender_send; // sender sends Cont. wave 
+					receiver_wait[i] = msg->Treceiver_wait;//receiver waits before i. receive
+					msg++;	// [i. config] ---> [i+1. config]	
 				}else{
 					break;				
 				}
