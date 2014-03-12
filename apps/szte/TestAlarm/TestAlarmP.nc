@@ -55,6 +55,9 @@ implementation{
 		call Leds.set(0);
 		if(sender[active_measure]){ //sender 
 			if(sender_sends){
+				/*Here to stop sending*/
+
+				/**********************/
 				if(active_measure < num_of_measures-1){
 					active_measure++;
 				}else{
