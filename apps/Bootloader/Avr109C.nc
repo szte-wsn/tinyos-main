@@ -43,7 +43,4 @@ implementation{
   Avr109P.UartByte -> PlatformSerialC;
   Avr109P.StdControl -> PlatformSerialC;
   Avr109P.AtmelBootloader -> AtmelBootloaderP;
-	
-	components LedsC;
-	Avr109P.Leds -> LedsC;
 }

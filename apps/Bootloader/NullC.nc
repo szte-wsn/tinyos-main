@@ -52,32 +52,35 @@
 module NullC @safe()
 {
   uses interface Boot;
-  uses interface Timer<TMilli>;
+  uses interface Alarm<TMicro, uint32_t>;
   uses interface Leds;
   uses interface BootloaderInterface;
   uses interface BusyWait<TMicro, uint16_t>;
+  provides interface McuPowerOverride;
+  uses interface McuPowerState;
 }
 implementation
 {
   enum{
     LEDCOUNT = 4,
-    BOOTLOADER_TIMEOUT = 3000UL,
+    BOOTLOADER_TIMEOUT = 3000000UL,
   };
-  int8_t ledCounter = LEDCOUNT;
+  norace int8_t ledCounter = LEDCOUNT;
   
-  uint8_t exiting = 0;
+  norace uint8_t exiting = 0;
   
   event void Boot.booted() {
     call Leds.set((1<<ledCounter) - 1);
     call BootloaderInterface.start();
-    call Timer.startOneShot(BOOTLOADER_TIMEOUT/LEDCOUNT);
+    call Alarm.start(BOOTLOADER_TIMEOUT/LEDCOUNT);
+    call McuPowerState.update();
   }
   
-  event void Timer.fired(){
+  async event void Alarm.fired(){
     if( exiting == 0 ){
       if( --ledCounter >= 0 ){
         call Leds.set((1<<ledCounter) - 1);
-        call Timer.startOneShot(BOOTLOADER_TIMEOUT/LEDCOUNT);
+        call Alarm.start(BOOTLOADER_TIMEOUT/LEDCOUNT);
       } else {
         call BootloaderInterface.startMainProgram();
       }
@@ -86,6 +89,7 @@ implementation
         call Leds.set(0);
         call BootloaderInterface.exitBootloaderReady();
       } else {
+        call Alarm.start(100000UL);
         if(call Leds.get() == 0)
           call Leds.set(0xff);
         else
@@ -94,13 +98,8 @@ implementation
     }
   }
   
-  task void timerStop(){
-    if( exiting == 0 )
-      call Timer.stop();
-  }
-  
   async event void BootloaderInterface.contacted(){
-    post timerStop();
+    call Alarm.stop();
   }
   
   async event void BootloaderInterface.erase(uint32_t address){
@@ -124,11 +123,15 @@ implementation
   task void startTimer(){
     exiting = 7;//three blinking
     call Leds.set(0xff);
-    call Timer.startPeriodic(100);
+    call Alarm.start(100000UL);
   }
   
   async event void BootloaderInterface.exitBootloader(){
     post startTimer();
+  }
+  
+  async command mcu_power_t McuPowerOverride.lowestState() {
+    return ATM128_POWER_IDLE; //somehow the sleep mode doesn't work in the bootloader
   }
 }
 

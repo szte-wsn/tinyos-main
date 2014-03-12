@@ -51,12 +51,16 @@
  */
 configuration NullAppC{}
 implementation {
-  components MainC, NullC, Avr109C, /*NoLedsC as */LedsC, new TimerMilliC(), BusyWaitMicroC;
+  components MainC, NullC, Avr109C, /*NoLedsC as */LedsC, new AlarmMicro32C(), McuSleepC;
 
   MainC.Boot <- NullC;
   NullC.BootloaderInterface -> Avr109C;
   NullC.Leds -> LedsC;
-  NullC.Timer -> TimerMilliC;
-  NullC.BusyWait -> BusyWaitMicroC;
+  NullC.Alarm -> AlarmMicro32C;
+  
+  NullC.McuPowerState -> McuSleepC;
+  NullC.McuPowerOverride <- McuSleepC;
+  
+  components ActiveMessageC;
 }
 
