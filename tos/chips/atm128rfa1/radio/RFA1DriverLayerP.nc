@@ -353,7 +353,7 @@ implementation
       call DiagMsg.send();
     }
     #endif
-    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+    if( /*( state == STATE_SLEEP || state == STATE_TEST ) &&*/ cmd == CMD_NONE ){
       
       state = STATE_TEST;
       
