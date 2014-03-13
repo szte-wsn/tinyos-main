@@ -44,14 +44,14 @@ import net.tinyos.util.*;
 import net.tinyos.packet.*;
 import java.io.*;
 
-	class Message{
+	class SendMessage{
 	//data
 	public int sender_wait, receiver_wait, sender_send;
 	public byte channel_mode;
 	public byte trim1_trim2;
 	public short sender1ID,sender2ID;
 	
-	public Message(){
+	public SendMessage(){
 		sender_wait = receiver_wait = sender_send = 0;
 		channel_mode = trim1_trim2 = 0;
 		sender1ID = sender2ID = 0;
@@ -92,9 +92,9 @@ public class Send {
 	PacketSource sfw = BuildSource.makePacketSource();
 	sfw.open(PrintStreamMessenger.err);
 	byte[] packet = new byte[header_length+data_length]; //[header][data]
-	Message[] msg = new Message[number_of_messages];
+	SendMessage[] msg = new SendMessage[number_of_messages];
 	for(int i=0;i<number_of_messages;i++){
-		msg[i] = new Message();
+		msg[i] = new SendMessage();
 	}
 	if(argv.length % 9 == 0){
 		for(int i=0;i<argv.length/9;i++){
