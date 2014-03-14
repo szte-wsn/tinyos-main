@@ -12,7 +12,7 @@ module TestAlarmP{
 	uses interface Receive;
 	uses interface PacketTimeStamp<TRadio, uint32_t> as PacketTimeStampRadio;
 	
-  uses interface RadioContinuousWave;
+	uses interface RadioContinuousWave;
 	uses interface AMSend;
 	uses interface AMSend as RssiDone;
 	uses interface AMPacket;
@@ -50,11 +50,11 @@ implementation{
 	event void SplitControl.stopDone(error_t error){}
 	
 	/**LEDS:
-	 *LED0 : Waits before receive
-	 *LED1 : Waits before sending
-	 *LED2 : Sending
-	 *LED3 : Receiving
-	 */
+	*LED0 : Waits before receive
+	*LED1 : Waits before sending
+	*LED2 : Sending
+	*LED3 : Receiving
+	*/
 	
 	inline static bool startNextMeasure(){
 		if( ++active_measure >= num_of_measures )
@@ -74,20 +74,20 @@ implementation{
 	}
 	
 	async event void Alarm.fired(){
-    bool isSender = sender[active_measure];
+		bool isSender = sender[active_measure];
 		call Leds.set(0);
 		if(isSender){ //sender
 			call Leds.led2On();
-      call RadioContinuousWave.sendWave(channels[active_measure], trim[active_measure], RFA1_DEF_RFPOWER, sender_send[active_measure]);
+			call RadioContinuousWave.sendWave(channels[active_measure], trim[active_measure], RFA1_DEF_RFPOWER, sender_send[active_measure]);
 			call Leds.led2Off();
 		}else{ //receiver
 			call Leds.led3On();
-      call RadioContinuousWave.sampleRssi(channels[active_measure], buffer[active_measure], BUFFER_LEN, &(measureTime[active_measure]));
+			call RadioContinuousWave.sampleRssi(channels[active_measure], buffer[active_measure], BUFFER_LEN, &(measureTime[active_measure]));
 			call Leds.led3Off();
 		}
 		if (!startNextMeasure() && !isSender){
-      post MeasureDone();
-    }
+			post MeasureDone();
+		}
 	}
 
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len){

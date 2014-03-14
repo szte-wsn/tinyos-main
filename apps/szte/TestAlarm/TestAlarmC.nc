@@ -23,7 +23,7 @@ implementation{
 	App.PacketAcknowledgements -> AMSenderC;
 	
 	components  RFA1ActiveMessageC as RfxlinkAMC;
-  App.RadioContinuousWave -> RfxlinkAMC;
+	App.RadioContinuousWave -> RfxlinkAMC;
 	
 	components DelugeC;
 	DelugeC.Leds -> LedsC;
