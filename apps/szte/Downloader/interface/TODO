@@ -1,0 +1,3 @@
+Storage - interface
+SenderC, SenderP - provide Storage
+SendDataAppC, SendDataP - teszteleshez

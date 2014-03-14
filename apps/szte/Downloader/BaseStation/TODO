@@ -1,0 +1,4 @@
+Inditás:
+	java BaseStationApp -comm serial@/dev/ttyUSB0:telosb
+
+mesure mappaba menti a méréseket
