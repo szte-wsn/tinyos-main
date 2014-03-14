@@ -12,11 +12,7 @@ module TestAlarmP{
 	uses interface Receive;
 	uses interface PacketTimeStamp<TRadio, uint32_t> as PacketTimeStampRadio;
 	
-	uses interface RssiMonitor;
-	uses interface AtmelRadioTest;
-	uses interface SetNow<uint8_t> as SetXtalTrim;
-	uses interface RadioChannel;
-	
+  uses interface RadioContinuousWave;
 	uses interface AMSend;
 	uses interface AMSend as RssiDone;
 	uses interface AMPacket;
@@ -27,7 +23,7 @@ module TestAlarmP{
 }
 implementation{
 	uint8_t buffer[NUMBER_OF_MEASURES][BUFFER_LEN];
-	uint32_t measureTime[NUMBER_OF_MEASURES];
+	uint16_t measureTime[NUMBER_OF_MEASURES];
 	uint16_t controller;
 	message_t messageBuf;
 
@@ -49,15 +45,7 @@ implementation{
 		call SplitControl.start();
 	}
 	
-	event void SplitControl.startDone(error_t error){
-		if( active_measure < 0 ){
-			call SetXtalTrim.setNow(0);
-			call RadioChannel.setChannel(RFA1_DEF_CHANNEL);
-		} else {
-			call SetXtalTrim.setNow(trim[active_measure]);
-			call RadioChannel.setChannel(channels[active_measure]);
-		}
-	}
+	event void SplitControl.startDone(error_t error){}
 
 	event void SplitControl.stopDone(error_t error){}
 	
@@ -68,71 +56,38 @@ implementation{
 	 *LED3 : Receiving
 	 */
 	
-	inline static bool startNextMeasure(bool isRadioOn){
+	inline static bool startNextMeasure(){
 		if( ++active_measure >= num_of_measures )
 			active_measure = -2;
-		
-		if(!isRadioOn) {
-			call SplitControl.start();
-		} else {
-			if( active_measure < 0 ){
-				call SetXtalTrim.setNow(0);
-				call RadioChannel.setChannel(RFA1_DEF_CHANNEL);
-			} else {
-				call SetXtalTrim.setNow(trim[active_measure]);
-				call RadioChannel.setChannel(channels[active_measure]);
-			}
-		}
 		
 		if( active_measure < 0 )
 			return FALSE;
 		
 		if(sender[active_measure]){
 			call Alarm.startAt(message_received_time,sender_wait[active_measure]);
-			sender_sends = FALSE;
-			sender_waits = TRUE;
 			call Leds.led1On();
 		}else{
 			call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
-			sender_sends = FALSE;
-			sender_waits = FALSE;
 			call Leds.led0On();
 		}
 		return TRUE;
 	}
 	
 	async event void Alarm.fired(){
+    bool isSender = sender[active_measure];
 		call Leds.set(0);
-		if(sender[active_measure]){ //sender 
-			if(sender_sends){
-				/*Here to stop sending*/
-				call AtmelRadioTest.stopTest();
-				//TODO radioStart should be done in the driverlayer and the trimming should be restored here
-				/**********************/
-				if (!startNextMeasure(FALSE)){
-					return;
-				}
-			}else if(sender_waits){
-				call Alarm.startAt(message_received_time,sender_send[active_measure]);	
-				sender_sends = TRUE;
-				sender_waits = FALSE;	
-				call Leds.led2On();
-				/*Here to start sending the Continious wave*/
-				call AtmelRadioTest.startCWTest(0xff, 0xff,(modes[active_measure]==1)?RFA1_TEST_MODE_CW_PLUS:RFA1_TEST_MODE_CW_MINUS);
-				/*******************************************/
-			}
+		if(isSender){ //sender
+			call Leds.led2On();
+      call RadioContinuousWave.sendWave(channels[active_measure], trim[active_measure], RFA1_DEF_RFPOWER, sender_send[active_measure]);
+			call Leds.led2Off();
 		}else{ //receiver
 			call Leds.led3On();
-			/*Here to start receiving the Continious wave*/
-			measureTime[active_measure] = call RssiMonitor.start( buffer[active_measure], BUFFER_LEN);
-			/*******************************************/
+      call RadioContinuousWave.sampleRssi(channels[active_measure], buffer[active_measure], BUFFER_LEN, &(measureTime[active_measure]));
 			call Leds.led3Off();
-			
-			if (!startNextMeasure(TRUE)){
-				post MeasureDone();
-				return;
-			}
 		}
+		if (!startNextMeasure() && !isSender){
+      post MeasureDone();
+    }
 	}
 
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len){
@@ -149,19 +104,19 @@ implementation{
 		for(i=0;i<len/sizeof(config_msg_t);i++){
 			if(msg->Tsender_send > 0){ //if > 0 then this measure is configured
 				num_of_measures++; //how many measures are configured 
-				// 				if(call DiagMsg.record()){
-				// 					call DiagMsg.uint8(num_of_measures);
-				// 					call DiagMsg.uint16(msg->Tsender1ID);
-				// 					call DiagMsg.uint16(msg->Tsender2ID);
-				// 					call DiagMsg.uint8(msg->Ttrim1);
-				// 					call DiagMsg.uint8(msg->Ttrim2);
-				// 					call DiagMsg.uint8(msg->Tchannel);
-				// 					call DiagMsg.uint16(msg->Tmode);
-				// 					call DiagMsg.uint32(msg->Tsender_wait);
-				// 					call DiagMsg.uint32(msg->Tsender_send);
-				// 					call DiagMsg.uint32(msg->Treceiver_wait);
-				// 					call DiagMsg.send();
-				// 				}
+								if(call DiagMsg.record()){
+									call DiagMsg.uint8(num_of_measures);
+									call DiagMsg.uint16(msg->Tsender1ID);
+									call DiagMsg.uint16(msg->Tsender2ID);
+									call DiagMsg.uint8(msg->Ttrim1);
+									call DiagMsg.uint8(msg->Ttrim2);
+									call DiagMsg.uint8(msg->Tchannel);
+									call DiagMsg.uint16(msg->Tmode);
+									call DiagMsg.uint32(msg->Tsender_wait);
+									call DiagMsg.uint32(msg->Tsender_send);
+									call DiagMsg.uint32(msg->Treceiver_wait);
+									call DiagMsg.send();
+								}
 				if( TOS_NODE_ID == msg->Tsender1ID || msg->Tsender1ID == 0xffff ) {
 					sender[i] = TRUE;
 					trim[i] = msg->Ttrim1;
@@ -183,7 +138,7 @@ implementation{
 			}
 		}	
 		active_measure = -1;
-		startNextMeasure(TRUE);
+		startNextMeasure();
 		return bufPtr;
 	}
 
@@ -246,8 +201,5 @@ implementation{
 		currentMeas = -1;
 		post sendNextMeasure();
 	}
-	
-	
-	event void RadioChannel.setChannelDone(){}
 
 }

@@ -22,11 +22,8 @@ implementation{
 	App.AMPacket -> AMSenderC;
 	App.PacketAcknowledgements -> AMSenderC;
 	
-	components RFA1DriverLayerC as DriverLayerC, RFA1ActiveMessageC as RfxlinkAMC;
-	App.RssiMonitor -> DriverLayerC;
-	App.AtmelRadioTest -> DriverLayerC;
-	App.SetXtalTrim -> DriverLayerC;
-	App.RadioChannel -> RfxlinkAMC;
+	components  RFA1ActiveMessageC as RfxlinkAMC;
+  App.RadioContinuousWave -> RfxlinkAMC;
 	
 	components DelugeC;
 	DelugeC.Leds -> LedsC;
