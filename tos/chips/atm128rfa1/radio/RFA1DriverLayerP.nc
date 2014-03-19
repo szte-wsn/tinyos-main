@@ -1073,7 +1073,6 @@ implementation
 /*----------------------RadioContinuousWave---------------------*/
   async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
     if( state == STATE_RX_ON && cmd == CMD_NONE ){
-      uint16_t i;
       state = STATE_RSSI_MON;
       
       atomic{
@@ -1090,9 +1089,50 @@ implementation
       }
       atomic{
         *time = call LocalTime.get();
-        for(i=0; i<length; i++){
-          *(buffer+i) = PHY_RSSI;
-        }
+        /*
+         * This assembly part stores the PHY_RSSI register in the buffer at 500kHz (which is the update frequency of the register)
+         * On 8MHz and faster, it also masks the upper (random and crc) bits
+         * The register updates every 2us which is 500kHz. So, the waiting goes like this:
+         * 4MHz: the loop is 8 cycle, no need to nop, no place for and
+         * 8MHz: the loop is 10 cycle, 1 cycle and,  5 nop needed
+         * 16MHz the loop is 12 cycle, 1 cycle and, 19 nop needed
+         */
+        asm volatile (
+          "1: lds __tmp_reg__, 0x146\n\t" //1:__tmp_reg__ = PHY_RSSI; //6clk on 16MHz, 4clk on 8MHz, 2clk on 4MHz. meaning: 
+          #if PLATFORM_MHZ >= 8
+            "and __tmp_reg__, %2\n\t" //__tmp_reg__ &= RFA1_RSSI_MASK; //1clk
+            "nop\n\t" //1clk
+            "nop\n\t"
+            "nop\n\t"
+            "nop\n\t"
+            "nop\n\t"
+            #if PLATFORM_MHZ >= 16
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+            #endif
+          #endif
+          "st %a0+, __tmp_reg__\n\t" //*buffer = __tmp_reg__; buffer++; //2clk
+          "cp %A0, %A1\n\t" //(part of the last if) //1clk
+          "cpc %B0, %B1\n\t" //(part of the last if) //1clk
+          "brne 1b\n\t" //if(buffer != (buffer+length)) goto 1; //2clk
+          #if PLATFORM_MHZ >= 8
+          :: "e" (buffer), "r" (buffer+length), "r" (RFA1_RSSI_MASK)
+          #else
+          :: "e" (buffer), "r" (buffer+length)
+          #endif
+        );
         *time = call LocalTime.get() - *time;
       }
       if( sampleChannel != channel ){
@@ -1105,9 +1145,11 @@ implementation
       IRQ_STATUS = 0xFF;
       IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
       state = STATE_RX_ON;
-      for(i=0; i<length; i++){
-        *(buffer+i) = *(buffer+i) & RFA1_RSSI_MASK;
-      }
+      #if PLATFORM_MHZ <= 4
+        for(i=0; i<length; i++){
+          *(buffer+i) = *(buffer+i) & RFA1_RSSI_MASK;
+        }
+      #endif
       return SUCCESS;
     } else
       return EBUSY;
