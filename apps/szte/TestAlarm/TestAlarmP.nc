@@ -1,7 +1,7 @@
 #include "TestAlarm.h"
 
 #define NUMBER_OF_MEASURES 3
-#define BUFFER_LEN 2048
+#define BUFFER_LEN 2000
 
 module TestAlarmP{
 	uses interface Boot;
