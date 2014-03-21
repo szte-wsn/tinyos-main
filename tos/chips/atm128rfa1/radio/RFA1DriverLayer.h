@@ -58,6 +58,8 @@ enum rfa1_test_modes
   //these values goes directly to the framebuffer
   RFA1_TEST_MODE_CW_MINUS = 0x00,
   RFA1_TEST_MODE_CW_PLUS = 0xFF,
+  
+  RFA1_TEST_MODE_CW_PLUS_NORESET = 0xFE,
 };
 
 #endif//__RFA1DRIVERLAYER_H__

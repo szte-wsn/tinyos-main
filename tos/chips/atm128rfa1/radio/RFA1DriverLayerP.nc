@@ -963,11 +963,12 @@ implementation
       call DiagMsg.send();
     }
     #endif
-    
-    SET_BIT(TRXPR, TRXRST);
-    CLR_BIT(TRXPR, SLPTR); //this has to be done manually
-    while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
-      ;
+    if( testMode != RFA1_TEST_MODE_CW_PLUS_NORESET){
+      SET_BIT(TRXPR, TRXRST);
+      CLR_BIT(TRXPR, SLPTR); //this has to be done manually
+      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
+        ;
+    }
     
     IRQ_MASK = 0; // we will poll for PLL_LOCK
     TRX_CTRL_1 = 0; //disable aut crc
@@ -980,7 +981,10 @@ implementation
     TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3; //2Mb/s mode
     RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
     
-    if(testMode != RFA1_TEST_MODE_MODE_MODULATED){
+    if(testMode == RFA1_TEST_MODE_CW_PLUS_NORESET){
+      TRXFBST=1;
+      memset((void*)(&TRXFBST+1), 0xff, 127); //that seems to be the only way it works without reset
+    } else if(testMode != RFA1_TEST_MODE_MODE_MODULATED){
       TRXFBST=1;
       *((uint8_t*)(&TRXFBST+1)) = testMode; //0x00 or 0xff. This will be repeated, until we stop the test
     } else {
@@ -1162,7 +1166,7 @@ implementation
       XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
       atomic{
         end += call LocalTime.get();
-        testRadio(NULL, testChannel, power, RFA1_TEST_MODE_CW_PLUS, 0);
+        testRadio(NULL, testChannel, power, RFA1_TEST_MODE_CW_PLUS_NORESET, 0);
       }
       while( (int32_t)(end - call LocalTime.get()) > 0 )
         ;
