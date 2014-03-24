@@ -5,8 +5,8 @@
 
 
 typedef nx_struct GetSliceMsg {		//elveszett csomag eseten
-	nx_uint8_t slice;		//melyik szelet
-	nx_uint8_t mes_id;		//melyik meresnek
+	nx_uint8_t slice;				//melyik szelet
+	nx_uint8_t mes_id;				//melyik meresnek
 	nx_uint16_t node_id;
 }GetSliceMsg;
 
