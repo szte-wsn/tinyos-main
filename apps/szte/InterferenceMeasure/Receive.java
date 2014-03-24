@@ -73,22 +73,26 @@ public class Receive implements MessageListener {
     }
     
     public void addData(int offset, short[] newData){
-      while( data.size() < offset )
+      while( data.size() < offset+newData.length )
         data.add("-1");
-      for(short newElement:newData){
-        data.add(offset, Short.toString(newElement) );
+      for(int i=0; i<newData.length;i++){
+        data.set(offset+i, Short.toString(newData[i]) );
       }
+    }
+    
+    public int size(){
+      return data.size();
     }
     
     public void print(){
       String now = new SimpleDateFormat("dd. HH:mm:ss.SSS").format(new Date());
       Path path = Paths.get(now+"_"+Integer.toString(nodeid)+"_"+Long.toString(time)+".txt");
       try {
-      Files.write(path, data, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+        Files.write(path, data, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
     }
   }
   
@@ -118,14 +122,16 @@ public class Receive implements MessageListener {
         }
       }
     } else if( message instanceof RssiDoneMsg ){
-      for(int i=0;i<measurements.size();i++){
-        RssiDoneMsg msg = (RssiDoneMsg)message;
-        if(measurements.get(i).nodeid == from){
-          measurements.get(i).setTime(msg.get_time());
-          measurements.get(i).print();
-          System.out.println("Data saved from NodID#"+Integer.toString(from));
-          measurements.remove(i);
-          break;
+      synchronized (measurements) {
+        for(int i=0;i<measurements.size();i++){
+          RssiDoneMsg msg = (RssiDoneMsg)message;
+          if(measurements.get(i).nodeid == from){
+            measurements.get(i).setTime(msg.get_time());
+            measurements.get(i).print();
+            System.out.println("Data saved from NodID#"+Integer.toString(from));
+            measurements.remove(i);
+            break;
+          }
         }
       }
     }
