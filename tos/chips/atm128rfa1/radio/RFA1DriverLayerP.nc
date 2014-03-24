@@ -61,10 +61,12 @@ module RFA1DriverLayerP
 
     interface McuPowerOverride;
     
+    #ifdef ATMELRADIOTEST
     interface AtmelRadioTest;
-    interface RssiMonitor;
-    interface SetNow<uint8_t> as SetXtalTrim;
-    interface GetNow<uint8_t> as GetXtalTrim;
+    #endif
+    #ifdef CONTINOUS_WAVE
+    interface RadioContinuousWave;
+    #endif
   }
 
   uses
@@ -120,9 +122,14 @@ implementation
     STATE_TRX_OFF_2_RX_ON = 4,
     STATE_RX_ON = 5,
     STATE_BUSY_TX_2_RX_ON = 6,
+    #ifdef ATMELRADIOTEST
     STATE_TEST = 7,
     STATE_TEST_STOP = 8,
+    #endif
+    #ifdef CONTINOUS_WAVE
     STATE_RSSI_MON = 9,
+    STATE_CW_SEND = 10,
+    #endif
   };
 
   tasklet_norace uint8_t cmd;
@@ -229,156 +236,6 @@ implementation
     return SUCCESS;
   }
   
-  async command error_t SetXtalTrim.setNow(uint8_t trim){
-    XOSC_CTRL= (XOSC_CTRL&0xf0) | trim;
-    return SUCCESS;
-  }
-  
-  async command uint8_t GetXtalTrim.getNow(){
-    return XOSC_CTRL&0x0f;
-  }
-  
-  /*----------------------RssiMonitor---------------------*/
-  async command uint32_t RssiMonitor.start(void* buffer, uint16_t len){
-    if( state == STATE_RX_ON && cmd == CMD_NONE ){
-      uint16_t i;
-      uint8_t *bufPtr;
-			uint32_t time;
-      state = STATE_RSSI_MON;
-      bufPtr = (uint8_t*)buffer;
-      atomic{
-        time = call LocalTime.get();
-        for(i=0; i<len; i++){
-          *(bufPtr+i) = PHY_RSSI;
-        }
-        time = call LocalTime.get() - time;
-      }
-//       time = (uint32_t)((float)time/RADIO_ALARM_MICROSEC);
-      for(i=0; i<len; i++){
-        *(bufPtr+i) = *(bufPtr+i) & RFA1_RSSI_MASK;
-      }
-      state = STATE_RX_ON;
-      return time;
-    } else
-      return 0;
-  }
-  
-  /*-------------------- AtmelRadioTest ------------------*/
-  norace void* testBuffer;
-  norace uint8_t testChannel, testPower, testMode, testLen;
-  
-  void testRadio(){
-    #ifdef RADIO_DEBUG
-    if(call DiagMsg.record()){
-      call DiagMsg.str("test");
-      call DiagMsg.send();
-    }
-    #endif
-    if( state == STATE_TEST ){ //test start
-      if( testChannel == 0xff )
-        testChannel = channel;
-      if( testPower == 0xff )
-        testPower = txPower;
-      
-      SET_BIT(TRXPR, TRXRST);
-      CLR_BIT(TRXPR, SLPTR); //this has to be done manually
-      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
-        call BusyWait.wait(100);
-
-      IRQ_MASK = 0; // we will poll for PLL_LOCK
-      TRX_CTRL_1 = 0; //disable aut crc
-      TRX_STATE = CMD_FORCE_TRX_OFF; 
-      PHY_CC_CCA = RFA1_CCA_MODE_VALUE | testChannel;
-      PHY_TX_PWR = testPower;
-      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )
-        call BusyWait.wait(100);
-      TST_CTRL_DIGI = 0x0F; //Enable test mode step #1
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3; //2Mb/s mode
-      RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
-      
-      if(testMode != RFA1_TEST_MODE_MODE_MODULATED){
-        TRXFBST=1;
-        *((uint8_t*)(&TRXFBST+1)) = testMode; //0x00 or 0xff. This will be repeated, until we stop the test
-      } else {
-        TRXFBST = testLen;
-        memcpy((void*)(&TRXFBST+1), testBuffer, testLen);
-      }
-      
-      PART_NUM = 0x54; //Enable test mode step #2
-      PART_NUM = 0x46; //Enable test mode step #3
-      TRX_STATE = CMD_PLL_ON;
-      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != PLL_ON )
-        call BusyWait.wait(100);
-      
-      TRX_STATE = CMD_TX_START;
-    } else { //test stop
-      PART_NUM = 0; //disable test mode
-      SET_BIT(TRXPR, TRXRST);
-      CLR_BIT(TRXPR, SLPTR); //this has to be done manually
-      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
-        call BusyWait.wait(100);
-      initRadio();
-    }
-  }
-  
-  async command error_t AtmelRadioTest.startModulatedTest(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){
-    #ifdef RADIO_DEBUG
-    if(call DiagMsg.record()){
-      call DiagMsg.str("mtest");
-      call DiagMsg.uint8(state);
-      call DiagMsg.send();
-    }
-    #endif
-    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
-      
-      state = STATE_TEST;
-      
-      testChannel = ch;
-      testPower = power;
-      testMode = mode;
-      testBuffer = data;
-      testLen = len;
-      
-      testRadio();
-      return SUCCESS;
-    } else
-      return EBUSY;
-  }
-  
-  async command error_t AtmelRadioTest.startCWTest(uint8_t ch, uint8_t power, uint8_t mode){
-    #ifdef RADIO_DEBUG
-    if(call DiagMsg.record()){
-      call DiagMsg.str("ctest");
-      call DiagMsg.uint8(state);
-      call DiagMsg.send();
-    }
-    #endif
-    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
-      
-      state = STATE_TEST;
-      
-      testChannel = ch;
-      testPower = power;
-      testMode = mode;
-      
-      testRadio();
-      return SUCCESS;
-    } else
-      return EBUSY;
-  }
-  
-  async command error_t AtmelRadioTest.stopTest(){
-    if( state == STATE_TEST_STOP )
-      return EALREADY;
-    
-    if( state != STATE_TEST )
-      return EOFF;
-    
-    state = STATE_TEST_STOP;
-    testRadio();
-    return SUCCESS;
-  }
-
   /*----------------- CHANNEL -----------------*/
 
   tasklet_async command uint8_t RadioState.getChannel()
@@ -1097,4 +954,273 @@ implementation
   default async command error_t ExtAmpControl.stop(){
     return SUCCESS;
   }
+
+#if defined(ATMELRADIOTEST ) || defined(CONTINOUS_WAVE)
+  void testRadio(void *testBuffer, uint8_t testChannel, uint8_t testPower, uint8_t testMode, uint8_t testLen){
+    #ifdef RADIO_DEBUG
+    if(call DiagMsg.record()){
+      call DiagMsg.str("test");
+      call DiagMsg.send();
+    }
+    #endif
+    if( testMode != RFA1_TEST_MODE_CW_PLUS_NORESET){
+      SET_BIT(TRXPR, TRXRST);
+      CLR_BIT(TRXPR, SLPTR); //this has to be done manually
+      while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
+        ;
+    }
+    
+    IRQ_MASK = 0; // we will poll for PLL_LOCK
+    TRX_CTRL_1 = 0; //disable aut crc
+    TRX_STATE = CMD_FORCE_TRX_OFF; 
+    PHY_CC_CCA = RFA1_CCA_MODE_VALUE | testChannel;
+    PHY_TX_PWR = testPower;
+    while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )
+      ;
+    TST_CTRL_DIGI = 0x0F; //Enable test mode step #1
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3; //2Mb/s mode
+    RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
+    
+    if(testMode == RFA1_TEST_MODE_CW_PLUS_NORESET){
+      TRXFBST=1;
+      memset((void*)(&TRXFBST+1), 0xff, 127); //that seems to be the only way it works without reset
+    } else if(testMode != RFA1_TEST_MODE_MODE_MODULATED){
+      TRXFBST=1;
+      *((uint8_t*)(&TRXFBST+1)) = testMode; //0x00 or 0xff. This will be repeated, until we stop the test
+    } else {
+      TRXFBST = testLen;
+      memcpy((void*)(&TRXFBST+1), testBuffer, testLen);
+    }
+    
+    PART_NUM = 0x54; //Enable test mode step #2
+    PART_NUM = 0x46; //Enable test mode step #3
+    TRX_STATE = CMD_PLL_ON;
+    while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != PLL_ON )
+      ;
+    
+    TRX_STATE = CMD_TX_START;
+  }
+  
+  void stopTestRadio(){
+    PART_NUM = 0; //disable test mode
+    SET_BIT(TRXPR, TRXRST);
+    CLR_BIT(TRXPR, SLPTR); //this has to be done manually
+    while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )//reset is about 100us
+      ;
+  }
+
+#endif
+/*-------------------- AtmelRadioTest ------------------*/
+
+#ifdef ATMELRADIOTEST
+  async command error_t AtmelRadioTest.startModulatedTest(uint8_t ch, uint8_t power, uint8_t mode, void* data, uint8_t len){
+    #ifdef RADIO_DEBUG
+    if(call DiagMsg.record()){
+      call DiagMsg.str("mtest");
+      call DiagMsg.uint8(state);
+      call DiagMsg.send();
+    }
+    #endif
+    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+      
+      state = STATE_TEST;
+      
+      if( ch == 0xff )
+        ch = channel;
+      if( power == 0xff )
+        power = txPower;
+      
+      testRadio(data, ch, mode, power, len);
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+  
+  async command error_t AtmelRadioTest.startCWTest(uint8_t ch, uint8_t power, uint8_t mode){
+    #ifdef RADIO_DEBUG
+    if(call DiagMsg.record()){
+      call DiagMsg.str("ctest");
+      call DiagMsg.uint8(state);
+      call DiagMsg.send();
+    }
+    #endif
+    if( ( state == STATE_SLEEP || state == STATE_TEST ) && cmd == CMD_NONE ){
+      
+      state = STATE_TEST;
+      
+      if( ch == 0xff )
+        ch = channel;
+      if( power == 0xff )
+        power = txPower;
+      
+      testRadio(NULL, ch, mode, power, 0);
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+  
+  async command error_t AtmelRadioTest.stopTest(){
+    if( state == STATE_TEST_STOP )
+      return EALREADY;
+    
+    if( state != STATE_TEST )
+      return EOFF;
+    
+    state = STATE_TEST_STOP;
+    stopTestRadio();
+    initRadio();
+    return SUCCESS;
+  }
+#endif
+
+#ifdef CONTINOUS_WAVE
+/*----------------------RadioContinuousWave---------------------*/
+  async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
+    if( state == STATE_RX_ON && cmd == CMD_NONE ){
+      state = STATE_RSSI_MON;
+      
+      atomic{
+        IRQ_MASK = 0;
+        radioIrq = 0;
+        IRQ_STATUS = 0xFF;
+      }
+      if( sampleChannel != channel ){
+        PHY_CC_CCA=RFA1_CCA_MODE_VALUE|sampleChannel;
+        PHY_CC_CCA=RFA1_CCA_MODE_VALUE|sampleChannel;//this value is cached, we have to write it twice to update it, unless we're in TRX_OFF
+        while( !(IRQ_STATUS & (1<<PLL_LOCK)) )
+          ;
+        IRQ_STATUS = 0xFF;
+      }
+      atomic{
+        *time = call LocalTime.get();
+        /*
+         * This assembly part stores the PHY_RSSI register in the buffer at 500kHz (which is the update frequency of the register)
+         * On 8MHz and faster, it also masks the upper (random and crc) bits
+         * The register updates every 2us which is 500kHz. So, the waiting goes like this:
+         * 4MHz: the loop is 8 cycle, no need to nop, no place for and
+         * 8MHz: the loop is 10 cycle, 1 cycle and,  5 nop needed
+         * 16MHz the loop is 12 cycle, 1 cycle and, 19 nop needed
+         */
+        asm volatile (
+          "1: lds __tmp_reg__, 0x146\n\t" //1:__tmp_reg__ = PHY_RSSI; //6clk on 16MHz, 4clk on 8MHz, 2clk on 4MHz. meaning: 
+          #if PLATFORM_MHZ >= 8
+            "and __tmp_reg__, %2\n\t" //__tmp_reg__ &= RFA1_RSSI_MASK; //1clk
+            "nop\n\t" //1clk
+            "nop\n\t"
+            "nop\n\t"
+            "nop\n\t"
+            "nop\n\t"
+            #if PLATFORM_MHZ >= 16
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+              "nop\n\t"
+            #endif
+          #endif
+          "st %a0+, __tmp_reg__\n\t" //*buffer = __tmp_reg__; buffer++; //2clk
+          "cp %A0, %A1\n\t" //(part of the last if) //1clk
+          "cpc %B0, %B1\n\t" //(part of the last if) //1clk
+          "brne 1b\n\t" //if(buffer != (buffer+length)) goto 1; //2clk
+          #if PLATFORM_MHZ >= 8
+          :: "e" (buffer), "r" (buffer+length), "r" (RFA1_RSSI_MASK)
+          #else
+          :: "e" (buffer), "r" (buffer+length)
+          #endif
+        );
+        *time = call LocalTime.get() - *time;
+      }
+      if( sampleChannel != channel ){
+        PHY_CC_CCA=RFA1_CCA_MODE_VALUE|channel;
+        PHY_CC_CCA=RFA1_CCA_MODE_VALUE|channel;//this value is cached, we have to write it twice to update it, unless we're in TRX_OFF
+        while( !(IRQ_STATUS & (1<<PLL_LOCK)) )
+          ;
+      }
+      
+      IRQ_STATUS = 0xFF;
+      IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
+      state = STATE_RX_ON;
+      #if PLATFORM_MHZ <= 4
+        for(i=0; i<length; i++){
+          *(buffer+i) = *(buffer+i) & RFA1_RSSI_MASK;
+        }
+      #endif
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+  
+  async command error_t RadioContinuousWave.sendWave(uint8_t testChannel, int8_t tune, uint8_t power, uint16_t time){
+    if( state == STATE_RX_ON && cmd == CMD_NONE ){
+      uint32_t end = time;
+      state = STATE_CW_SEND;
+      XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
+      atomic{
+        end += call LocalTime.get();
+        testRadio(NULL, testChannel, power, RFA1_TEST_MODE_CW_PLUS_NORESET, 0);
+      }
+      while( (int32_t)(end - call LocalTime.get()) > 0 )
+        ;
+      stopTestRadio();
+      
+      //reset register states
+      CCA_THRES=RFA1_CCA_THRES_VALUE;
+      #ifdef RFA1_DATA_RATE
+      #if RFA1_DATA_RATE == 250
+      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 0;
+      #elif RFA1_DATA_RATE == 500
+      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 1;
+      #elif RFA1_DATA_RATE == 1000
+      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 2;
+      #elif RFA1_DATA_RATE == 2000
+      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3;
+      #else
+      #error Unsupported RFA1_DATA_RATE (supported: 250, 500, 1000, 2000. default is 250)
+      #endif
+      #endif
+      PHY_TX_PWR = RFA1_PA_BUF_LT | RFA1_PA_LT | (txPower)<<TX_PWR0;
+      TRX_CTRL_1 |= 1<<TX_AUTO_CRC_ON;
+      PHY_CC_CCA = RFA1_CCA_MODE_VALUE | channel;
+      
+      IRQ_STATUS = 0xFF;
+      TRX_STATE = CMD_RX_ON;
+      
+      XOSC_CTRL= (XOSC_CTRL&0xf0);
+      #ifdef RFA1_ENABLE_PA
+      SET_BIT(TRX_CTRL_1, PA_EXT_EN);
+      #endif
+      #ifdef RFA1_ENABLE_EXT_ANT_SW
+      #ifdef RFA1_ANT_DIV_EN
+      ANT_DIV = 0x7f & (1<<ANT_DIV_EN | 1<<ANT_EXT_SW_EN);
+      #elif defined(RFA1_ANT_SEL1)
+      ANT_DIV = 0x7f & (1<<ANT_EXT_SW_EN | 1<<ANT_CTRL0);
+      #elif defined(RFA1_ANT_SEL0)
+      ANT_DIV = 0x7f & (1<<ANT_EXT_SW_EN | 2<<ANT_CTRL0);
+      #else
+      #error Neighter antenna is selected with ANT_EXT_SW_EN. You can choose between RFA1_ANT_DIV_EN, RFA1_ANT_SEL0, RFA1_ANT_SEL1
+      #endif
+      #endif
+      call ExtAmpControl.start();
+      
+      while( !(IRQ_STATUS & (1<<PLL_LOCK)) ) //waiting for TRX_STATE==RX_ON would be cleaner, but pll lock comes a bit later
+        ;
+      radioIrq = 0;
+      IRQ_STATUS = 0xFF;
+      IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
+      
+      state = STATE_RX_ON;
+      return SUCCESS;
+    } else
+      return EBUSY;
+  }
+#endif
 }
