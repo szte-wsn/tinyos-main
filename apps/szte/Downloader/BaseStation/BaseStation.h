@@ -1,52 +1,54 @@
 #ifndef BASESTATION_H
 #define BASESTATION_H
 
-#ifndef PAYLOAD_LENGTH
-#define PAYLOAD_LENGTH 13		//payload merete (1 byte meres_id + 1 byte seq_num + 100 byte adat)
-#endif							//PAYLOAD_LENGTH=10-re valami baja van. csomag kimenetek a vege fele 0-ra valtanak.
-
-#ifndef DATA_LENGTH						//payload meresi adat resze
-#define DATA_LENGTH PAYLOAD_LENGTH-3	//ket bajtot elfoglal mas
+#ifndef TOSH_DATA_LENGTH			//azert kellett itt definialnom ezt, mert a fordito kiirta, hogy nincs definialva
+#define TOSH_DATA_LENGTH 110		//esetleg makefajlba betett CFLAG TOSH_DATA_LENGHT-et felhasznalni valahogy?
 #endif
 
-#ifndef MEASUREMENT_LENGTH		//meres hossza 
-#define MEASUREMENT_LENGTH 40
+
+#ifndef DATA_LENGTH					//payload meresi adat resze
+#define DATA_LENGTH TOSH_DATA_LENGTH-3				
 #endif
 
-#ifndef TOSH_DATA_LENGTH		//message.h payload merete
-#define TOSH_DATA_LENGTH PAYLOAD_LENGTH	
+#ifndef MEASUREMENT_LENGTH			//meres hossza 
+#define MEASUREMENT_LENGTH 1000
 #endif
 
 #ifndef MAX_MEASUREMENT_NUMBER
-#define MAX_MEASUREMENT_NUMBER 10
+#define MAX_MEASUREMENT_NUMBER 4
 #endif
 
-typedef nx_struct RadioDataMsg {	//amit a Mote-tol kapok
-	nx_uint8_t mes_id;
-	nx_uint8_t seq_num;
+#ifndef DELETE_MES_NUMBER
+#define DELETE_MES_NUMBER 2
+#endif
+
+typedef nx_struct MeasureMsg {
+	nx_uint8_t mes_id;				//packet_id - hanyadik csomagrol van szo
+	nx_uint8_t seq_num;				//hanyadik szeletrol van szo a meresen belul
 	nx_uint8_t data[DATA_LENGTH];
-	nx_uint8_t node_id;
-}RadioDataMsg;
+	nx_uint8_t slice_width;
+}MeasureMsg;
 
 typedef nx_struct GetSliceMsg {		//elveszett csomag eseten
 	nx_uint8_t slice;				//melyik szelet
 	nx_uint8_t mes_id;				//melyik meresnek
-	nx_uint8_t node_id;
+	nx_uint16_t node_id;
 }GetSliceMsg;
 
-typedef nx_struct MesNumberMsg {
-	nx_uint8_t mes_number;			//mennyi meresi adat van
-	nx_uint8_t node_id;
-}MesNumberMsg;
+typedef nx_struct AnnouncementMsg {
+	nx_uint8_t mes_number;			//hany csomag van a bufferben
+}AnnouncementMsg;
 
 typedef nx_struct CommandMsg {
-	nx_uint8_t node_id_start;
-	nx_uint8_t node_id_stop;
+	nx_uint16_t node_id_start;
+	nx_uint16_t node_id_stop;
+	nx_uint8_t free[DELETE_MES_NUMBER];	
 }CommandMsg;
 
-typedef struct LoginMoteMsg{
-	uint8_t node_id;
-}LoginMoteMsg;
+typedef nx_struct FreeMsg {
+	nx_uint8_t free[DELETE_MES_NUMBER];		//az utolso negy csomagot, amit ki kell, hogy toroljon, kitorli
+	nx_uint16_t node_id;
+}FreeMsg;
 
 typedef struct data_t{
     uint8_t mes_id;
@@ -55,11 +57,11 @@ typedef struct data_t{
 
 
 enum{
-	AM_RADIODATAMSG = 6,
+	AM_MEASUREMSG = 6,
 	AM_GETSLICEMSG = 7,
-	AM_MESNUMBERMSG = 8,
+	AM_ANNOUNCEMENTMSG = 8,
 	AM_COMMANDMSG = 9,
-	AM_LOGINMOTEMSG = 10
+	AM_FREEMSG = 11
 };
 
 #endif

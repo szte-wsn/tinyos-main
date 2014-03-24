@@ -1,8 +1,11 @@
 COMPONENT=BaseStationC
-CFLAGS += -DTOS_DATA_LENGTH=110
+CFLAGS += -DCC2420_NO_ACKNOWLEDGEMENTS
+CFLAGS += -DCC2420_NO_ADDRESS_RECOGNITION
+CFLAGS += -DTASKLET_IS_TASK
+CFLAGS += -DTOSH_DATA_LENGTH=110
 CFLAGS += -DUCMINI_REV=101
 BUILD_EXTRA_DEPS = BaseStationApp.class
-CLEAN_EXTRA = *.class CommandMsg.java RadioDataMsg.java GetSliceMsg.java MesNumberMsg.java LoginMoteMsg.java
+CLEAN_EXTRA = *.class CommandMsg.java MeasureMsg.java GetSliceMsg.java AnnouncementMsg.java FreeMsg.java
 
 CommandMsg.java: BaseStation.h
 	mig java -target=null -java-classname=CommandMsg BaseStation.h CommandMsg -o $@
@@ -10,11 +13,11 @@ CommandMsg.java: BaseStation.h
 CommandMsg.class: CommandMsg.java
 	javac CommandMsg.java
 
-RadioDataMsg.java: BaseStation.h
-	mig java -target=null -java-classname=RadioDataMsg BaseStation.h RadioDataMsg -o $@
+MeasureMsg.java: BaseStation.h
+	mig java -target=null -java-classname=MeasureMsg BaseStation.h MeasureMsg -o $@
 
-RadioDataMsg.class: RadioDataMsg.java
-	javac RadioDataMsg.java
+MeasureMsg.class: MeasureMsg.java
+	javac MeasureMsg.java
 
 GetSliceMsg.java: BaseStation.h
 	mig java -target=null -java-classname=GetSliceMsg BaseStation.h GetSliceMsg -o $@
@@ -22,21 +25,21 @@ GetSliceMsg.java: BaseStation.h
 GetSliceMsg.class: GetSliceMsg.java
 	javac GetSliceMsg.java
 
-MesNumberMsg.java: BaseStation.h
-	mig java -target=null -java-classname=MesNumberMsg BaseStation.h MesNumberMsg -o $@
+AnnouncementMsg.java: BaseStation.h
+	mig java -target=null -java-classname=AnnouncementMsg BaseStation.h AnnouncementMsg -o $@
 
-MesNumberMsg.class: MesNumberMsg.java
-	javac MesNumberMsg.java
+AnnouncementMsg.class: AnnouncementMsg.java
+	javac AnnouncementMsg.java
 
-LoginMoteMsg.java: BaseStation.h
-	mig java -target=null -java-classname=LoginMoteMsg BaseStation.h LoginMoteMsg -o $@
+FreeMsg.java: BaseStation.h
+	mig java -target=null -java-classname=FreeMsg BaseStation.h FreeMsg -o $@
 
-LoginMoteMsg.class: LoginMoteMsg.java
-	javac LoginMoteMsg.java
+FreeMsg.class: FreeMsg.java
+	javac FreeMsg.java
 
 
 
-BaseStationApp.class: BaseStationApp.java GetSliceMsg.class MesNumberMsg.class RadioDataMsg.class CommandMsg.class LoginMoteMsg.class
+BaseStationApp.class: BaseStationApp.java GetSliceMsg.class AnnouncementMsg.class MeasureMsg.class CommandMsg.class FreeMsg.class
 	javac BaseStationApp.java
 
 include $(MAKERULES)

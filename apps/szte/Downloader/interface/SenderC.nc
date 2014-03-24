@@ -8,11 +8,12 @@ configuration SenderC {
 	}
 }
 implementation {
-	components SenderP;
-	components new AMSenderC(AM_SENDERMSG) as SenderMsg;
-	components new AMSenderC(AM_MESNUMBERMSG) as MesNumberMsg;		
+	components SenderP,LedsC;
+	components new AMSenderC(AM_MEASUREMSG) as radSenMeasureMsg;
+	components new AMSenderC(AM_ANNOUNCEMENTMSG) as radSenAnnouncementMsg;		
 
 	SenderP = Storage;
-	SenderP.radSenSenderMsg -> SenderMsg.AMSend;
-	SenderP.radSenMesNumberMsg -> MesNumberMsg.AMSend;
+	SenderP.Leds -> LedsC;
+	SenderP.radSenMeasureMsg -> radSenMeasureMsg.AMSend;
+	SenderP.radSenAnnouncementMsg -> radSenAnnouncementMsg.AMSend;
 }

@@ -22,14 +22,12 @@ import javax.swing.JLabel;
 
 class BaseStationApp extends JFrame implements MessageListener{
 
-	public static final int PAYLOAD_LENGTH = 13;	//payload merete (1 byte meres_id + 1 byte seq_num + 100 byte adat)
-				//PAYLOAD_LENGTH=10-re valami baja van. csomag kimenetek a vege fele 0-ra valtanak.
-				//payload meresi adat resze
-	public static final int DATA_LENGTH = PAYLOAD_LENGTH-3; 	//ket bajtot elfoglal mas
-	public static final int MEASUREMENT_LENGTH = 40;				//meres hossza 
-	public static final int TOSH_DATA_LENGTH = PAYLOAD_LENGTH; 	//message.h payload merete
+	public static final int TOSH_DATA_LENGTH = 110;
+	public static final int DATA_LENGTH = TOSH_DATA_LENGTH-3; 	//ket bajtot elfoglal mas
+	public static final int MEASUREMENT_LENGTH = 1000;				//meres hossza 
 	public static final int MAX_MEASUREMENT_NUMBER = 10;
 	public static final int MAX_MOTE_NUMBER = 50;
+	public static final int DELETE_MES_NUMBER = 2;
 	
 	private JPanel contentPane;
 	private JTextArea textArea_data;
@@ -42,19 +40,25 @@ class BaseStationApp extends JFrame implements MessageListener{
 	
 	private MoteIF moteIF;
 
-	int[] mote_array;		//a mote id-kat taroljuk
-	int mote_num;			//mennyi mote van bejelentkezve
-	int send_mote_num;		//adatkeresnel hasznaljuk (SendDataReq())
-	int[][] mesure;			//adatokat taroljuk
-	int missing_slice;		//hianyzo csomagnal beallitja nem nullara az erteket
-	int missing_packet;		//hianyzo csomagnal beallitja nem nullara az erteket
-	int packet_number;		//mennyi csomagot ad az adott mote osszesen
-	int node_id = 2;			//melyik node kuldi a csomagot. Alapertelmezett 2-es
-	boolean slicesOK = true;	//minden szelet megerkezett
+	int[] mote_array;	//a mote id-kat taroljuk
+	int[] mote_packets_num; 	//melyik mote mennyi adatot tarol 
+	int mote_num;		//mennyi mote van bejelentkezve
+	int send_mote_num;	//adatkeresnel hasznaljuk (SendDataReq())
+	int[] measure;		//adatokat taroljuk
+	int measure_id;		//az adott meres azonositoja
+	int missing_slice;	//hianyzo csomagnal beallitja nem nullara az erteket
+	int missing_packet;	//hianyzo csomagnal beallitja nem nullara az erteket
+//	int packet_number;	//mennyi csomagot ad az adott mote osszesen
+	int node_id;		//melyik node kuldi a csomagot. Alapertelmezett 2-es
+	boolean slicesOK;	//minden szelet megerkezett
+	int received_packet_number;	//mennyi uzenet erkezett eddig
+	int slice_width;
 
-	int rand = 0;			//szeleteldobashoz szimulalasahoz
-	boolean ok = false;		//szeleteldobashoz szimulalasahoz
-	boolean stop = true; 	//az adatlekeres befejezve
+	int rand;		//szeleteldobashoz szimulalasahoz
+	boolean ok;		//szeleteldobashoz szimulalasahoz
+	boolean stop; 	//az adatlekeres befejezve
+	int[] free_mes;	//azokat a mereseket tartalmazza, amelyeket ki lehet torolni
+	int fm_number;	//segedvaltozo a free_mes-hez
 
 	SimpleDateFormat DATE_FORMAT;
 	Date time;
@@ -63,15 +67,12 @@ class BaseStationApp extends JFrame implements MessageListener{
 	public BaseStationApp(MoteIF moteIF){
 		initalize();
 		this.moteIF=moteIF;
-		this.moteIF.registerListener(new RadioDataMsg(),this);
-		this.moteIF.registerListener(new MesNumberMsg(),this); 
-		this.moteIF.registerListener(new LoginMoteMsg(),this);
+		this.moteIF.registerListener(new MeasureMsg(),this);
+		this.moteIF.registerListener(new AnnouncementMsg(),this); 
 		gui();
 	}
 	
-/******************************************/
-/**************FRAME***********************/
-/******************************************/
+//FRAME
         
 	@Override
 	public Dimension getPreferredSize() {
@@ -85,7 +86,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 		frame.setLocationByPlatform(true);
 		frame.setVisible(true);
 		return frame;
-	}
+	}	
 
 //GUI
 	void gui() {
@@ -133,27 +134,41 @@ class BaseStationApp extends JFrame implements MessageListener{
 	}
 
 //METHODS
-	void mesureMerger(short[] data, short mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
-		System.out.println("Data, id_mes " + mes_id + ", seq_id " + seq_id + " packet_number: " + packet_number + " getSlice: " + getSliceNumber());
+	void measureMerger(short[] data, short mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
+		System.out.println("Data, id_mes " + mes_id + ", seq_id " + seq_id + " packet_number: " + mote_packets_num[node_id] + " getSlice: " + getSliceNumber());
 //		rand++;						//szeleteldobas szimulalasahoz a harom kommentezett sort uncommentelni
 //	if(rand%4==0 || ok ==true){
-		for(int i=0; i<data.length; i++) {
+		measure_id = mes_id;
+		for(int i=0; i<slice_width; i++) {	//mennyi a valos adat az adott szeletben
 			if(data[i] != 0) {
-				mesure[mes_id][i+seq_id*(DATA_LENGTH)] = (int)data[i];
-				out.print(data[i] + " ");
+				measure[i+seq_id*(DATA_LENGTH)] = (int)data[i];
+				out.print(measure[i+seq_id*(DATA_LENGTH)] + " ");
 			}
 		}
 //	}
 		out.println("\n");
-		if(mes_id == packet_number-1 && seq_id == getSliceNumber()-1 || slicesOK == false) {	//utolso csomag erkezett meg
+		if((seq_id == getSliceNumber()) || (ok == true && slicesOK == false)) { //utolso szelet az adott meresbol	megerkezett
 			ok = true;			
-			System.out.println("Last Data, mes_id " + mes_id + ", seq_id " + seq_id);
-			slicesOK = allSliceChecker();
-			if(slicesOK == true) {
+			System.out.println("Last Data, mes_id " + mes_id + ", seq_id " + seq_id + " " + ok + " " + slicesOK);
+			slicesOK = allSliceChecker();		//megnezi, hogy minden szelet megerkezett-e a meresbol
+			if(slicesOK == true) {				//minden szelet megvan
 				out.println("allSliceChecker: true");	
+				ok = false;
+				free_mes[fm_number] = measure_id;		//minden szelet megerkezett a meresbol, mostmar ki lehet torolni
+				if(fm_number == DELETE_MES_NUMBER-1)
+					fm_number = 0;
+				else
+					fm_number++;
+				out.println("Stop: " + stop);
 				if(stop == false) {		//ha meg nem ertunk a mote sor vegere
 					fileWriter();		//adatokat kiirjuk fajlba
-					sendDataReq();		//kuldheti a masik mote, aki a halozatban van
+					received_packet_number++;		//megkapott uzenetek szamat noveljuk
+					out.println("Received packets: " + received_packet_number + " packet_number: " + mote_packets_num[node_id]);
+					if(received_packet_number >= mote_packets_num[node_id])	{	//utolso meres is megerkezett
+						received_packet_number = 0;					
+						sendDataReq();		//kuldheti a masik mote, aki a halozatban van 
+					}else		//nem erkeztunk az utolso mereshez, az adott mote-nal
+						sendFree();	
 				} else {
 					textArea_data.setText(textArea_data.getText() + "\n VEGE");
 				}
@@ -169,15 +184,13 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 	boolean allSliceChecker() {		//megnezi, hogy hianyzik-e valamelyik csomagbol szelet, es ha hianyzik, akkor beallit ket valtozot, hogy melyik csomagbol, melyik szelet
 		out.println("inside AllSliceChecker");
-		for(int i=0; i<MAX_MEASUREMENT_NUMBER; i++) {
-			for(int j=0; j<getSliceNumber(); j++) {	//egesz szamu a csomagmeret/szeletmeret
-				if(mesure[i][(j*(DATA_LENGTH))] == 0) {
-					missing_slice = j; 				//hanyadik szelet
-					missing_packet = i;				//hanyadik csomag
-					out.println(" mesure[" + i + "][" + j + "] = " + mesure[i][j*(DATA_LENGTH)] + " missing_slice: " + missing_slice + "\nmissing_packet: " + missing_packet);
-					sendSliceReq();		//lekerjuk a hianyzo adatot
-					return false;		//van hianyzo adat, igy false-al terunk vissza
-				}
+		for(int j=0; j<getSliceNumber(); j++) {	//egesz szamu a csomagmeret/szeletmeret
+			if(measure[j*(DATA_LENGTH)] == -1) {	//ha a szelet elso cellaja -1, akkor nincs meg az a szelet
+				missing_slice = j; 				//hanyadik szelet
+				missing_packet = measure_id;	//hanyadik csomag
+				out.println(" measure[" + j + "] = " + measure[j*(DATA_LENGTH)] + " missing_slice: " + missing_slice + "\nmissing_packet: " + missing_packet);
+				sendSliceReq();		//lekerjuk a hianyzo adatot
+				return false;		//van hianyzo adat, igy false-al terunk vissza
 			}
 		}
 		return true;		//minden adat megvan
@@ -185,52 +198,52 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 	void fileWriter() {			//fajlba irja a csomagokat
 		out.println("inside fileWriter");
-		out.println("Packet_number: " + packet_number);
+		out.println("Packet_number: " + mote_packets_num[node_id]);
 		FileWriter fw = null;
 		BufferedWriter out = null;
-		for(int i=0; i<packet_number; i++) {
-			try {
-				time = new Date();
-				DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy");
-				String date_dir = DATE_FORMAT.format(time);
-				File dir = new File("mesures/" + node_id + ".node_id/" + date_dir);
+		try {
+			time = new Date();
+			DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy");
+			String date_dir = DATE_FORMAT.format(time);
+			File dir = new File("measures/" + node_id + ".node_id/" + date_dir);
+			dir.mkdirs();
+			if (null != dir)
+			{
 				dir.mkdirs();
-				if (null != dir)
-				{
-					dir.mkdirs();
-				}
-				DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy:HH:mm:SS");
-				String date = DATE_FORMAT.format(time);
-				fw = new FileWriter("mesures/" + node_id +".node_id/"+date_dir+"/"+date+"_packet_"+i+".txt");
-				out = new BufferedWriter(fw);
-				for(int j=0; j<MEASUREMENT_LENGTH; j++) {
-					out.write(mesure[i][j]+"\n");
-				}
+			}
+			DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy:HH:mm:SS");
+			String date = DATE_FORMAT.format(time);
+			fw = new FileWriter("measures/" + node_id +".node_id/"+date_dir+"/"+measure_id+". packet_"+date+".txt");
+			out = new BufferedWriter(fw);
+			for(int j=0; j<MEASUREMENT_LENGTH; j++) {
+				out.write(measure[j]+"\n");
+				measure[j] = 0; 		
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}finally{
+			try {
+				out.close();
+				fw.close();
 			} catch (IOException e) {
 				e.printStackTrace();
-			}finally{
-	            try {
-	                out.close();
-	                fw.close();
-	            } catch (IOException e) {
-	                e.printStackTrace();
-	            }
-	        }
-		}
-		
+			}
+		}		
 	}
 
 	void initalize() {		//inicializalja a valtozokat
 		out.println("inside initalize");
 		missing_packet = 0;
 		missing_slice = 0;
-		packet_number = 0;
-		node_id = 2;		//alapertelmezett ertek (ezzel a node-al probalom test-nel)
-		mesure = new int[MAX_MEASUREMENT_NUMBER][MEASUREMENT_LENGTH];
-		for(int i=0; i<MAX_MEASUREMENT_NUMBER; i++) {
-			for(int j=0; j<MEASUREMENT_LENGTH; j++) {
-				mesure[i][j] = 0;
-			}
+		mote_packets_num = new int[100];		
+		for(int i=0; i<100; i++) {
+			mote_packets_num[node_id] = 0;
+		}
+		node_id = 0;		
+		measure = new int[MEASUREMENT_LENGTH];
+		free_mes = new int[DELETE_MES_NUMBER];
+		for(int j=0; j<MEASUREMENT_LENGTH; j++) {
+			measure[j] = -1;
 		}
 		mote_array = new int[MAX_MOTE_NUMBER];
 		for(int i=0; i<MAX_MOTE_NUMBER; i++) {
@@ -239,10 +252,19 @@ class BaseStationApp extends JFrame implements MessageListener{
 		mote_num = 0;
 		send_mote_num = 0;
 		rand = 0;
+		ok = false;
 		stop = true;
+		received_packet_number = 0;
+		slicesOK = true;
+		measure_id = 0;
+		for(int i=0; i<DELETE_MES_NUMBER; i++) {
+			free_mes[i] = 0;
+		}
+		fm_number = 0;
+		slice_width = 0;
 	}
 
-	void moteRegister(short mote_id) {		//regisztralja a mote-kat
+	void moteRegister(int mote_id) {		//regisztralja a mote-kat
 		out.println("inside moteRegister");
 		boolean isThere = false;
 		for(int i=0; i<mote_num; i++) {
@@ -251,13 +273,15 @@ class BaseStationApp extends JFrame implements MessageListener{
 					break;
 				}
 		}
-		if(isThere == false) {
-			mote_array[mote_num] = mote_id;
-			textArea_motes.setText(textArea_motes.getText() + mote_id + "  ");
-			mote_num++;
-			textField_moteNumber.setText(mote_num+"");
-			if(mote_num % 6 == 0) {
-				textArea_motes.setText(textArea_motes.getText() + "\n");
+		if(isThere == false) {		//ha nincs meg beregisztralva
+			if(mote_num<MAX_MOTE_NUMBER) {
+				mote_array[mote_num] = mote_id;
+				mote_num++;
+				textArea_motes.setText(textArea_motes.getText() + mote_id + "  ");
+				textField_moteNumber.setText(mote_num+"");
+				if(mote_num % 6 == 0) {
+					textArea_motes.setText(textArea_motes.getText() + "\n");
+				}
 			}
 		}
 	}
@@ -267,27 +291,23 @@ class BaseStationApp extends JFrame implements MessageListener{
 	
 	public void messageReceived(int dest_addr,Message msg){
 		System.out.println("inside Message arrived");
-		if (msg instanceof RadioDataMsg) {
-			System.out.println("inside RadioDataMsg arrived");
-			RadioDataMsg mes = (RadioDataMsg)msg;
-			node_id = mes.get_node_id();
-			out.println("RadioDataMsg: " +mes.get_node_id() + " " + mes.get_mes_id() + " " + mes.get_seq_num());
-			mesureMerger(mes.get_data(),mes.get_mes_id(),mes.get_seq_num());
+		if (msg instanceof MeasureMsg) {
+			System.out.println("inside MeasureMsg arrived");
+			MeasureMsg mes = (MeasureMsg)msg;
+			node_id = msg.getSerialPacket().get_header_src();
+			slice_width = mes.get_slice_width();
+			out.println("MeasureMsg: " + node_id + " " + mes.get_mes_id() + " " + mes.get_seq_num() + " " + slice_width);
+			measureMerger(mes.get_data(),mes.get_mes_id(),mes.get_seq_num());
 		}
-		if (msg instanceof MesNumberMsg) {
-			System.out.println("inside MesNumberMsg arrived");
-			MesNumberMsg mes = (MesNumberMsg)msg;
-			packet_number = mes.get_mes_number();
-			out.println("MesNumberMsg: " + mes.get_node_id() + " "+mes.get_mes_number() +"\n");
-			if(packet_number == 0) {
-					sendDataReq();
+		if (msg instanceof AnnouncementMsg) {
+			System.out.println("inside AnnouncementMsg arrived");
+			AnnouncementMsg mes = (AnnouncementMsg)msg;
+			out.println("AnnouncementMsg: " + msg.getSerialPacket().get_header_src() + " "+mes.get_mes_number() + " node_id " + msg.getSerialPacket().get_header_src() +"\n");		
+			if(msg.getSerialPacket().get_header_src() != node_id) {
+				mote_packets_num[msg.getSerialPacket().get_header_src()] = mes.get_mes_number();
 			}
-		}
-		if (msg instanceof LoginMoteMsg) {
-			System.out.println("inside LoginMoteMsg arrived");
-			LoginMoteMsg mes = (LoginMoteMsg)msg;
-			out.println("moteRegister: " + mes.get_node_id() + "\n");
-			moteRegister(mes.get_node_id());
+			if(msg.getSerialPacket().get_header_src() != 0)		//valamiert van olyan, hogy 0-as mote_id kuld uzenetet
+				moteRegister(msg.getSerialPacket().get_header_src());
 		}
 	}
 	
@@ -296,52 +316,98 @@ class BaseStationApp extends JFrame implements MessageListener{
 	public void sendReq() {
 		stop = false;
 		send_mote_num = 0;
+		received_packet_number = 0;
+		for(int i=0; i<MEASUREMENT_LENGTH; i++) {
+			measure[i] = 0;
+		}
+		for(int i=0; i<DELETE_MES_NUMBER; i++) {
+			free_mes[i] = 0;
+		}
 		sendDataReq();
 	}
 
 	public void sendDataReq() {
 		out.println("Inside sendDataReq");
 		textArea_data.setText(textArea_data.getText() + "\n S: " +send_mote_num + " m: " +mote_num + "st: " + stop);
-		CommandMsg msg=new CommandMsg();
+		CommandMsg msg = new CommandMsg();
 		try{
 			if(mote_num != 0) { 	//ha nincs egy mote se bejelentkezve
-				if(send_mote_num < mote_num) {		//ha csak egy mote van bejelentkezve
-					msg.set_node_id_start((byte)mote_array[send_mote_num]);
-					if(send_mote_num == 0) {
-						msg.set_node_id_stop((byte)0);		//0 node id nem lehet
+				short[] free_tmp = new short[DELETE_MES_NUMBER];
+				if(send_mote_num < mote_num) {		//addig amig van mote a sorban
+					out.println("send_mote_num " + send_mote_num + " mote_num " + mote_num);
+					msg.set_node_id_start(mote_array[send_mote_num]);
+					if(send_mote_num == 0) {			//elso mote-nal a sorban
+						msg.set_node_id_stop(0);		//0 node id nem lehet
 					} else {
-						msg.set_node_id_stop((byte)mote_array[send_mote_num-1]);
-						textArea_data.setText(textArea_data.getText() + "\n ma: " +(byte)mote_array[send_mote_num-1]);
+						out.println("");
+						missing_packet = 0;
+						missing_slice = 0;
+						msg.set_node_id_stop(mote_array[send_mote_num-1]);
+						textArea_data.setText(textArea_data.getText() + "\n ma: " +mote_array[send_mote_num-1]);
 					}
 				} else {			//utolso mote-hoz ertunk a sorban, igy befejezzuk az adatlekerest
+					out.println("Stop: " + stop + " send_mote_num " + send_mote_num + " mote_num " + mote_num);
 					stop = true; 	//az adatlekeresek befejezve
 					out.println("stop true");
-					msg.set_node_id_start((byte)0);
-					msg.set_node_id_stop((byte)mote_array[send_mote_num-1]);
-					textArea_data.setText(textArea_data.getText() + "\n mak: " +(byte)mote_array[send_mote_num-1]);
+					msg.set_node_id_start(0);
+					msg.set_node_id_stop(mote_array[send_mote_num-1]);
+					textArea_data.setText(textArea_data.getText() + "\n mak: " +mote_array[send_mote_num-1]);
 				}
+//uj motenak kuldunk uzenetet, es a reginek elkuldjuk a maradek free mereseket, majd nullazuk az uj mote varasara				
+				for(int i=0; i<DELETE_MES_NUMBER; i++) {
+					free_tmp[i] = (short)free_mes[i];
+				}
+				out.println("a");
+				for(int i=0; i<DELETE_MES_NUMBER; i++) {
+					out.print("free_mes: " + free_tmp[i] + " t: " + (byte)free_tmp[i] + " ");
+				}
+				for(int i=0; i<DELETE_MES_NUMBER; i++) {
+					out.print("free_mes: " + free_mes[i] + " ");
+					free_mes[i] = 0;
+				}
+				msg.set_free(free_tmp);
 				send_mote_num = send_mote_num + 1;
 				moteIF.send(MoteIF.TOS_BCAST_ADDR,msg); 
+				out.println("Inside sendDataReq: " + msg.get_node_id_start() + " " + msg.get_node_id_stop());	
 			}
-			out.println("Inside sendDataReq: " + msg.get_node_id_start() + " " + msg.get_node_id_stop());	
 		}catch(IOException e)
 		{
-			out.println("Command message cannot send to mote ");
+			out.println("sendDataReq message cannot send to mote ");
 		}
 	}
 	
 	public void sendSliceReq() {
 		out.println("Inside sendSliceReq");
-		GetSliceMsg msg=new GetSliceMsg();
+		GetSliceMsg msg = new GetSliceMsg();
 		try{
 			msg.set_slice((byte)missing_slice);
 			msg.set_mes_id((byte)missing_packet);
-			msg.set_node_id((byte)node_id);
+			msg.set_node_id(node_id);
 			moteIF.send(MoteIF.TOS_BCAST_ADDR,msg);
-			out.println("sendSliceReq send: " + (byte)node_id + " " + (byte)missing_packet + " " + (byte)missing_slice);
+			out.println("sendSliceReq send: " + node_id + " " + (byte)missing_packet + " " + (byte)missing_slice);
 		}catch(IOException e)
 		{
 			out.println("SliceReq message cannot send to mote ");
+		}
+	}
+
+	public void sendFree() {		//torolje ki a mar elkuldott csomagokat
+		out.println("Inside sendFree");
+		FreeMsg msg = new FreeMsg();
+		try{
+			short[] free_tmp = new short[DELETE_MES_NUMBER];
+			for(int i=0; i<DELETE_MES_NUMBER; i++)
+				free_tmp[i] = (short)free_mes[i];
+			msg.set_free(free_tmp);
+			msg.set_node_id(node_id);
+			moteIF.send(MoteIF.TOS_BCAST_ADDR,msg);
+			out.print("sendFree send: ");
+			for(int i=0; i<DELETE_MES_NUMBER; i++)
+				out.print(free_tmp[i] + " ");
+			out.println("");
+		}catch(IOException e)
+		{
+			out.println("SliceFree message cannot send to mote ");
 		}
 	}
 	

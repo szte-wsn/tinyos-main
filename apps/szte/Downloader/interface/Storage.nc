@@ -12,13 +12,7 @@ interface Storage {
 	  * 	  FAIL    ha mar tele van a buffer
 	  */ 
 
-	async command error_t store(uint8_t data[]);
-
-	/**
-
-	  */
-
-//	event void storeDone(uint16_t data, error_t error);
+	async command error_t store(uint8_t* data);
 
 	/**
 	  * Kikerjuk a mereseket
@@ -38,9 +32,10 @@ interface Storage {
 
 	/**
 	  * Az osszes bufferben levo adat torlese
+	  * free - az utolso 4 adatsor, amit torolnie kell
 	  */
 
-	command error_t delete();
+	command error_t delete(uint8_t* del);
 
 	/**
 	  * A torles befejezodott
@@ -59,24 +54,9 @@ interface Storage {
 	command error_t getSlice(uint8_t mes_id, uint8_t slice);
 
 	/**
-	  * elkuldi a csomagok szamat
-	  * error SUCCESS sikeresen elkuldte
-	  *       FAIL    ures a buffer
-	  */
+	 * A kommunikacio befejezodott a Base stationnel. Minden adat el lett kuldve.
+	 */
 
-	command error_t sendMeasurementNumber();
+	command error_t commEnd();
 
-	/**
-	  * elkuldve a csomagok szama
-	  */
-
-	event void sendMeasurementNumberDone();
-
-	/**
-	  * ha a kommunikacionak vege, akkor atmasolodik a temp_buffer tartalma a bufferbe
-	  */
-
-	async command void commEnd();
-
-	event void commEndDone();
 }
