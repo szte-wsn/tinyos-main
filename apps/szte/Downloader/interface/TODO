@@ -1,3 +1,0 @@
-Storage - interface
-SenderC, SenderP - provide Storage
-SendDataAppC, SendDataP - for test the interface
