@@ -22,23 +22,45 @@ module TestAlarmP{
 	uses interface DiagMsg;
 }
 implementation{
-	uint8_t buffer[NUMBER_OF_MEASURES][BUFFER_LEN];
-	uint16_t measureTime[NUMBER_OF_MEASURES];
+	typedef nx_struct result_t{
+		nx_uint16_t measureTime;
+		nx_uint32_t period;
+		nx_uint32_t phase;
+		//debug only:
+		nx_uint8_t channel;
+		nx_uint16_t senders[2];
+		nx_int8_t fineTunes[2];
+		nx_uint8_t power[2];
+	} result_t;
+	
+	typedef struct measurement_setting_t{
+		bool isSender:1;
+		uint32_t wait;
+		uint8_t channel;
+		//sender only
+		uint16_t sendTime;
+		int8_t fineTune;
+		uint8_t power;
+	} measurement_setting_t;
+	
+	norace measurement_setting_t settings[NUMBER_OF_MEASURES];
+	
+	norace uint8_t num_of_measures = 0; //how many measures was configured
+	norace int8_t active_measure = -2;
+	norace uint32_t message_received_time;
+	
+	uint8_t buffer[NUMBER_OF_MEASURES][BUFFER_LEN+sizeof(result_t)];
 	uint16_t controller;
 	message_t messageBuf;
-
-	uint32_t sender_wait[NUMBER_OF_MEASURES];
-	uint32_t sender_send[NUMBER_OF_MEASURES];
-	uint32_t receiver_wait[NUMBER_OF_MEASURES];
-	uint8_t channels[NUMBER_OF_MEASURES];
-	uint8_t modes[NUMBER_OF_MEASURES];
-	uint8_t trim[NUMBER_OF_MEASURES];
-	uint8_t num_of_measures = 0; //how many measures was configured
-	int8_t active_measure = -2;
-	bool sender_sends=FALSE, sender_waits=FALSE;
-	bool sender[NUMBER_OF_MEASURES]; //TRUE - if the mote is sender during the Ti. measure
-	uint32_t message_received_time;
-
+	
+	inline static result_t* getResult(uint8_t *buf){
+		return (result_t*)buf;
+	}
+	
+	inline static uint8_t* getBuffer(uint8_t *buf){
+		return (uint8_t*)(buf + sizeof(result_t));
+	}
+	
 	task void MeasureDone();
 	
 	event void Boot.booted(){
@@ -63,29 +85,30 @@ implementation{
 		if( active_measure < 0 )
 			return FALSE;
 		
-		if(sender[active_measure]){
-			call Alarm.startAt(message_received_time,sender_wait[active_measure]);
+		call Alarm.startAt(message_received_time,settings[active_measure].wait);
+		
+		if(settings[active_measure].isSender){
 			call Leds.led1On();
 		}else{
-			call Alarm.startAt(message_received_time,receiver_wait[active_measure]);
 			call Leds.led0On();
 		}
 		return TRUE;
 	}
 	
 	async event void Alarm.fired(){
-		bool isSender = sender[active_measure];
 		call Leds.set(0);
-		if(isSender){ //sender
+		if(settings[active_measure].isSender){ //sender
 			call Leds.led2On();
-			call RadioContinuousWave.sendWave(channels[active_measure], trim[active_measure], RFA1_DEF_RFPOWER, sender_send[active_measure]);
+			call RadioContinuousWave.sendWave(settings[active_measure].channel, settings[active_measure].fineTune, settings[active_measure].power, settings[active_measure].sendTime);
 			call Leds.led2Off();
 		}else{ //receiver
+			uint16_t time = 0;
 			call Leds.led3On();
-			call RadioContinuousWave.sampleRssi(channels[active_measure], buffer[active_measure], BUFFER_LEN, &(measureTime[active_measure]));
+			call RadioContinuousWave.sampleRssi(settings[active_measure].channel, getBuffer(buffer[active_measure]), BUFFER_LEN, &time);
+			getResult(buffer[active_measure])->measureTime = time;
 			call Leds.led3Off();
 		}
-		if (!startNextMeasure() && !isSender){
+		if (!startNextMeasure()){
 			post MeasureDone();
 		}
 	}
@@ -104,34 +127,47 @@ implementation{
 		for(i=0;i<len/sizeof(config_msg_t);i++){
 			if(msg->Tsender_send > 0){ //if > 0 then this measure is configured
 				num_of_measures++; //how many measures are configured 
-								if(call DiagMsg.record()){
-									call DiagMsg.uint8(num_of_measures);
-									call DiagMsg.uint16(msg->Tsender1ID);
-									call DiagMsg.uint16(msg->Tsender2ID);
-									call DiagMsg.uint8(msg->Ttrim1);
-									call DiagMsg.uint8(msg->Ttrim2);
-									call DiagMsg.uint8(msg->Tchannel);
-									call DiagMsg.uint16(msg->Tmode);
-									call DiagMsg.uint32(msg->Tsender_wait);
-									call DiagMsg.uint32(msg->Tsender_send);
-									call DiagMsg.uint32(msg->Treceiver_wait);
-									call DiagMsg.send();
-								}
-				if( TOS_NODE_ID == msg->Tsender1ID || msg->Tsender1ID == 0xffff ) {
-					sender[i] = TRUE;
-					trim[i] = msg->Ttrim1;
-				} else if(TOS_NODE_ID == msg->Tsender2ID){
-					sender[i] = TRUE;
-					trim[i] = msg->Ttrim2;
-				}else{
-					sender[i] = FALSE;
-					trim[i] = 0;
+				settings[i].channel = msg->Tchannel; //wich channel is used
+				if( TOS_NODE_ID == msg->Tsender1ID || TOS_NODE_ID == msg->Tsender2ID || msg->Tsender1ID == 0xffff ) { //sender only stuff
+					settings[i].isSender = TRUE;
+					settings[i].wait = msg->Tsender_wait;
+					settings[i].sendTime = msg->Tsender_send;
+					settings[i].power = RFA1_DEF_RFPOWER; //TODO
+					
+					if( TOS_NODE_ID == msg->Tsender2ID ){
+						settings[i].fineTune = msg->Ttrim2;
+					} else {
+						settings[i].fineTune = msg->Ttrim2;
+					}
+				} else { //receiver only stuff
+					settings[i].isSender = FALSE;
+					settings[i].fineTune = 0;
+					settings[i].wait = msg->Treceiver_wait;
+					
+					//TODO is this needed anything besides debug?
+					getResult(buffer[i])->senders[0] = msg->Tsender1ID;
+					getResult(buffer[i])->senders[1] = msg->Tsender2ID;
+					getResult(buffer[i])->fineTunes[0] = msg->Ttrim1;
+					getResult(buffer[i])->fineTunes[1] = msg->Ttrim2;
+					getResult(buffer[i])->power[0] = RFA1_DEF_RFPOWER;
+					getResult(buffer[i])->power[1] = RFA1_DEF_RFPOWER;
+					getResult(buffer[i])->channel = msg->Tchannel;
 				}
-				channels[i] = msg->Tchannel; //wich channel is used
-				modes[i] = msg->Tmode; // + - 0,5MHz
-				sender_wait[i] = msg->Tsender_wait; // sender waits before i. sending
-				sender_send[i] = msg->Tsender_send; // sender sends Cont. wave 
-				receiver_wait[i] = msg->Treceiver_wait;//receiver waits before i. receive
+				
+				if(call DiagMsg.record()){
+					call DiagMsg.uint8(num_of_measures);
+					call DiagMsg.uint16(msg->Tsender1ID);
+					call DiagMsg.uint16(msg->Tsender2ID);
+					call DiagMsg.uint8(msg->Ttrim1);
+					call DiagMsg.uint8(msg->Ttrim2);
+					call DiagMsg.uint8(msg->Tchannel);
+					call DiagMsg.uint16(msg->Tmode);
+					call DiagMsg.uint32(msg->Tsender_wait);
+					call DiagMsg.uint32(msg->Tsender_send);
+					call DiagMsg.uint32(msg->Treceiver_wait);
+					call DiagMsg.send();
+				}
+				
 				msg++;	// [i. config] ---> [i+1. config]	
 			}else{
 				break;
@@ -142,6 +178,10 @@ implementation{
 		return bufPtr;
 	}
 
+	
+	//TODO If the mote receives a new measure command while sending, it could cause unexpected things. 
+	 //But this is not the final downloader, so until that, it has to be used with caution
+	 
 	uint8_t currentMeas;
 	uint16_t offset;
 	
@@ -161,7 +201,7 @@ implementation{
 	task void sendNextMeasure(){
 		offset = 0;
 		currentMeas++;
-		while(currentMeas < num_of_measures && sender[currentMeas])
+		while(currentMeas < num_of_measures && settings[currentMeas].isSender)
 			currentMeas++;
 		if( currentMeas < num_of_measures )
 			post sendData();
@@ -170,9 +210,7 @@ implementation{
 	}
 	
 	task void sendDone(){
-		rssiDataDone_t *payload = (rssiDataDone_t*)call Packet.getPayload(&messageBuf, sizeof(rssiDataDone_t));
 		call Leds.led3Toggle();
-		payload->time = measureTime[currentMeas];
 		call PacketAcknowledgements.requestAck(&messageBuf);
 		if( call RssiDone.send(controller, &messageBuf, sizeof(rssiDataDone_t)) != SUCCESS )
 			post sendDone();
@@ -182,7 +220,9 @@ implementation{
 		if( error == SUCCESS && call PacketAcknowledgements.wasAcked(bufPtr) )
 			offset+= MSG_BUF_LEN;
 		
-		if(offset < BUFFER_LEN){
+		if(offset < (BUFFER_LEN + sizeof(result_t))){
+			if(offset + MSG_BUF_LEN > (BUFFER_LEN + sizeof(result_t)))
+				offset = (BUFFER_LEN + sizeof(result_t)) - MSG_BUF_LEN;
 			post sendData();
 		}else {
 			post sendDone();
@@ -197,9 +237,18 @@ implementation{
 		}
 	}
 	
+	task void processMeasure(){
+		uint8_t i;
+		for(i=0;i<num_of_measures;i++){
+			getResult(buffer[i])->measureTime = (uint32_t)(getResult(buffer[i])->measureTime)*1e4 / 625;
+		}
+		//TODO
+		post sendNextMeasure();
+	}
+	
 	task void MeasureDone(){
 		currentMeas = -1;
-		post sendNextMeasure();
+		post processMeasure();
 	}
 
 }

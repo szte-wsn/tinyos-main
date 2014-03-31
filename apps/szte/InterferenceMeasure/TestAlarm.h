@@ -30,7 +30,6 @@ typedef nx_struct rssiMessage_t{
 } rssiMessage_t;
 
 typedef nx_struct rssiDataDone_t{
-	nx_uint32_t time;
 } rssiDataDone_t;
 
 #endif
