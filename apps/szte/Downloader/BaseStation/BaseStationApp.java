@@ -6,7 +6,8 @@ import net.tinyos.message.*;
 import net.tinyos.util.PrintStreamMessenger;
 import java.io.*;
 import java.awt.Dimension;
-
+import java.util.Timer;
+import java.util.TimerTask;
 
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -48,7 +49,6 @@ class BaseStationApp extends JFrame implements MessageListener{
 	int measure_id;		//az adott meres azonositoja
 	int missing_slice;	//hianyzo csomagnal beallitja nem nullara az erteket
 	int missing_packet;	//hianyzo csomagnal beallitja nem nullara az erteket
-//	int packet_number;	//mennyi csomagot ad az adott mote osszesen
 	int node_id;		//melyik node kuldi a csomagot. Alapertelmezett 2-es
 	boolean slicesOK;	//minden szelet megerkezett
 	int received_packet_number;	//mennyi uzenet erkezett eddig
@@ -60,8 +60,25 @@ class BaseStationApp extends JFrame implements MessageListener{
 	int[] free_mes;	//azokat a mereseket tartalmazza, amelyeket ki lehet torolni
 	int fm_number;	//segedvaltozo a free_mes-hez
 
+	Timer timer;
+	int msg_mode;	//milyen uzenetet kell ujrakuldeni (GetSliceRemind-nel hasznalom), ha veletlen nem kapta meg az uzenetet a mote
+
 	SimpleDateFormat DATE_FORMAT;
 	Date time;
+
+	class GetSliceRemind extends TimerTask {
+        public void run() {
+            System.out.format("Timer !%n");
+			switch(msg_mode) {
+				case 0: break;
+				case 3: msg_mode = 0;
+						allSliceChecker();
+						break;
+				default: break;
+			}	
+            timer.cancel(); //Terminate the timer thread
+        }
+    }
 
 
 	public BaseStationApp(MoteIF moteIF){
@@ -136,19 +153,21 @@ class BaseStationApp extends JFrame implements MessageListener{
 //METHODS
 	void measureMerger(short[] data, short mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
 		System.out.println("Data, id_mes " + mes_id + ", seq_id " + seq_id + " packet_number: " + mote_packets_num[node_id] + " getSlice: " + getSliceNumber());
+		timer = new Timer();
+		timer.schedule(new GetSliceRemind(), 2000);
+		msg_mode = 3;
 //		rand++;						//szeleteldobas szimulalasahoz a harom kommentezett sort uncommentelni
 //	if(rand%4==0 || ok ==true){
 		measure_id = mes_id;
 		for(int i=0; i<slice_width; i++) {	//mennyi a valos adat az adott szeletben
-			if(data[i] != 0) {
-				measure[i+seq_id*(DATA_LENGTH)] = (int)data[i];
-				out.print(measure[i+seq_id*(DATA_LENGTH)] + " ");
-			}
+			measure[i+seq_id*(DATA_LENGTH)] = (int)data[i];
+			out.print(measure[i+seq_id*(DATA_LENGTH)] + " ");
 		}
 //	}
 		out.println("\n");
 		if((seq_id == getSliceNumber()) || (ok == true && slicesOK == false)) { //utolso szelet az adott meresbol	megerkezett
 			ok = true;			
+			msg_mode = 0;
 			System.out.println("Last Data, mes_id " + mes_id + ", seq_id " + seq_id + " " + ok + " " + slicesOK);
 			slicesOK = allSliceChecker();		//megnezi, hogy minden szelet megerkezett-e a meresbol
 			if(slicesOK == true) {				//minden szelet megvan
@@ -184,7 +203,8 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 	boolean allSliceChecker() {		//megnezi, hogy hianyzik-e valamelyik csomagbol szelet, es ha hianyzik, akkor beallit ket valtozot, hogy melyik csomagbol, melyik szelet
 		out.println("inside AllSliceChecker");
-		for(int j=0; j<getSliceNumber(); j++) {	//egesz szamu a csomagmeret/szeletmeret
+		for(int j=0; j<=getSliceNumber(); j++) {	//egesz szamu a csomagmeret/szeletmeret
+			out.println(measure[j*(DATA_LENGTH)] + " ");
 			if(measure[j*(DATA_LENGTH)] == -1) {	//ha a szelet elso cellaja -1, akkor nincs meg az a szelet
 				missing_slice = j; 				//hanyadik szelet
 				missing_packet = measure_id;	//hanyadik csomag
@@ -217,7 +237,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 			out = new BufferedWriter(fw);
 			for(int j=0; j<MEASUREMENT_LENGTH; j++) {
 				out.write(measure[j]+"\n");
-				measure[j] = 0; 		
+				measure[j] = -1; 				//kiuritsuk a measure tombot
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -262,6 +282,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 		}
 		fm_number = 0;
 		slice_width = 0;
+		timer = new Timer();
 	}
 
 	void moteRegister(int mote_id) {		//regisztralja a mote-kat
@@ -294,6 +315,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 		if (msg instanceof MeasureMsg) {
 			System.out.println("inside MeasureMsg arrived");
 			MeasureMsg mes = (MeasureMsg)msg;
+			timer.cancel();
 			node_id = msg.getSerialPacket().get_header_src();
 			slice_width = mes.get_slice_width();
 			out.println("MeasureMsg: " + node_id + " " + mes.get_mes_id() + " " + mes.get_seq_num() + " " + slice_width);
@@ -318,7 +340,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 		send_mote_num = 0;
 		received_packet_number = 0;
 		for(int i=0; i<MEASUREMENT_LENGTH; i++) {
-			measure[i] = 0;
+			measure[i] = -1;
 		}
 		for(int i=0; i<DELETE_MES_NUMBER; i++) {
 			free_mes[i] = 0;
@@ -365,9 +387,10 @@ class BaseStationApp extends JFrame implements MessageListener{
 					out.print("free_mes: " + free_mes[i] + " ");
 					free_mes[i] = 0;
 				}
+				out.println("");
 				msg.set_free(free_tmp);
-				send_mote_num = send_mote_num + 1;
 				moteIF.send(MoteIF.TOS_BCAST_ADDR,msg); 
+				send_mote_num = send_mote_num + 1;
 				out.println("Inside sendDataReq: " + msg.get_node_id_start() + " " + msg.get_node_id_stop());	
 			}
 		}catch(IOException e)
@@ -377,7 +400,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 	}
 	
 	public void sendSliceReq() {
-		out.println("Inside sendSliceReq");
+		out.println("Inside sendSliceReq: " + missing_packet + " " + missing_slice);
 		GetSliceMsg msg = new GetSliceMsg();
 		try{
 			msg.set_slice((byte)missing_slice);
