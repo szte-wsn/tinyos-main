@@ -30,6 +30,11 @@ for filename in filenames:
     if line.startswith("Sender"):
       [name, nodeid1, nodeid2] = line.split(',')
       title += " (" + nodeid1.strip() + ";" + nodeid2.strip() + ")"
+      
+    if line.startswith("MeasureTime"):
+      [name, measuretime] = line.split(',')
+      length = int(measuretime)
+      
     if line.startswith("--"):
       data = True
     else:
@@ -45,6 +50,7 @@ for filename in filenames:
   f.close()
   if length == 0:
     length = counter
+  print(" "+str(length)+" "+str(counter))
   timeusbase=length/counter
   #print(counter)
   #print(length)
