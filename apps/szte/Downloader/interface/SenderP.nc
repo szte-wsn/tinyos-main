@@ -33,7 +33,7 @@ implementation {
 	task void initalize();
 	task void sendControl();
 
-	task void initalize() {
+	task void initalize() { //FIXME ez ne legyen taskban
 		read = 0;
 		write = 0;
 		keep = 0;			//azert ennyi, hogy az elso store meghivasnal ne dobjon failt, mivel ha 0 lenne, akkor failt dobna vissza egybol a store
@@ -60,8 +60,8 @@ implementation {
 	task void AnnouncementSend() {
 		AnnouncementMsg* btrpkt = (AnnouncementMsg*) (call radSenAnnouncementMsg.getPayload(&pkt, sizeof(AnnouncementMsg)));
 		btrpkt -> mes_number = data_number;		//mennyi merest taroltunk el osszesen
-
-		if(call radSenAnnouncementMsg.send(1, &pkt, sizeof(AnnouncementMsg))==SUCCESS) { // 1 - base station
+		//FIXME write_send kezelése
+		if(call radSenAnnouncementMsg.send(1, &pkt, sizeof(AnnouncementMsg))==SUCCESS) { // 1 - base station //FIXME broadcast
 		}
 	}	
 
@@ -70,20 +70,20 @@ implementation {
 		atomic {
 			uint16_t i;
 			if(full) {	
-				return FAIL;	//tele a buffer
+				return FAIL;	//tele a buffer //FIXME inkább ENOMEM
 			}
 			for(i = 0; i < MEASUREMENT_LENGTH; i++) {
 				buffer[write].data[i] = data[i];	
 			}
 			buffer[write].mes_id = mes_id;
 			if(FALSE == sending) {
-				write_send = write;
+				write_send = write; //FIXME ez nem kell, elég küldésnél foglalkozni vele
 			}		
-			mes_id = mes_id<=255?mes_id+1:0;
-			data_number++;	
+			mes_id = mes_id<=255?mes_id+1:0; //FIXME <= helyett <, de egyébként is minek?
+			data_number++;	//FIXME ez kicsit felesleges: data_number == (write - keep)%MAX_MEASUREMENT_NUMBER Legalábbis azt hiszem
 			write = write<MAX_MEASUREMENT_NUMBER-1?write+1:0;
 			if(keep == write) {
-				full = TRUE;
+				full = TRUE; //FIXME szintén kicsit felesleges. full == (keep == write)
 			}
 		}
 		post AnnouncementSend();		//kikuldjuk, hogy mennyi adatunk van
@@ -100,7 +100,7 @@ implementation {
 		btrpkt -> slice_width = (a_seq_num+1)*((DATA_LENGTH))>MEASUREMENT_LENGTH?MEASUREMENT_LENGTH-(a_seq_num*(DATA_LENGTH)):(DATA_LENGTH);
 		for(i=0; i<btrpkt -> slice_width; i++) 
 			btrpkt -> data[i] = buffer[read].data[i+(a_seq_num*(DATA_LENGTH))];	
-		if(call radSenMeasureMsg.send(1, &pkt, sizeof(MeasureMsg))==SUCCESS) 
+		if(call radSenMeasureMsg.send(1, &pkt, sizeof(MeasureMsg))==SUCCESS) //FIXME nyugodtan visszaadhatod az error_t-t is...
 			return TRUE;	
 		else
 			return FALSE;
@@ -108,9 +108,9 @@ implementation {
 
 //SENDCONTROL
 	task void sendControl() {
-		if(read != write || TRUE == full) {	//ha full = TRUE, akkor megeshet, hogy read = write es nem menne tovabb
+		if(read != write || TRUE == full) {	//ha full = TRUE, akkor megeshet, hogy read = write es nem menne tovabb //FIXME miért?
 			if((uint16_t)(seq_num+1)*(DATA_LENGTH) <= MEASUREMENT_LENGTH + (DATA_LENGTH)) {	//egy teljes meres kikuldese				
-				send(buffer[read].mes_id, seq_num);				
+				send(buffer[read].mes_id, seq_num);				//FIXME ha hibával tér vissza, leáll az egész
 			} 
 		}
 	}
@@ -121,6 +121,7 @@ implementation {
 		read = read<MAX_MEASUREMENT_NUMBER-1?read+1:0;
 		seq_num = 0;
 		keep_tmp = keep;
+    //FIXME Ha nem kell a data_number és a full, akkor itt elég a keep = read;
 		while(keep!=read) {		
 			data_number--;
 			keep = keep<MAX_MEASUREMENT_NUMBER-1?keep+1:0;
@@ -128,7 +129,7 @@ implementation {
 		if(TRUE == full && keep_tmp != keep) {		//keep valtozott, azt jelenti, hogy felszabadult valamennyi hely
 			full = FALSE;
 		}
-		post AnnouncementSend();
+		post AnnouncementSend(); //FIXME csak ha van adat
 		if(TRUE == sending) {
 			post sendControl();
 		}
@@ -148,7 +149,7 @@ implementation {
 		if(len == sizeof(CommandMsg)) {		
 			CommandMsg* btrpkt = (CommandMsg*) (call radSenMeasureMsg.getPayload(msg, sizeof(CommandMsg)));
 			if(btrpkt -> node_id_start == TOS_NODE_ID) {	//elkezd adni
-				atomic { sending = TRUE; } 	
+				atomic { sending = TRUE; } 
 				post sendControl();	
 			}	
 			if(btrpkt -> node_id_stop == TOS_NODE_ID) {		//vege az adasnak
@@ -164,7 +165,7 @@ implementation {
 		if(len == sizeof(GetSliceMsg)) {
 			GetSliceMsg* btrpkt = (GetSliceMsg*) (call radSenMeasureMsg.getPayload(msg, sizeof(GetSliceMsg)));
 			if(TOS_NODE_ID == btrpkt -> node_id) {		//adatot kerunk le
-				send(btrpkt -> mes_id, btrpkt -> slice); 
+				send(btrpkt -> mes_id, btrpkt -> slice); //FIXME mindent elküld a slice után, a sendDone-ban le kellene kezelni, hogy slice módban van.
 			}
 		}
 		return msg;
