@@ -1,7 +1,7 @@
 #include "TestAlarm.h"
 
 #define NUMBER_OF_MEASURES 3
-#define BUFFER_LEN 2000
+#define BUFFER_LEN 1000
 
 module TestAlarmP{
 	uses interface Boot;
@@ -18,6 +18,8 @@ module TestAlarmP{
 	uses interface AMPacket;
 	uses interface Packet;
 	uses interface PacketAcknowledgements;
+	
+	uses interface MeasureWave;
 	
 	uses interface DiagMsg;
 }
@@ -240,9 +242,15 @@ implementation{
 	task void processMeasure(){
 		uint8_t i;
 		for(i=0;i<num_of_measures;i++){
-			getResult(buffer[i])->measureTime = (uint32_t)(getResult(buffer[i])->measureTime)*1e4 / 625;
+      uint8_t zeropoint;
+			getResult(buffer[i])->period = call MeasureWave.getPeriod(getBuffer(buffer[i]), BUFFER_LEN, &zeropoint);
+			getResult(buffer[i])->phase = call MeasureWave.getPhase(getBuffer(buffer[i]), BUFFER_LEN, getResult(buffer[i])->period, zeropoint);
+			
+			//convert everything to us
+			getResult(buffer[i])->measureTime = call RadioContinuousWave.convertTime(getResult(buffer[i])->measureTime);
+			getResult(buffer[i])->period = ((uint32_t)getResult(buffer[i])->period * getResult(buffer[i])->measureTime)/BUFFER_LEN;
+			getResult(buffer[i])->phase = ((uint32_t)getResult(buffer[i])->phase * getResult(buffer[i])->measureTime)/BUFFER_LEN;
 		}
-		//TODO
 		post sendNextMeasure();
 	}
 	

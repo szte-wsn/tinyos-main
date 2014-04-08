@@ -1222,5 +1222,9 @@ implementation
     } else
       return EBUSY;
   }
+  
+  async command uint32_t RadioContinuousWave.convertTime(uint32_t fromTime){
+    return (fromTime<<4); //TODO this depends on the radio timer
+  }
 #endif
 }

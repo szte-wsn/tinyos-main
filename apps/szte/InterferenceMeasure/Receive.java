@@ -59,11 +59,13 @@ public class Receive implements MessageListener {
 
   private MoteIF moteIF;
   private ArrayList<RawMeasurement> measurements= new ArrayList<RawMeasurement>();
+  private String pathprefix;
   
   private class Measurement{
-	private List<Short> data;
-	  
-	private Date timeStamp;
+    private List<Short> data;
+    private String pathprefix;
+      
+    private Date timeStamp;
     private int nodeid;
     
     private int measureTime;
@@ -77,59 +79,60 @@ public class Receive implements MessageListener {
     private int channel;
     
     private int toInt(List<Short> list){
-    	int ret = (list.get(0)<<8) | list.get(1);
-		return ret;
+      int ret = (list.get(0)<<8) | list.get(1);
+    return ret;
     }
 
     private long toLong(List<Short> from){
-    	long ret = (from.get(0)<<24) | (from.get(1)<<16) | (from.get(2)<<8) | from.get(3);
-		return ret;
+      long ret = (from.get(0)<<24) | (from.get(1)<<16) | (from.get(2)<<8) | from.get(3);
+    return ret;
     }
     
     private byte toSignedByte(short from){
-    	byte ret;
-    	if( from < 128 ){
-    		ret = (byte) from;
-    	} else {
-    		ret = (byte)(from - 256);
-    	}
-    	return ret;
+      byte ret;
+      if( from < 128 ){
+        ret = (byte) from;
+      } else {
+        ret = (byte)(from - 256);
+      }
+      return ret;
     }
     
-    public Measurement(Date timeStamp, int nodeid, ArrayList<Short> rawData){
-    	this.timeStamp = timeStamp;
-    	this.nodeid = nodeid;
-    	/*
-    	 * Header:
-    	 * 	typedef nx_struct result_t{
-				nx_uint16_t measureTime;
-				nx_uint32_t period;
-				nx_uint32_t phase;
-				//debug only:
-				nx_uint8_t channel;
-				nx_uint16_t senders[2];
-				nx_int8_t fineTunes[2];
-				nx_uint8_t power[2];
-			} result_t;
-    	 */
-    	 //19B
-    	int offset = 0;
-    	measureTime = toInt(rawData.subList(offset, offset + 2)); offset+=2;
-    	period = toLong(rawData.subList(offset, offset + 4)); offset+=4;
-    	phase = toLong(rawData.subList(offset, offset + 4)); offset+=4;
-    	channel = rawData.get(offset); offset+=1;
-    	senders[0] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
-    	senders[1] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
-    	fineTune[0] = toSignedByte(rawData.get(offset)); offset+=1;
-    	fineTune[1] = toSignedByte(rawData.get(offset)); offset+=1;
-    	power[0] = rawData.get(offset); offset+=1;
-    	power[1] = rawData.get(offset); offset+=1;
-    	data = rawData.subList(offset, rawData.size());
+    public Measurement(Date timeStamp, int nodeid, ArrayList<Short> rawData, String pathprefix){
+      this.timeStamp = timeStamp;
+      this.nodeid = nodeid;
+      this.pathprefix = pathprefix;
+      /*
+      * Header:
+      * 	typedef nx_struct result_t{
+        nx_uint16_t measureTime;
+        nx_uint32_t period;
+        nx_uint32_t phase;
+        //debug only:
+        nx_uint8_t channel;
+        nx_uint16_t senders[2];
+        nx_int8_t fineTunes[2];
+        nx_uint8_t power[2];
+      } result_t;
+      */
+      //19B
+      int offset = 0;
+      measureTime = toInt(rawData.subList(offset, offset + 2)); offset+=2;
+      period = toLong(rawData.subList(offset, offset + 4)); offset+=4;
+      phase = toLong(rawData.subList(offset, offset + 4)); offset+=4;
+      channel = rawData.get(offset); offset+=1;
+      senders[0] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
+      senders[1] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
+      fineTune[0] = toSignedByte(rawData.get(offset)); offset+=1;
+      fineTune[1] = toSignedByte(rawData.get(offset)); offset+=1;
+      power[0] = rawData.get(offset); offset+=1;
+      power[1] = rawData.get(offset); offset+=1;
+      data = rawData.subList(offset, rawData.size());
     }
 
-	public void print(){
+  public void print(){
         String now = new SimpleDateFormat("dd. HH:mm:ss.SSS").format(timeStamp);
-        Path path = Paths.get(now+"_"+Integer.toString(nodeid)+".csv");
+        Path path = Paths.get(pathprefix + now+"_"+Integer.toString(nodeid)+".csv");
         try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)){
           writer.write("Timestamp, "+ new SimpleDateFormat("YYYY.MM.dd. HH:mm:ss.SSS").format(timeStamp)+"\n");
           writer.write("NodeId, "+ Integer.toString(nodeid)+"\n");
@@ -142,7 +145,7 @@ public class Receive implements MessageListener {
           writer.write("Power, " + Integer.toString(power[0]) + ", " + Integer.toString(power[1]) + "\n");
           writer.write("--\n");
           for(Short meas:data){
-        	  writer.write(Short.toString(meas) + "\n");
+            writer.write(Short.toString(meas) + "\n");
           }
           writer.close();
         } catch (IOException e) {
@@ -155,7 +158,7 @@ public class Receive implements MessageListener {
   
   private class RawMeasurement{
     public int nodeid;
-	private ArrayList<Short> data;
+  private ArrayList<Short> data;
     
     public RawMeasurement(int nodeid){
         this.nodeid = nodeid;
@@ -173,19 +176,15 @@ public class Receive implements MessageListener {
     
     public int size(){
       return data.size();
-    }
-    
-    public Measurement toMeasurement(){
-		return null;
-    }
-    
+    }   
     
   }
   
-  public Receive(MoteIF moteIF) {
+  public Receive(MoteIF moteIF, String pathprefix) {
     this.moteIF = moteIF;
     this.moteIF.registerListener(new RssiMsg(), this);
     this.moteIF.registerListener(new RssiDoneMsg(), this);
+    this.pathprefix = pathprefix;
   }
 
 
@@ -212,7 +211,7 @@ public class Receive implements MessageListener {
         for(int i=0;i<measurements.size();i++){
           RssiDoneMsg msg = (RssiDoneMsg)message;
           if(measurements.get(i).nodeid == from){
-            Measurement meas = new Measurement(new Date(), measurements.get(i).nodeid, measurements.get(i).data);
+            Measurement meas = new Measurement(new Date(), measurements.get(i).nodeid, measurements.get(i).data, pathprefix);
             meas.print();
             System.out.println("Data saved from NodID#"+Integer.toString(from));
             measurements.remove(i);
@@ -227,7 +226,7 @@ public class Receive implements MessageListener {
   
       PhoenixSource phoenix;
       phoenix = BuildSource.makePhoenix(PrintStreamMessenger.err);
-      new Receive( new MoteIF(phoenix) );	    
+      new Receive( new MoteIF(phoenix), args[0] );	    
   }
 
 

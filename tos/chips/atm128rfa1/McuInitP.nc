@@ -56,18 +56,26 @@ implementation
 			// enable changing the prescaler
 			CLKPR = 0x80;
 
-#if PLATFORM_MHZ == 16
+#ifndef EXTERNAL_OSCILLATOR_MHZ
+	#if PLATFORM_MHZ == 16
 			CLKPR = 0x0F;	
-#elif PLATFORM_MHZ == 8
+	#elif PLATFORM_MHZ == 8
 			CLKPR = 0x00;
-#elif PLATFORM_MHZ == 4
+	#elif PLATFORM_MHZ == 4
 			CLKPR = 0x01;
-#elif PLATFORM_MHZ == 2
+	#elif PLATFORM_MHZ == 2
 			CLKPR = 0x02;
-#elif PLATFORM_MHZ == 1
+	#elif PLATFORM_MHZ == 1
 			CLKPR = 0x03;
+	#else
+			#error "Unsupported MHZ"
+	#endif
 #else
-	#error "Unsupported MHZ"
+	#if EXTERNAL_OSCILLATOR_MHZ/PLATFORM_MHZ<8
+			CLKPR = EXTERNAL_OSCILLATOR_MHZ/PLATFORM_MHZ
+	#else
+			#error "Unsupported MHZ"
+	#endif
 #endif
 		}
 

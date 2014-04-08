@@ -22,14 +22,18 @@ implementation{
 	App.AMPacket -> AMSenderC;
 	App.PacketAcknowledgements -> AMSenderC;
 	
-	components  RFA1ActiveMessageC as RfxlinkAMC;
+	components  RFA1ActiveMessageC as RfxlinkAMC, MeasureWaveC;
 	App.RadioContinuousWave -> RfxlinkAMC;
+	App.MeasureWave -> MeasureWaveC;
 	
+  #ifdef DELUGE
 	components DelugeC;
 	DelugeC.Leds -> LedsC;
+  #endif
 	
 	components DiagMsgC;
 	App.DiagMsg -> DiagMsgC;
+  MeasureWaveC.DiagMsg -> DiagMsgC;
 	
 }
 
