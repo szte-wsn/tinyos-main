@@ -1,14 +1,27 @@
 import static java.lang.System.out;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import net.tinyos.packet.*;
-import net.tinyos.message.*;
-import net.tinyos.util.PrintStreamMessenger;
-import java.io.*;
-import java.awt.Dimension;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.text.SimpleDateFormat;
 
+import net.tinyos.message.*;
+import net.tinyos.packet.*;
+import net.tinyos.util.*;
+
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JFrame;
@@ -27,7 +40,6 @@ class BaseStationApp extends JFrame implements MessageListener{
 	public static final int DATA_LENGTH = TOSH_DATA_LENGTH-3; 	//ket bajtot elfoglal mas
 	public static final int MEASUREMENT_LENGTH = 1000;				//meres hossza 
 	public static final int MAX_MEASUREMENT_NUMBER = 10;
-	public static final int MAX_MOTE_NUMBER = 50;
 	public static final int DELETE_MES_NUMBER = 2;
 	
 	private JPanel contentPane;
@@ -41,11 +53,13 @@ class BaseStationApp extends JFrame implements MessageListener{
 	
 	private MoteIF moteIF;
 
-	int[] mote_array;	//a mote id-kat taroljuk
-	int[] mote_packets_num; 	//melyik mote mennyi adatot tarol 
+	ArrayList<Measurement> measurementList;		//fileWrite-nel hasznalnam, de nem sikerult array-bol arraylistet kesziteni
+
+	ArrayList<Integer> moteList;		//a mote id-kat taroljuk
+	HashMap<Integer,Integer> mote_packetMap;	//melyik mote mennyi adatot tarol
 	int mote_num;		//mennyi mote van bejelentkezve
 	int send_mote_num;	//adatkeresnel hasznaljuk (SendDataReq())
-	int[] measure;		//adatokat taroljuk
+	short[] measure;		//adatokat taroljuk
 	int measure_id;		//az adott meres azonositoja
 	int missing_slice;	//hianyzo csomagnal beallitja nem nullara az erteket
 	int missing_packet;	//hianyzo csomagnal beallitja nem nullara az erteket
@@ -53,6 +67,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 	boolean slicesOK;	//minden szelet megerkezett
 	int received_packet_number;	//mennyi uzenet erkezett eddig
 	int slice_width;
+	int tmp_packet_number; 		//akivel epp beszelgetunk, annak megjegyzi a mote szamat, azert van ra szukseg, hogy ha sok uj adata keletkezik mikozbe beszelgetunk vele, akkor ne kuldje el az osszeset, hanem csak annyit, amennyit a beszelgetes megkezdesekor kozolt velunk, de ne is vesszen el veletlenul az, hogy mennyi adat van jelenleg nala
 
 	int rand;		//szeleteldobashoz szimulalasahoz
 	boolean ok;		//szeleteldobashoz szimulalasahoz
@@ -152,7 +167,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 //METHODS
 	void measureMerger(short[] data, short mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
-		System.out.println("Data, id_mes " + mes_id + ", seq_id " + seq_id + " packet_number: " + mote_packets_num[node_id] + " getSlice: " + getSliceNumber());
+		System.out.println("Data, id_mes " + mes_id + ", seq_id " + seq_id + " packet_number: " + mote_packetMap.get(node_id) + " getSlice: " + getSliceNumber());
 		timer = new Timer();
 		timer.schedule(new GetSliceRemind(), 2000);
 		msg_mode = 3;
@@ -160,7 +175,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 //	if(rand%4==0 || ok ==true){
 		measure_id = mes_id;
 		for(int i=0; i<slice_width; i++) {	//mennyi a valos adat az adott szeletben
-			measure[i+seq_id*(DATA_LENGTH)] = (int)data[i];
+			measure[i+seq_id*(DATA_LENGTH)] = data[i];
 			out.print(measure[i+seq_id*(DATA_LENGTH)] + " ");
 		}
 //	}
@@ -182,8 +197,9 @@ class BaseStationApp extends JFrame implements MessageListener{
 				if(stop == false) {		//ha meg nem ertunk a mote sor vegere
 					fileWriter();		//adatokat kiirjuk fajlba
 					received_packet_number++;		//megkapott uzenetek szamat noveljuk
-					out.println("Received packets: " + received_packet_number + " packet_number: " + mote_packets_num[node_id]);
-					if(received_packet_number >= mote_packets_num[node_id])	{	//utolso meres is megerkezett
+					out.println("Received packets: " + received_packet_number + " packet_number: " + mote_packetMap.get(node_id));
+					if(received_packet_number >= mote_packetMap.get(node_id))	{	//utolso meres is megerkezett
+						mote_packetMap.put(node_id,tmp_packet_number);				
 						received_packet_number = 0;					
 						sendDataReq();		//kuldheti a masik mote, aki a halozatban van 
 					}else		//nem erkeztunk az utolso mereshez, az adott mote-nal
@@ -218,7 +234,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 	void fileWriter() {			//fajlba irja a csomagokat
 		out.println("inside fileWriter");
-		out.println("Packet_number: " + mote_packets_num[node_id]);
+		out.println("Packet_number: " + mote_packetMap.get(node_id));
 		FileWriter fw = null;
 		BufferedWriter out = null;
 		try {
@@ -233,7 +249,16 @@ class BaseStationApp extends JFrame implements MessageListener{
 			}
 			DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy:HH:mm:SS");
 			String date = DATE_FORMAT.format(time);
-			fw = new FileWriter("measures/" + node_id +".node_id/"+date_dir+"/"+measure_id+". packet_"+date+".txt");
+			String pathprefix = "measures/" + node_id +".node_id/"+date_dir+"/"+measure_id+". packet_"+date;
+			fw = new FileWriter(pathprefix + ".txt");
+
+//itt hibat dob, mert nem tudja atkonvertalni a tombot arraylist-re
+//			ArrayList<Short> a = new ArrayList<Short>();
+//			a.addAll(measure);
+//			Measurement meas = new Measurement(new Date(), node_id, a, pathprefix);
+//            meas.print();
+//            System.out.println("Data saved from NodID#"+node_id);
+
 			out = new BufferedWriter(fw);
 			for(int j=0; j<MEASUREMENT_LENGTH; j++) {
 				out.write(measure[j]+"\n");
@@ -255,26 +280,22 @@ class BaseStationApp extends JFrame implements MessageListener{
 		out.println("inside initalize");
 		missing_packet = 0;
 		missing_slice = 0;
-		mote_packets_num = new int[100];		
-		for(int i=0; i<100; i++) {
-			mote_packets_num[node_id] = 0;
-		}
 		node_id = 0;		
-		measure = new int[MEASUREMENT_LENGTH];
+		measure = new short[MEASUREMENT_LENGTH];
 		free_mes = new int[DELETE_MES_NUMBER];
 		for(int j=0; j<MEASUREMENT_LENGTH; j++) {
 			measure[j] = -1;
 		}
-		mote_array = new int[MAX_MOTE_NUMBER];
-		for(int i=0; i<MAX_MOTE_NUMBER; i++) {
-			mote_array[i] = 0;
-		}
+		moteList = new ArrayList<Integer>();
+		mote_packetMap = new HashMap<Integer,Integer>();
+		measurementList = new ArrayList<Measurement>();
 		mote_num = 0;
 		send_mote_num = 0;
 		rand = 0;
 		ok = false;
 		stop = true;
 		received_packet_number = 0;
+		tmp_packet_number = 0;
 		slicesOK = true;
 		measure_id = 0;
 		for(int i=0; i<DELETE_MES_NUMBER; i++) {
@@ -285,31 +306,19 @@ class BaseStationApp extends JFrame implements MessageListener{
 		timer = new Timer();
 	}
 
+
 	void moteRegister(int mote_id) {		//regisztralja a mote-kat
 		out.println("inside moteRegister");
-		boolean isThere = false;
-		for(int i=0; i<mote_num; i++) {
-				if(mote_array[i] == mote_id) {
-					isThere = true;
-					break;
-				}
-		}
-		if(isThere == false) {		//ha nincs meg beregisztralva
-			if(mote_num<MAX_MOTE_NUMBER) {
-				mote_array[mote_num] = mote_id;
-				mote_num++;
-				textArea_motes.setText(textArea_motes.getText() + mote_id + "  ");
-				textField_moteNumber.setText(mote_num+"");
-				if(mote_num % 6 == 0) {
-					textArea_motes.setText(textArea_motes.getText() + "\n");
-				}
-			}
+		textArea_motes.setText(textArea_motes.getText() + mote_id + "  ");
+		textField_moteNumber.setText(mote_num+"");
+		if(mote_num % 6 == 0) {
+			textArea_motes.setText(textArea_motes.getText() + "\n");
+//egesz idaig torolheto lenne, ha nem kell gui
 		}
 	}
 
 
-	//MESSAGE RECEIVE
-	
+//MESSAGE RECEIVE	
 	public void messageReceived(int dest_addr,Message msg){
 		System.out.println("inside Message arrived");
 		if (msg instanceof MeasureMsg) {
@@ -325,27 +334,40 @@ class BaseStationApp extends JFrame implements MessageListener{
 			System.out.println("inside AnnouncementMsg arrived");
 			AnnouncementMsg mes = (AnnouncementMsg)msg;
 			out.println("AnnouncementMsg: " + msg.getSerialPacket().get_header_src() + " "+mes.get_mes_number() + " node_id " + msg.getSerialPacket().get_header_src() +"\n");		
-			if(msg.getSerialPacket().get_header_src() != node_id) {
-				mote_packets_num[msg.getSerialPacket().get_header_src()] = mes.get_mes_number();
-			}
-			if(msg.getSerialPacket().get_header_src() != 0)		//valamiert van olyan, hogy 0-as mote_id kuld uzenetet
-				moteRegister(msg.getSerialPacket().get_header_src());
+			if(msg.getSerialPacket().get_header_src() != node_id) //nem egyezik a jelenleg kommunikacioban levo mote_id-val
+				mote_packetMap.put(msg.getSerialPacket().get_header_src(),(int)mes.get_mes_number());
+			else
+				tmp_packet_number = (int)mes.get_mes_number();		
+			if(msg.getSerialPacket().get_header_src() != 0 && !moteList.contains(msg.getSerialPacket().get_header_src())) {
+				moteList.add(msg.getSerialPacket().get_header_src());
+				mote_num++;
+				moteRegister(msg.getSerialPacket().get_header_src());		//gui miatt kell csak
+			}	
 		}
 	}
 	
-	//MESSAGE SEND
-
+//MESSAGE SEND
 	public void sendReq() {
 		stop = false;
-		send_mote_num = 0;
-		received_packet_number = 0;
-		for(int i=0; i<MEASUREMENT_LENGTH; i++) {
-			measure[i] = -1;
-		}
-		for(int i=0; i<DELETE_MES_NUMBER; i++) {
-			free_mes[i] = 0;
-		}
-		sendDataReq();
+		send_mote_num = -1;
+//bejarjuk hogy kinek van adata, onnan kezdjuk a lekerest
+		Iterator<Integer> keySetIterator = mote_packetMap.keySet().iterator();
+		while(keySetIterator.hasNext()){		//megkeressuk melyik az elso mote a sorban, akinek van adata
+			Integer key = keySetIterator.next();
+			if(mote_packetMap.get(key) != 0) {	//ha van adata
+				send_mote_num = moteList.indexOf(key);			//melyik indexnel talalhato az adott mote_id
+				received_packet_number = 0;
+				for(int i=0; i<MEASUREMENT_LENGTH; i++) {
+					measure[i] = -1;
+				}
+				for(int i=0; i<DELETE_MES_NUMBER; i++) {
+					free_mes[i] = 0;
+				}
+				break;
+			}
+		}	
+		if(send_mote_num != -1)		//van mote akitol kerhetunk adatot
+			sendDataReq();
 	}
 
 	public void sendDataReq() {
@@ -357,25 +379,26 @@ class BaseStationApp extends JFrame implements MessageListener{
 				short[] free_tmp = new short[DELETE_MES_NUMBER];
 				if(send_mote_num < mote_num) {		//addig amig van mote a sorban
 					out.println("send_mote_num " + send_mote_num + " mote_num " + mote_num);
-					msg.set_node_id_start(mote_array[send_mote_num]);
+					msg.set_node_id_start(moteList.get(send_mote_num));
 					if(send_mote_num == 0) {			//elso mote-nal a sorban
 						msg.set_node_id_stop(0);		//0 node id nem lehet
 					} else {
 						out.println("");
 						missing_packet = 0;
 						missing_slice = 0;
-						msg.set_node_id_stop(mote_array[send_mote_num-1]);
-						textArea_data.setText(textArea_data.getText() + "\n ma: " +mote_array[send_mote_num-1]);
+						msg.set_node_id_stop(moteList.get(send_mote_num-1));
+						textArea_data.setText(textArea_data.getText() + "\n ma: " +moteList.get(send_mote_num-1));
 					}
 				} else {			//utolso mote-hoz ertunk a sorban, igy befejezzuk az adatlekerest
 					out.println("Stop: " + stop + " send_mote_num " + send_mote_num + " mote_num " + mote_num);
 					stop = true; 	//az adatlekeresek befejezve
 					out.println("stop true");
 					msg.set_node_id_start(0);
-					msg.set_node_id_stop(mote_array[send_mote_num-1]);
-					textArea_data.setText(textArea_data.getText() + "\n mak: " +mote_array[send_mote_num-1]);
+					msg.set_node_id_stop(moteList.get(send_mote_num-1));
+					textArea_data.setText(textArea_data.getText() + "\n mak: " +moteList.get(send_mote_num-1));
 				}
 //uj motenak kuldunk uzenetet, es a reginek elkuldjuk a maradek free mereseket, majd nullazuk az uj mote varasara				
+				node_id = 0;				
 				for(int i=0; i<DELETE_MES_NUMBER; i++) {
 					free_tmp[i] = (short)free_mes[i];
 				}
@@ -452,5 +475,101 @@ class BaseStationApp extends JFrame implements MessageListener{
 		BaseStationApp app= new BaseStationApp(mif); 
 		app.setVisible(true);
 	}
+
+//
+	private class Measurement{
+		private List<Short> data;
+		private String pathprefix;
+		  
+		private Date timeStamp;
+		private int nodeid;
+		
+		private int measureTime;
+		private long period;
+		private long phase;
+		
+		//dev stuff
+		private int[] senders = new int[2];
+		private int[] fineTune = new int[2];
+		private int[] power = new int[2];
+		private int channel;
+		
+		private int toInt(List<Short> list){
+		  int ret = (list.get(0)<<8) | list.get(1);
+		return ret;
+		}
+
+		private long toLong(List<Short> from){
+		  long ret = (from.get(0)<<24) | (from.get(1)<<16) | (from.get(2)<<8) | from.get(3);
+		return ret;
+		}
+		
+		private byte toSignedByte(short from){
+		  byte ret;
+		  if( from < 128 ){
+		    ret = (byte) from;
+		  } else {
+		    ret = (byte)(from - 256);
+		  }
+		  return ret;
+		}
+		
+		public Measurement(Date timeStamp, int nodeid, ArrayList<Short> rawData, String pathprefix){
+		  this.timeStamp = timeStamp;
+		  this.nodeid = nodeid;
+		  this.pathprefix = pathprefix;
+		  /*
+		  * Header:
+		  *   typedef nx_struct result_t{
+		    nx_uint16_t measureTime;
+		    nx_uint32_t period;
+		    nx_uint32_t phase;
+		    //debug only:
+		    nx_uint8_t channel;
+		    nx_uint16_t senders[2];
+		    nx_int8_t fineTunes[2];
+		    nx_uint8_t power[2];
+		  } result_t;
+		  */
+		  //19B
+		  int offset = 0;
+		  measureTime = toInt(rawData.subList(offset, offset + 2)); offset+=2;
+		  period = toLong(rawData.subList(offset, offset + 4)); offset+=4;
+		  phase = toLong(rawData.subList(offset, offset + 4)); offset+=4;
+		  channel = rawData.get(offset); offset+=1;
+		  senders[0] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
+		  senders[1] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
+		  fineTune[0] = toSignedByte(rawData.get(offset)); offset+=1;
+		  fineTune[1] = toSignedByte(rawData.get(offset)); offset+=1;
+		  power[0] = rawData.get(offset); offset+=1;
+		  power[1] = rawData.get(offset); offset+=1;
+		  data = rawData.subList(offset, rawData.size());
+		}
+
+		public void print(){
+		  String now = new SimpleDateFormat("dd. HH:mm:ss.SSS").format(timeStamp);
+		  Path path = Paths.get(pathprefix + now+"_"+Integer.toString(nodeid)+".csv");
+		  try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)){
+		    writer.write("Timestamp, "+ new SimpleDateFormat("YYYY.MM.dd. HH:mm:ss.SSS").format(timeStamp)+"\n");
+		    writer.write("NodeId, "+ Integer.toString(nodeid)+"\n");
+		    writer.write("MeasureTime, "+ Integer.toString(measureTime)+"\n");
+		    writer.write("Period, "+ Long.toString(period)+"\n");
+		    writer.write("Phase, "+ Long.toString(phase)+"\n");
+		    writer.write("Channel, " + Integer.toString(channel) + "\n");
+		    writer.write("Sender, " + Integer.toString(senders[0]) + ", " + Integer.toString(senders[1]) + "\n");
+		    writer.write("Finetune, " + Integer.toString(fineTune[0]) + ", " + Integer.toString(fineTune[1]) + "\n");
+		    writer.write("Power, " + Integer.toString(power[0]) + ", " + Integer.toString(power[1]) + "\n");
+		    writer.write("--\n");
+		    for(Short meas:data){
+		      writer.write(Short.toString(meas) + "\n");
+		    }
+		    writer.close();
+		  } catch (IOException e) {
+		    // TODO Auto-generated catch block
+		    e.printStackTrace();
+		  }
+		}
+	}
+
 }
 
