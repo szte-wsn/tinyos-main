@@ -182,8 +182,8 @@ implementation{
 
 	
 	//TODO If the mote receives a new measure command while sending, it could cause unexpected things. 
-	 //But this is not the final downloader, so until that, it has to be used with caution
-	 
+	//But this is not the final downloader, so until that, it has to be used with caution
+	
 	uint8_t currentMeas;
 	uint16_t offset;
 	
@@ -242,14 +242,41 @@ implementation{
 	task void processMeasure(){
 		uint8_t i;
 		for(i=0;i<num_of_measures;i++){
-      uint8_t zeropoint;
-			getResult(buffer[i])->period = call MeasureWave.getPeriod(getBuffer(buffer[i]), BUFFER_LEN, &zeropoint);
-			getResult(buffer[i])->phase = call MeasureWave.getPhase(getBuffer(buffer[i]), BUFFER_LEN, getResult(buffer[i])->period, zeropoint);
-			
-			//convert everything to us
-			getResult(buffer[i])->measureTime = call RadioContinuousWave.convertTime(getResult(buffer[i])->measureTime);
-			getResult(buffer[i])->period = ((uint32_t)getResult(buffer[i])->period * getResult(buffer[i])->measureTime)/BUFFER_LEN;
-			getResult(buffer[i])->phase = ((uint32_t)getResult(buffer[i])->phase * getResult(buffer[i])->measureTime)/BUFFER_LEN;
+			if( !settings[i].isSender ){
+				uint8_t temp[BUFFER_LEN];
+				uint8_t zeroPoint;
+				uint16_t startPoint;
+				#define AMPLITUDE_THRESHOLD 2
+				#define TIME_THRESHOLD 10
+				#define START_OFFSET 16
+				startPoint = call MeasureWave.getStart(getBuffer(buffer[i]), BUFFER_LEN, AMPLITUDE_THRESHOLD, TIME_THRESHOLD);
+				memcpy(temp, getBuffer(buffer[i]), BUFFER_LEN);
+				call MeasureWave.filter(temp, BUFFER_LEN, 3, 2);
+				getResult(buffer[i])->period = call MeasureWave.getPeriod(temp+startPoint+START_OFFSET, BUFFER_LEN-startPoint-START_OFFSET, &zeroPoint);
+				getResult(buffer[i])->phase = call MeasureWave.getPhase(temp+startPoint, BUFFER_LEN-startPoint, START_OFFSET, getResult(buffer[i])->period, zeroPoint);
+				
+				if( call DiagMsg.record() ){
+					call DiagMsg.str("D T");
+					call DiagMsg.uint16(startPoint);
+					call DiagMsg.uint8(zeroPoint);
+					call DiagMsg.uint16(getResult(buffer[i])->period);
+					call DiagMsg.uint16(getResult(buffer[i])->phase);
+					call DiagMsg.send();
+				}
+				
+				//convert everything to us
+				getResult(buffer[i])->measureTime = call RadioContinuousWave.convertTime(getResult(buffer[i])->measureTime);
+				getResult(buffer[i])->period = ((uint32_t)getResult(buffer[i])->period * getResult(buffer[i])->measureTime)/BUFFER_LEN;
+				getResult(buffer[i])->phase = ((uint32_t)getResult(buffer[i])->phase * getResult(buffer[i])->measureTime)/BUFFER_LEN;
+				if( call DiagMsg.record() ){
+					call DiagMsg.str("D us");
+					call DiagMsg.uint16(startPoint);
+					call DiagMsg.uint8(zeroPoint);
+					call DiagMsg.uint16(getResult(buffer[i])->period);
+					call DiagMsg.uint16(getResult(buffer[i])->phase);
+					call DiagMsg.send();
+				}
+			}
 		}
 		post sendNextMeasure();
 	}

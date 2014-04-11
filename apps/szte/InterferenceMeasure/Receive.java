@@ -137,8 +137,8 @@ public class Receive implements MessageListener {
           writer.write("Timestamp, "+ new SimpleDateFormat("YYYY.MM.dd. HH:mm:ss.SSS").format(timeStamp)+"\n");
           writer.write("NodeId, "+ Integer.toString(nodeid)+"\n");
           writer.write("MeasureTime, "+ Integer.toString(measureTime)+"\n");
-          writer.write("Period, "+ Long.toString(period)+"\n");
-          writer.write("Phase, "+ Long.toString(phase)+"\n");
+          writer.write("Period, "+ Long.toString(period) + ", "+ Double.toString(1000.0/period) +"kHz\n");
+          writer.write("Phase, "+ Long.toString(phase) + ", "+ Double.toString(360.0*phase/period) +" \n");
           writer.write("Channel, " + Integer.toString(channel) + "\n");
           writer.write("Sender, " + Integer.toString(senders[0]) + ", " + Integer.toString(senders[1]) + "\n");
           writer.write("Finetune, " + Integer.toString(fineTune[0]) + ", " + Integer.toString(fineTune[1]) + "\n");
