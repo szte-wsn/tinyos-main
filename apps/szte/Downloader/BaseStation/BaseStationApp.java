@@ -3,7 +3,8 @@ import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.io.BufferedWriter;
@@ -56,7 +57,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 	ArrayList<Measurement> measurementList;		//fileWrite-nel hasznalnam, de nem sikerult array-bol arraylistet kesziteni
 
 	ArrayList<Integer> moteList;		//a mote id-kat taroljuk
-	HashMap<Integer,Integer> mote_packetMap;	//melyik mote mennyi adatot tarol
+	LinkedHashMap<Integer,Integer> mote_packetMap;	//melyik mote mennyi adatot tarol
 	int mote_num;		//mennyi mote van bejelentkezve
 	int send_mote_num;	//adatkeresnel hasznaljuk (SendDataReq())
 	short[] measure;		//adatokat taroljuk
@@ -241,24 +242,30 @@ class BaseStationApp extends JFrame implements MessageListener{
 			time = new Date();
 			DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy");
 			String date_dir = DATE_FORMAT.format(time);
-			File dir = new File("measures/" + node_id + ".node_id/" + date_dir);
-			dir.mkdirs();
-			if (null != dir)
+//csv
+			File dir_csv = new File("measures/csv/" + node_id + ".node_id/" + date_dir);
+			dir_csv.mkdirs();
+			if (null != dir_csv)
 			{
-				dir.mkdirs();
+				dir_csv.mkdirs();
 			}
 			DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy:HH:mm:SS");
 			String date = DATE_FORMAT.format(time);
-			String pathprefix = "measures/" + node_id +".node_id/"+date_dir+"/"+measure_id+". packet_"+date;
-			fw = new FileWriter(pathprefix + ".txt");
+			String pathprefix_csv = "measures/csv/" + node_id +".node_id/"+date_dir+"/"+measure_id+". packet_"+date;
+			
+			Measurement meas = new Measurement(new Date(), node_id, measure, pathprefix_csv);
+            meas.print();
+            System.out.println("Data saved from NodID#"+node_id);
 
-//itt hibat dob, mert nem tudja atkonvertalni a tombot arraylist-re
-//			ArrayList<Short> a = new ArrayList<Short>();
-//			a.addAll(measure);
-//			Measurement meas = new Measurement(new Date(), node_id, a, pathprefix);
-//            meas.print();
-//            System.out.println("Data saved from NodID#"+node_id);
-
+//txt
+			File dir_txt = new File("measures/txt/" + node_id + ".node_id/" + date_dir);
+			dir_txt.mkdirs();
+			if (null != dir_txt)
+			{
+				dir_txt.mkdirs();
+			}
+			String pathprefix_txt = "measures/txt/" + node_id +".node_id/"+date_dir+"/"+measure_id+". packet_"+date;
+			fw = new FileWriter(pathprefix_txt + ".txt");
 			out = new BufferedWriter(fw);
 			for(int j=0; j<MEASUREMENT_LENGTH; j++) {
 				out.write(measure[j]+"\n");
@@ -287,7 +294,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 			measure[j] = -1;
 		}
 		moteList = new ArrayList<Integer>();
-		mote_packetMap = new HashMap<Integer,Integer>();
+		mote_packetMap = new LinkedHashMap<Integer,Integer>();
 		measurementList = new ArrayList<Measurement>();
 		mote_num = 0;
 		send_mote_num = 0;
@@ -348,12 +355,14 @@ class BaseStationApp extends JFrame implements MessageListener{
 	
 //MESSAGE SEND
 	public void sendReq() {
+		out.println("inside sendReq");
 		stop = false;
 		send_mote_num = -1;
 //bejarjuk hogy kinek van adata, onnan kezdjuk a lekerest
 		Iterator<Integer> keySetIterator = mote_packetMap.keySet().iterator();
 		while(keySetIterator.hasNext()){		//megkeressuk melyik az elso mote a sorban, akinek van adata
-			Integer key = keySetIterator.next();
+			Integer key = keySetIterator.next();	//key = node_id
+			out.println("key: " + key + " value " + mote_packetMap.get(key) + " index " + moteList.indexOf(key));
 			if(mote_packetMap.get(key) != 0) {	//ha van adata
 				send_mote_num = moteList.indexOf(key);			//melyik indexnel talalhato az adott mote_id
 				received_packet_number = 0;
@@ -365,7 +374,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 				}
 				break;
 			}
-		}	
+		}	 
 		if(send_mote_num != -1)		//van mote akitol kerhetunk adatot
 			sendDataReq();
 	}
@@ -478,7 +487,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 //
 	private class Measurement{
-		private List<Short> data;
+		private short[] data;
 		private String pathprefix;
 		  
 		private Date timeStamp;
@@ -492,9 +501,9 @@ class BaseStationApp extends JFrame implements MessageListener{
 		private int[] senders = new int[2];
 		private int[] fineTune = new int[2];
 		private int[] power = new int[2];
-		private int channel;
+		private int channel;	
 		
-		private int toInt(List<Short> list){
+/*		private int toInt(List<Short> list){
 		  int ret = (list.get(0)<<8) | list.get(1);
 		return ret;
 		}
@@ -503,18 +512,29 @@ class BaseStationApp extends JFrame implements MessageListener{
 		  long ret = (from.get(0)<<24) | (from.get(1)<<16) | (from.get(2)<<8) | from.get(3);
 		return ret;
 		}
-		
+*/
+
+		private long toLong(short[] from){
+		  	long ret = (from[0]<<24) | (from[1]<<16) | (from[2]<<8) | from[3];
+			return ret;
+		}
+
+		private int toInt(short[] from){
+		  	int ret = (from[0]<<8) | from[1];
+			return ret;
+		}
+	
 		private byte toSignedByte(short from){
-		  byte ret;
-		  if( from < 128 ){
-		    ret = (byte) from;
-		  } else {
-		    ret = (byte)(from - 256);
-		  }
-		  return ret;
+			byte ret;
+			if( from < 128 ){
+				ret = (byte) from;
+			} else {
+				ret = (byte)(from - 256);
+			}
+		  	return ret;
 		}
 		
-		public Measurement(Date timeStamp, int nodeid, ArrayList<Short> rawData, String pathprefix){
+		public Measurement(Date timeStamp, int nodeid, short[] rawData, String pathprefix){
 		  this.timeStamp = timeStamp;
 		  this.nodeid = nodeid;
 		  this.pathprefix = pathprefix;
@@ -533,17 +553,17 @@ class BaseStationApp extends JFrame implements MessageListener{
 		  */
 		  //19B
 		  int offset = 0;
-		  measureTime = toInt(rawData.subList(offset, offset + 2)); offset+=2;
-		  period = toLong(rawData.subList(offset, offset + 4)); offset+=4;
-		  phase = toLong(rawData.subList(offset, offset + 4)); offset+=4;
-		  channel = rawData.get(offset); offset+=1;
-		  senders[0] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
-		  senders[1] = toInt(rawData.subList(offset, offset + 2)); offset+=2;
-		  fineTune[0] = toSignedByte(rawData.get(offset)); offset+=1;
-		  fineTune[1] = toSignedByte(rawData.get(offset)); offset+=1;
-		  power[0] = rawData.get(offset); offset+=1;
-		  power[1] = rawData.get(offset); offset+=1;
-		  data = rawData.subList(offset, rawData.size());
+		  measureTime = toInt(Arrays.copyOfRange(rawData, offset, offset + 2)); offset+=2;
+		  period = toLong(Arrays.copyOfRange(rawData, offset, offset + 4)); offset+=4;
+		  phase = toLong(Arrays.copyOfRange(rawData, offset, offset + 4)); offset+=4;
+		  channel = rawData[offset]; offset+=1;
+		  senders[0] = toInt(Arrays.copyOfRange(rawData, offset, offset + 2)); offset+=2;
+		  senders[1] = toInt(Arrays.copyOfRange(rawData, offset, offset + 2)); offset+=2;
+		  fineTune[0] = toSignedByte(rawData[offset]); offset+=1;
+		  fineTune[1] = toSignedByte(rawData[offset]); offset+=1;
+		  power[0] = rawData[offset]; offset+=1;
+		  power[1] = rawData[offset]; offset+=1;
+		  data = Arrays.copyOfRange(rawData, offset, rawData.length);
 		}
 
 		public void print(){
