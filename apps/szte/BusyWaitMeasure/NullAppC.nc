@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, University of Szeged
+ * Copyright (c) 2000-2005 The Regents of the University  of California.  
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ * - Neither the name of the University of California nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -28,33 +28,44 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+/*
+ * Copyright (c) 2002-2005 Intel Corporation
+ * All rights reserved.
  *
- * Author: Miklos Maroti
+ * This file is distributed under the terms in the attached INTEL-LICENSE     
+ * file. If you do not find these files, copies can be found by writing to
+ * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
+ * 94704.  Attention:  Intel License Inquiry.
  */
 
-#include "TimerConfig.h"
+/**
+ * Null is an empty skeleton application.  It is useful to test that the
+ * build environment is functional in its most minimal sense, i.e., you
+ * can correctly compile an application. It is also useful to test the
+ * minimum power consumption of a node when it has absolutely no 
+ * interrupts or resources active.
+ *
+ * @author Cory Sharp <cssharp@eecs.berkeley.edu>
+ * @date February 4, 2006
+ */
 
-module BusyWaitMicroP
-{
-	provides interface BusyWait<TMicro, uint16_t>;
-	uses interface Counter<TMcu, uint32_t>;
+configuration NullAppC{}
+implementation {
+  components MainC, NullC, BusyWaitMicroC, LedsC, new TimerMilliC();
+
+  MainC.Boot <- NullC;
+	
+	NullC.BusyWait -> BusyWaitMicroC;
+	NullC.Leds -> LedsC;
+  NullC.Timer -> TimerMilliC;
+  
+  components new Alarm62khz32C();
+  NullC.Alarm -> Alarm62khz32C;
+  components MeasureClockC;
+  NullC.Atm128Calibrate -> MeasureClockC;
+  
+  components DiagMsgC;
+  NullC.DiagMsg -> DiagMsgC;
 }
 
-implementation
-{
-	// no need to make this atomic
-	async command void BusyWait.wait(uint16_t dt)
-	{
-		uint32_t end;
-
-		end = call Counter.get() 
-			+ (((uint32_t)dt) << MCU_TIMER_MHZ_LOG2);
-
-		while( (int32_t)(end - call Counter.get()) > 0 )
-			;
-	}
-
-	async event void Counter.overflow()
-	{
-	}
-}

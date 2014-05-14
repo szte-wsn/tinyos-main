@@ -43,8 +43,24 @@ implementation{
     }
   }
   
-  async command error_t AtmelBootloader.disableFlash(){
-    return SUCCESS;
+  async command uint8_t AtmelBootloader.getHighFuseBits(){
+    return boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
+  }
+  
+  async command uint8_t AtmelBootloader.getLowFuseBits(){
+    return boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS);
+  }
+  
+  async command uint8_t AtmelBootloader.getExtendedFuseBits(){
+    return boot_lock_fuse_bits_get(GET_EXTENDED_FUSE_BITS);
+  }
+  
+  async command uint8_t AtmelBootloader.getLockBits(){
+    return boot_lock_fuse_bits_get(GET_LOCK_BITS);
+  }
+  
+  async command void AtmelBootloader.setLockBits(uint8_t newLockBits){
+    boot_lock_bits_set(newLockBits);
   }
   
   async command error_t AtmelBootloader.enableFlash(){

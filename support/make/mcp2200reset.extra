@@ -1,21 +1,14 @@
 MOTELIST ?= motelist2
-ifeq ($(AVR109),)
-  #guess the port based on VID/PID
-  TEST = $(shell [ `$(MOTELIST) -p|grep -c 04d8,00df` -eq 1 ]&& echo found) #use autosearch if and only if there's only one mcp2200 device plugged in
-  ifneq (,$(findstring found,$(TEST)))
-    AVR109 = $(shell $(MOTELIST) -p|grep 04d8,00df|cut -d, -f5)
-  endif
-endif
 
-ifneq ($(AVR109),) #only if the serial port is defined
-  RESET_DEVICE ?= $(shell $(MOTELIST) -p|grep $(AVR109)|cut -d, -f1)#get the USB device from the uart device
+ifneq ($(USBSERIAL),) #only if the serial port is defined
+  RESET_DEVICE ?= $(shell $(MOTELIST) -p|grep $(USBSERIAL)|cut -d, -f1)#get the USB device from the uart device
 endif
 
 ifeq ($(RESET_DEVICE),)
-$(error "Can't find valid device at port '$(AVR109)'")
+  $(error "Can't find valid device at port '$(USBSERIAL)'")
 endif
 
 
-reset:
+mcp2200_reset:
 	mcp2200gpio -l$(RESET_DEVICE) -n$(MCP2200_RESET_PIN) -m$(MCP2200_RESET_MODE) #reset is GPIO4, and active high
 	sleep 1
