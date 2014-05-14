@@ -23,6 +23,7 @@
 #define ATMEGA128CONST_H
 
 #ifndef ATMEL_NO_PROGMEM 
+  #define const_uint8_t const uint8_t PROGMEM
   #define const_uint16_t const uint16_t PROGMEM
   #define const_uint32_t const uint32_t PROGMEM
   #define const_int8_t const int8_t PROGMEM
