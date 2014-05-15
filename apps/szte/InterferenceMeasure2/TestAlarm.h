@@ -15,7 +15,7 @@ typedef nx_struct config_msg_t {
 } config_msg_t;
 
 enum {
-	AM_RADIOMSG = 6,
+	AM_RADIOMSG = 20,
 };
 
 enum{

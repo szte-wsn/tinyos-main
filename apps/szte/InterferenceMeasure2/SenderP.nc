@@ -44,7 +44,9 @@ implementation {
 	
 	command error_t StdControl.start(){
 		isOn = TRUE;
-		post AnnouncementSend();
+		if(read != write || TRUE == full) {
+			post AnnouncementSend();
+		}
 		return SUCCESS;
 	}
 	

@@ -84,7 +84,7 @@ public class Send {
 		static final int Link_src_address_h = 256; //0x0100
 		static final byte Data_length_h = data_length;
 		static final int Group_ID_h = 0x22;
-		static final int AM_handler_type_h = 0x06;
+		static final int AM_handler_type_h = 20;
 		//header
     public static void main(String[] argv) throws IOException
     {

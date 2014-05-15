@@ -39,7 +39,7 @@ class BaseStationApp extends JFrame implements MessageListener{
 
 	public static final int TOSH_DATA_LENGTH = 110;
 	public static final int DATA_LENGTH = TOSH_DATA_LENGTH-3; 	//ket bajtot elfoglal mas
-	public static final int MEASUREMENT_LENGTH = 1000;				//meres hossza 
+	public static final int MEASUREMENT_LENGTH = 1019;				//meres hossza 
 	public static final int MAX_MEASUREMENT_NUMBER = 10;
 	public static final int DELETE_MES_NUMBER = 2;
 	
