@@ -82,6 +82,7 @@ implementation {
 		uint16_t i;
 		MeasureMsg* btrpkt = (MeasureMsg*) (call radSenMeasureMsg.getPayload(&pkt, sizeof(MeasureMsg)));
 
+		btrpkt -> mes_width = MEASUREMENT_LENGTH;
 		btrpkt -> mes_id = a_mes_id;
 		btrpkt -> seq_num = a_seq_num;
 		btrpkt -> slice_width = (a_seq_num+1)*((DATA_LENGTH))>MEASUREMENT_LENGTH?MEASUREMENT_LENGTH-(a_seq_num*(DATA_LENGTH)):(DATA_LENGTH);
