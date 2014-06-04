@@ -1,4 +1,6 @@
-Inditás:
-	java BaseStationApp -comm serial@/dev/ttyUSB0:telosb
+Inditási példa:
+	java net.tinyos.sf.SerialForwarder -comm serial@/dev/ttyUSB0:telosb
+apps/szte/Downloader/BaseStation/:	java BaseStationApp -comm sf@localhost:9002
+apps/szte/InterferenceMeasure2/: 	Send 1000 1000 11 + 0 7 100016 1000 100000 1001 1001 11 + 0 7 200016 1000 200000
 
-mesure mappaba menti a méréseket
+Downloader/BaseStation/mesure mappaba menti a méréseket

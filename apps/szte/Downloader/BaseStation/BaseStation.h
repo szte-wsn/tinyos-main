@@ -7,11 +7,11 @@
 
 
 #ifndef DATA_LENGTH					//payload meresi adat resze
-#define DATA_LENGTH TOSH_DATA_LENGTH-3				
+#define DATA_LENGTH TOSH_DATA_LENGTH-5				
 #endif
 
 #ifndef MEASUREMENT_LENGTH			//meres hossza 
-#define MEASUREMENT_LENGTH 1000
+#define MEASUREMENT_LENGTH 1019
 #endif
 
 #ifndef MAX_MEASUREMENT_NUMBER
@@ -23,6 +23,7 @@
 #endif
 
 typedef nx_struct MeasureMsg {
+	nx_uint16_t mes_width;			//a teljes meres hossza
 	nx_uint8_t mes_id;				//packet_id - hanyadik csomagrol van szo
 	nx_uint8_t seq_num;				//hanyadik szeletrol van szo a meresen belul
 	nx_uint8_t data[DATA_LENGTH];

@@ -59,24 +59,13 @@ class BaseStationApp implements MessageListener{
 	SimpleDateFormat DATE_FORMAT;
 	Date time;	
 
-//TEST VARIABLES
-	static ArrayList<Integer> mote_list;
-
 	class GetSliceRemind extends TimerTask {
         public void run() {
-//        	System.out.println("Timer fired: " + msg_mode + " " + mote_packetMap.size());
 			switch(msg_mode) {
 				case 0: break;
-//TESTING
-				case 1: msg_mode = 0;
-						sendDataReqControl();
-						break;
-//END
 				case 3: msg_mode = 0;
 						if(!allSliceChecker()) 
 							sendSliceReq();
-						else
-							allSliceReceived();
 						break;
 				default: break;
 			}	
@@ -143,7 +132,7 @@ class BaseStationApp implements MessageListener{
 		}
 		if (msg instanceof AnnouncementMsg) {
 			AnnouncementMsg mes = (AnnouncementMsg)msg;
-//			System.out.println("Announcement: " + msg.getSerialPacket().get_header_src() + " " + mes.get_mes_number());
+			
 			if(mes.get_mes_number() > 0) {
 				if(msg.getSerialPacket().get_header_src() != node_id) {//ha nem egyezik a jelenleg kommunikacioban levo mote_id-val
 					mote_packetMap.put(msg.getSerialPacket().get_header_src(),(int)mes.get_mes_number());
@@ -153,21 +142,13 @@ class BaseStationApp implements MessageListener{
 				}
 				if(!sending) {	
 					sending = true;		//elkezdtunk venni, es vegig jarjuk a mote-kat
-//TESTING
-//					sendDataReq();		//elkezdjuk lekerni az adatokat a moteoktol
-					timer = new Timer();
-					timer.schedule(new GetSliceRemind(), 500);	//500ms varakozas az announcmentekre
-					msg_mode = 1;
-//END
+					sendDataReq();		//elkezdjuk lekerni az adatokat a moteoktol
 				}
 			}
 		}
 	}
 
-//TESTING
-//	public void sendDataReq() {
-	public boolean sendDataReq() {
-//END
+	public void sendDataReq() {
 		CommandMsg msg = new CommandMsg();
 		try{
 			if(mote_packetMap.size() > 0) { 	//ha van mote bejelentkezve	
@@ -175,16 +156,6 @@ class BaseStationApp implements MessageListener{
 		  		total_packet_number = mote_packetMap.get(node_id);			
 				msg.set_node_id_start(node_id);	
 				msg.set_node_id_stop(prev_node_id);	//kezdetben a prev_node_id = 0
-//TESTING
-				if(!mote_list.contains(node_id)) {
-					msg.set_node_id_start(0);	
-					msg.set_node_id_stop(prev_node_id);
-					prev_node_id = node_id;
-					moteIF.send(MoteIF.TOS_BCAST_ADDR,msg); 
-					msg.set_node_id_stop(node_id);					
-					mote_packetMap.remove(node_id);
-				}
-//END
 			} else {		//minden motetol lekertuk az adatokat, a sor vegen vagyunk
 				msg.set_node_id_start(0);
 				msg.set_node_id_stop(prev_node_id);
@@ -197,24 +168,17 @@ class BaseStationApp implements MessageListener{
 			Arrays.fill(free_mes,(short)0);
 			msg.set_free(free_tmp);
 			moteIF.send(MoteIF.TOS_BCAST_ADDR,msg); 
-//TESTING
-			if(mote_packetMap.size() == 0) {
+			if(mote_packetMap.size() == 0) 
 				commEnd();
-				return true;
-			}
-			if(!mote_list.contains(node_id))
-				return false;		
-//END
 		} catch(IOException e) {
 			out.println("sendDataReq message cannot send to mote ");
 		}
-		return true;
 	}
 
 //meres mentese
 	void measureMerger(short[] data, short mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
 		timer = new Timer();
-		timer.schedule(new GetSliceRemind(), 2000);
+		timer.schedule(new GetSliceRemind(), 3000);
 		msg_mode = 3;
 
 		for(int i=0; i<slice_width; i++) {	
@@ -227,11 +191,11 @@ class BaseStationApp implements MessageListener{
 			allSliceChecker();		//minden szelet megvan
 		}
 		if(end_slice && missing_slice.isEmpty()) { 	//minden meres megerkezett		
-//			msg_mode = 0;
+			msg_mode = 0;
 			allSliceReceived();
 		}
 		if(!missing_slice.isEmpty()) {						//van szelet amit le kell kerni
-//			msg_mode = 0;
+			msg_mode = 0;
 			sendSliceReq();
 		}
 	}
@@ -275,10 +239,7 @@ class BaseStationApp implements MessageListener{
 			tmp_packet_number = 0;
 		}
 		prev_node_id = node_id;
-//TESTING
-//		sendDataReq();	//elkezdjuk kerni a kov motetol az adatokat
-		sendDataReqControl();
-//END
+		sendDataReq();	//elkezdjuk kerni a kov motetol az adatokat
 	}
 
 //megszunt a kommunikacio a mote-kal, vagy vege az adatlekereseknek
@@ -293,10 +254,6 @@ class BaseStationApp implements MessageListener{
 		complete_packet = true;
 		Arrays.fill(free_mes,(short)0);
 		sending = false;
-		
-//TESTING
-		System.exit(1);
-//END
 	}
 
 //fajlba irjuk a merest
@@ -360,18 +317,17 @@ class BaseStationApp implements MessageListener{
 	{
 		PhoenixSource phoenix = null;
 		MoteIF mif = null;
-//		System.out.println("Program started");
+		System.out.println("Program started");
 
 		if( args.length == 0 ){
 			phoenix = BuildSource.makePhoenix(PrintStreamMessenger.err);
-		} else if( args.length >= 2 && args[0].equals("-comm") ) {
+		} else if( args.length == 2 && args[0].equals("-comm") ) {
 			phoenix = BuildSource.makePhoenix(args[1], PrintStreamMessenger.err);
 		} else {
-			System.err.println("usage: java BaseStationApp [-comm <source>] mote1 mote2 mote3 ...");
+			System.err.println("usage: java SendApp [-comm <source>]");
 			System.exit(1);
 		}
 		mif = new MoteIF(phoenix); 
-		moteListReader(args);		
 		BaseStationApp app= new BaseStationApp(mif); 
 	}
 
@@ -486,24 +442,5 @@ class BaseStationApp implements MessageListener{
 			
 	}
 
-
-//TEST METHODS
-	static void moteListReader(String[] args) {
-		mote_list = new ArrayList<Integer>();
-		for(int i=2; i<args.length; i++) {
-			mote_list.add(Integer.parseInt(args[i]));
-		}
-//		System.out.println(mote_list);
-	}	
-
-	void sendDataReqControl() {
-//		System.out.println("PacketMap: " + mote_packetMap + " size: " + mote_packetMap.size());
-		while(!sendDataReq() && mote_packetMap.size() > 0);
-/*		{
-			msg_mode = 1;
-			timer = new Timer();
-			timer.schedule(new GetSliceRemind(), 100);
-		}*/
-	}	
 }
 
