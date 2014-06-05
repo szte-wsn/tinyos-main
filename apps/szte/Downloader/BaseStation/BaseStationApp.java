@@ -25,7 +25,7 @@ import net.tinyos.util.*;
 class BaseStationApp implements MessageListener{
 
 	public static final int TOSH_DATA_LENGTH = 110;
-	public static final int DATA_LENGTH = TOSH_DATA_LENGTH-5; 	
+	public static final int DATA_LENGTH = TOSH_DATA_LENGTH-6; 	
 	public static final int MAX_MEASUREMENT_NUMBER = 10;
 	public static final int DELETE_MES_NUMBER = 2;
 	public static final int MAX_MOTE_NUMBER = 50;		//LinkedHashMap-hez, mert defaultan 16 erteket tud csak tarolni
@@ -212,7 +212,7 @@ class BaseStationApp implements MessageListener{
 	}
 
 //meres mentese
-	void measureMerger(short[] data, short mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
+	void measureMerger(short[] data, int mes_id, short seq_id) {		//szeleteket teljes csomagokka teszi ossze
 		timer = new Timer();
 		timer.schedule(new GetSliceRemind(), 2000);
 		msg_mode = 3;
@@ -333,7 +333,7 @@ class BaseStationApp implements MessageListener{
 			int miss_slice = missing_slice.get(0);	//az elso elemet kivesszuk, es kitoroljuk
 			missing_slice.remove(0);
 			msg.set_slice((short)miss_slice);
-			msg.set_mes_id((short)missing_packet);
+			msg.set_mes_id(missing_packet);
 			msg.set_node_id(node_id);
 			moteIF.send(MoteIF.TOS_BCAST_ADDR,msg);
 		} catch(IOException e) {
