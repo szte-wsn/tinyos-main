@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 
 import net.tinyos.message.*;
 import net.tinyos.packet.*;
@@ -304,26 +306,34 @@ class BaseStationApp implements MessageListener{
 		time = new Date();
 		DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy");
 		String date_dir = DATE_FORMAT.format(time);
-//csv
-		File dir_csv = new File("measures/csv/");
-		dir_csv.mkdirs();
-		if (null != dir_csv)
-			dir_csv.mkdirs();
-		DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy:HH:mm:SS");
-		String date = DATE_FORMAT.format(time);
-		
-		String pathprefix_csv = "measures/csv/" + measure_id + ". packet_";	
-		Measurement meas = new Measurement(new Date(), node_id, measure, pathprefix_csv);
-        meas.print();
-
-//txt
-		File dir_txt = new File("measures/txt/");
-		dir_txt.mkdirs();
-		if (null != dir_txt) 
-			dir_txt.mkdirs();
-		String pathprefix_txt = "measures/txt/" + measure_id + ". packet_";		
-		Measurement meas_txt = new Measurement(new Date(), node_id, measure, pathprefix_txt);
-        meas_txt.printTXT();
+// //csv
+// 		File dir_csv = new File("measures/csv/");
+// 		dir_csv.mkdirs();
+// 		if (null != dir_csv)
+// 			dir_csv.mkdirs();
+// 		DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy:HH:mm:SS");
+// 		String date = DATE_FORMAT.format(time);
+// 		
+// 		String pathprefix_csv = "measures/csv/" + measure_id + ". packet_";	
+// 		Measurement meas = new Measurement(new Date(), node_id, measure, pathprefix_csv);
+//         meas.print();
+// 
+// //txt
+// 		File dir_txt = new File("measures/txt/");
+// 		dir_txt.mkdirs();
+// 		if (null != dir_txt) 
+// 			dir_txt.mkdirs();
+// 		String pathprefix_txt = "measures/txt/" + measure_id + ". packet_";		
+// 		Measurement meas_txt = new Measurement(new Date(), node_id, measure, pathprefix_txt);
+//         meas_txt.printTXT();
+//bin
+		File dir_bin = new File("measures/binary/");
+		dir_bin.mkdirs();
+		if (null != dir_bin) 
+			dir_bin.mkdirs();
+		String pathprefix_bin = String.format("measures/binary/",measure_id);
+		Measurement meas_bin = new Measurement(new Date(), node_id, measure, pathprefix_bin);
+        meas_bin.printBin();
 	}
 	
 //egy szelet kerest kuldunk el
@@ -382,16 +392,6 @@ class BaseStationApp implements MessageListener{
 		  
 		private Date timeStamp;
 		private int nodeid;
-		
-		private int measureTime;
-		private long period;
-		private long phase;
-		
-		//dev stuff
-		private int[] senders = new int[2];
-		private int[] fineTune = new int[2];
-		private int[] power = new int[2];
-		private int channel;	
 
 		private long toLong(short[] from){
 		  	long ret = (from[0]<<24) | (from[1]<<16) | (from[2]<<8) | from[3];
@@ -417,70 +417,25 @@ class BaseStationApp implements MessageListener{
 		  this.timeStamp = timeStamp;
 		  this.nodeid = nodeid;
 		  this.pathprefix = pathprefix;
-		  /*
-		  * Header:
-		  *   typedef nx_struct result_t{
-		    nx_uint16_t measureTime;
-		    nx_uint32_t period;
-		    nx_uint32_t phase;
-		    //debug only:
-		    nx_uint8_t channel;
-		    nx_uint16_t senders[2];
-		    nx_int8_t fineTunes[2];
-		    nx_uint8_t power[2];
-		  } result_t;
-		  */
-		  //19B
-		  int offset = 0;
-		  measureTime = toInt(Arrays.copyOfRange(rawData, offset, offset + 2)); offset+=2;
-		  period = toLong(Arrays.copyOfRange(rawData, offset, offset + 4)); offset+=4;
-		  phase = toLong(Arrays.copyOfRange(rawData, offset, offset + 4)); offset+=4;
-		  channel = rawData[offset]; offset+=1;
-		  senders[0] = toInt(Arrays.copyOfRange(rawData, offset, offset + 2)); offset+=2;
-		  senders[1] = toInt(Arrays.copyOfRange(rawData, offset, offset + 2)); offset+=2;
-		  fineTune[0] = toSignedByte(rawData[offset]); offset+=1;
-		  fineTune[1] = toSignedByte(rawData[offset]); offset+=1;
-		  power[0] = rawData[offset]; offset+=1;
-		  power[1] = rawData[offset]; offset+=1;
-		  data = Arrays.copyOfRange(rawData, offset, rawData.length);
+		  data = Arrays.copyOf(rawData, rawData.length);
 		}
-
-		public void print(){
-		  String now = new SimpleDateFormat("dd. HH:mm:ss.SSS").format(timeStamp);
-		  Path path = Paths.get(pathprefix + now+"_"+Integer.toString(nodeid)+".csv");
-		  try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)){
-		    writer.write("Timestamp, "+ new SimpleDateFormat("YYYY.MM.dd. HH:mm:ss.SSS").format(timeStamp)+"\n");
-		    writer.write("NodeId, "+ Integer.toString(nodeid)+"\n");
-		    writer.write("MeasureTime, "+ Integer.toString(measureTime)+"\n");
-		    writer.write("Period, "+ Long.toString(period)+"\n");
-		    writer.write("Phase, "+ Long.toString(phase)+"\n");
-		    writer.write("Channel, " + Integer.toString(channel) + "\n");
-		    writer.write("Sender, " + Integer.toString(senders[0]) + ", " + Integer.toString(senders[1]) + "\n");
-		    writer.write("Finetune, " + Integer.toString(fineTune[0]) + ", " + Integer.toString(fineTune[1]) + "\n");
-		    writer.write("Power, " + Integer.toString(power[0]) + ", " + Integer.toString(power[1]) + "\n");
-		    writer.write("--\n");
-		    for(Short meas:data){
-		      writer.write(Short.toString(meas) + "\n");
-		    }
-		    writer.close();
-		  } catch (IOException e) {
-		    // TODO Auto-generated catch block
-		    e.printStackTrace();
-		  }
-		}
-
-		public void printTXT(){
-		  String now = new SimpleDateFormat("dd. HH:mm:ss.SSS").format(timeStamp);
-		  Path path = Paths.get(pathprefix + now+"_"+Integer.toString(nodeid)+".txt");
-		  try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)){
-		    for(Short meas:data){
-		      writer.write(Short.toString(meas) + "\n");
-		    }
-		    writer.close();
-		  } catch (IOException e) {
-		    // TODO Auto-generated catch block
-		    e.printStackTrace();
-		  }
+		
+		public void printBin(){
+			int MeasId = toInt(Arrays.copyOfRange(data, data.length-2, data.length));
+			Path path = Paths.get(String.format("%s%05d_%05d.raw",pathprefix, MeasId, nodeid));
+			ByteArrayOutputStream bos = new ByteArrayOutputStream(); 
+			DataOutputStream dos = new DataOutputStream(bos);
+			try{
+				for(short meas:data){
+					dos.writeByte((byte)meas);
+				}
+				dos.writeLong(timeStamp.getTime());
+				dos.close();
+				Files.write(path, bos.toByteArray()); //creates, overwrites
+			} catch(IOException e){
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 			
