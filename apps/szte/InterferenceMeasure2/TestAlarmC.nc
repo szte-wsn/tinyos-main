@@ -29,7 +29,7 @@ implementation{
 	DelugeC.Leds -> LedsC;
   #endif
 	
-	components DiagMsgC;
+	components NoDiagMsgC as DiagMsgC;
 	App.DiagMsg -> DiagMsgC;
   MeasureWaveC.DiagMsg -> DiagMsgC;
 	

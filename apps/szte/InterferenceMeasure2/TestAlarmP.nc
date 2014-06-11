@@ -19,6 +19,13 @@ module TestAlarmP{
 	uses interface DiagMsg;
 }
 implementation{
+	#ifndef CW_RECEIVER_PLUS_WAIT
+	#define CW_RECEIVER_PLUS_WAIT 16
+	#endif
+	
+	#ifndef CW_SEND_TIME
+	#define CW_SEND_TIME 1000
+	#endif
 	typedef nx_struct result_t{
 		nx_uint16_t measureTime;
 		nx_uint32_t period;
@@ -28,6 +35,8 @@ implementation{
 		nx_uint16_t senders[2];
 		nx_int8_t fineTunes[2];
 		nx_uint8_t power[2];
+		nx_uint16_t selfNodeId;
+		nx_uint16_t measureId;
 	} result_t;
 	
 	typedef struct measurement_setting_t{
@@ -35,7 +44,6 @@ implementation{
 		uint32_t wait;
 		uint8_t channel;
 		//sender only
-		uint16_t sendTime;
 		int8_t fineTune;
 		uint8_t power;
 	} measurement_setting_t;
@@ -45,14 +53,18 @@ implementation{
 	norace uint8_t num_of_measures = 0; //how many measures was configured
 	norace int8_t active_measure = -2;
 	norace uint32_t message_received_time;
-	uint8_t buffer[NUMBER_OF_MEASURES][BUFFER_LEN+sizeof(result_t)];
+	uint8_t buffer[NUMBER_OF_MEASURES][sizeof(uint32_t)+BUFFER_LEN+sizeof(result_t)];
 	
 	inline static result_t* getResult(uint8_t *buf){
-		return (result_t*)buf;
+		return (result_t*)(buf + sizeof(uint32_t) + BUFFER_LEN);
 	}
 	
 	inline static uint8_t* getBuffer(uint8_t *buf){
-		return (uint8_t*)(buf + sizeof(result_t));
+		return (uint8_t*)(buf + sizeof(uint32_t));
+	}
+	
+	inline static nx_uint32_t* getLength(uint8_t *buf){
+    return (nx_uint32_t*)(buf);
 	}
 	
 	task void MeasureDone();
@@ -61,7 +73,12 @@ implementation{
 		call SplitControl.start();
 	}
 	
-	event void SplitControl.startDone(error_t error){}
+	event void SplitControl.startDone(error_t error){
+		if(call DiagMsg.record()){
+			call DiagMsg.str("booted");
+			call DiagMsg.send();
+		}
+	}
 
 	event void SplitControl.stopDone(error_t error){}
 	
@@ -93,7 +110,7 @@ implementation{
 		call Leds.set(0);
 		if(settings[active_measure].isSender){ //sender
 			call Leds.led2On();
-			call RadioContinuousWave.sendWave(settings[active_measure].channel, settings[active_measure].fineTune, settings[active_measure].power, settings[active_measure].sendTime);
+			call RadioContinuousWave.sendWave(settings[active_measure].channel, settings[active_measure].fineTune, settings[active_measure].power, CW_SEND_TIME);
 			call Leds.led2Off();
 		}else{ //receiver
 			uint16_t time = 0;
@@ -119,54 +136,53 @@ implementation{
 		call StdControl.stop();
 		num_of_measures = 0;
 		for(i=0;i<len/sizeof(config_msg_t);i++){
-			if(msg->Tsender_send > 0){ //if > 0 then this measure is configured
-				num_of_measures++; //how many measures are configured 
-				settings[i].channel = msg->Tchannel; //wich channel is used
-				if( TOS_NODE_ID == msg->Tsender1ID || TOS_NODE_ID == msg->Tsender2ID || msg->Tsender1ID == 0xffff ) { //sender only stuff
-					settings[i].isSender = TRUE;
-					settings[i].wait = msg->Tsender_wait;
-					settings[i].sendTime = msg->Tsender_send;
-					settings[i].power = RFA1_DEF_RFPOWER; //TODO
-					
-					if( TOS_NODE_ID == msg->Tsender2ID ){
-						settings[i].fineTune = msg->Ttrim2;
-					} else {
-						settings[i].fineTune = msg->Ttrim2;
-					}
-				} else { //receiver only stuff
-					settings[i].isSender = FALSE;
-					settings[i].fineTune = 0;
-					settings[i].wait = msg->Treceiver_wait;
-					
-					
-					//TODO is this needed anything besides debug?
-					getResult(buffer[i])->senders[0] = msg->Tsender1ID;
-					getResult(buffer[i])->senders[1] = msg->Tsender2ID;
-					getResult(buffer[i])->fineTunes[0] = msg->Ttrim1;
-					getResult(buffer[i])->fineTunes[1] = msg->Ttrim2;
-					getResult(buffer[i])->power[0] = RFA1_DEF_RFPOWER;
-					getResult(buffer[i])->power[1] = RFA1_DEF_RFPOWER;
-					getResult(buffer[i])->channel = msg->Tchannel;
-				}
+			num_of_measures++; //how many measures are configured 
+			settings[i].channel = msg->Tchannel; //wich channel is used
+			settings[i].wait = msg->Tsender_wait;
+			if( TOS_NODE_ID == msg->Tsender1ID || TOS_NODE_ID == msg->Tsender2ID || msg->Tsender1ID == 0xffff ) { //sender only stuff
+				settings[i].isSender = TRUE;
 				
-				if(call DiagMsg.record()){
-					call DiagMsg.uint8(num_of_measures);
-					call DiagMsg.uint16(msg->Tsender1ID);
-					call DiagMsg.uint16(msg->Tsender2ID);
-					call DiagMsg.uint8(msg->Ttrim1);
-					call DiagMsg.uint8(msg->Ttrim2);
-					call DiagMsg.uint8(msg->Tchannel);
-					call DiagMsg.uint16(msg->Tmode);
-					call DiagMsg.uint32(msg->Tsender_wait);
-					call DiagMsg.uint32(msg->Tsender_send);
-					call DiagMsg.uint32(msg->Treceiver_wait);
-					call DiagMsg.send();
+				if( TOS_NODE_ID == msg->Tsender2ID ){
+					settings[i].fineTune = msg->Tfinetune1;
+					settings[i].power = msg->Tpower1;
+				} else {
+					settings[i].fineTune = msg->Tfinetune2;
+					settings[i].power = msg->Tpower2;
 				}
+			} else { //receiver only stuff
+				settings[i].isSender = FALSE;
+				settings[i].fineTune = 0;
+				settings[i].wait += CW_RECEIVER_PLUS_WAIT;
 				
-				msg++;	// [i. config] ---> [i+1. config]	
-			}else{
-				break;
+				
+				//TODO is this needed anything besides debug?
+				*(getLength(buffer[i])) = BUFFER_LEN;
+				getResult(buffer[i])->selfNodeId = TOS_NODE_ID;
+				getResult(buffer[i])->measureId = msg->measureId;
+				getResult(buffer[i])->senders[0] = msg->Tsender1ID;
+				getResult(buffer[i])->senders[1] = msg->Tsender2ID;
+				getResult(buffer[i])->fineTunes[0] = msg->Tfinetune1;
+				getResult(buffer[i])->fineTunes[1] = msg->Tfinetune2;
+				getResult(buffer[i])->power[0] = msg->Tpower1;
+				getResult(buffer[i])->power[1] = msg->Tpower2;
+				getResult(buffer[i])->channel = msg->Tchannel;
 			}
+			
+			if(call DiagMsg.record()){
+				call DiagMsg.uint8(num_of_measures);
+				call DiagMsg.uint16(msg->measureId);
+				call DiagMsg.uint16(msg->Tsender1ID);
+				call DiagMsg.uint16(msg->Tsender2ID);
+				call DiagMsg.int8(msg->Tfinetune1);
+				call DiagMsg.int8(msg->Tfinetune2);
+				call DiagMsg.uint8(msg->Tpower1);
+				call DiagMsg.uint8(msg->Tpower2);
+				call DiagMsg.uint8(msg->Tchannel);
+				call DiagMsg.uint32(msg->Tsender_wait);
+				call DiagMsg.send();
+			}
+			
+			msg++;	// [i. config] ---> [i+1. config]	
 		}	
 		active_measure = -1;
 		startNextMeasure();
