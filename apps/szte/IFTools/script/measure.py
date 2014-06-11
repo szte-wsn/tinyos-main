@@ -25,7 +25,7 @@ while True:
     receivecmd+=" " + str(m)
   transmitcmd="java Send"
   for i in range(NUMMEASURES):
-    transmitcmd+=" "+str(currenttx[0])+" "+str(currenttx[1])+" "+str(currentchannel)+" 0 0 255 255 "+str(STARTDELAY+i*DIFFDELAY)+" "+str(measurid)
+    transmitcmd+=" "+str(currenttx[0])+" "+str(currenttx[1])+" "+str(currentchannel)+" 0 0 0 0 "+str(STARTDELAY+i*DIFFDELAY)+" "+str(measurid)
     measurid+=1
   print("ID: "+ str(measurid-NUMMEASURES)+".."+str(measurid))
   print("TX: " + str(currenttx))
