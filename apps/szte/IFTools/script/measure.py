@@ -5,6 +5,9 @@ MOTES=[1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008]
 TXMOTES=MOTES[:6]
 CHANNELMIN=11
 CHANNELMAX=26
+CHANNELSTEP=3
+TRIMMAX=15
+TRIMSTEP=3
 STARTDELAY=100000
 DIFFDELAY=1175
 NUMMEASURES=7
@@ -12,6 +15,7 @@ MEASUREIDPADDING=10-NUMMEASURES
 
 currenttxindex=[0, 1]
 currentchannel=CHANNELMIN
+currenttrim=[0, 0]
 measurid = 0
 while True:
   currenttx = [TXMOTES[currenttxindex[0]], TXMOTES[currenttxindex[1]]]
@@ -23,7 +27,7 @@ while True:
     receivecmd+=" " + str(m)
   transmitcmd="java Send"
   for i in range(NUMMEASURES):
-    transmitcmd+=" "+str(currenttx[0])+" "+str(currenttx[1])+" "+str(currentchannel)+" 0 0 0 0 "+str(STARTDELAY+i*DIFFDELAY)+" "+str(measurid)
+    transmitcmd+=" "+str(currenttx[0])+" "+str(currenttx[1])+" "+str(currentchannel)+" "+str(currenttrim[0])+" "+str(currenttrim[1])+" 0 0 "+str(STARTDELAY+i*DIFFDELAY)+" "+str(measurid)
     measurid+=1
   print("ID: "+ str(measurid-NUMMEASURES)+".."+str(measurid))
   print("TX: " + str(currenttx))
@@ -43,10 +47,11 @@ while True:
     if currenttxindex[0] >= len(TXMOTES)-1:
       currenttxindex[0] = 0
       currenttxindex[1] = 1
-      currentchannel+=1
+      currentchannel+= CHANNELSTEP
       if currentchannel > CHANNELMAX:
         currentchannel = CHANNELMIN
-        print("Measure done on all channel")
-        exit(0)
+        currenttrim[0]+=TRIMSTEP
+        if currenttrim[0] > TRIMMAX:
+          exit(0)
       print("=====================================")
       print("Channel: "+str(currentchannel))
