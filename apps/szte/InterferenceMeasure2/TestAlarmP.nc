@@ -19,12 +19,13 @@ module TestAlarmP{
 	uses interface DiagMsg;
 }
 implementation{
-	#ifndef CW_RECEIVER_PLUS_WAIT
-	#define CW_RECEIVER_PLUS_WAIT 16
+  //TRadio consts: one tick is 16us
+	#ifndef CW_SENDER_PLUS_WAIT
+	#define CW_SENDER_PLUS_WAIT -2
 	#endif
 	
 	#ifndef CW_SEND_TIME
-	#define CW_SEND_TIME 1000
+	#define CW_SEND_TIME 62
 	#endif
 	typedef nx_struct result_t{
 		nx_uint16_t measureTime;
@@ -141,7 +142,7 @@ implementation{
 			settings[i].wait = msg->Tsender_wait;
 			if( TOS_NODE_ID == msg->Tsender1ID || TOS_NODE_ID == msg->Tsender2ID || msg->Tsender1ID == 0xffff ) { //sender only stuff
 				settings[i].isSender = TRUE;
-				
+        settings[i].wait += CW_SENDER_PLUS_WAIT;
 				if( TOS_NODE_ID == msg->Tsender2ID ){
 					settings[i].fineTune = msg->Tfinetune1;
 					settings[i].power = msg->Tpower1;
@@ -152,7 +153,7 @@ implementation{
 			} else { //receiver only stuff
 				settings[i].isSender = FALSE;
 				settings[i].fineTune = 0;
-				settings[i].wait += CW_RECEIVER_PLUS_WAIT;
+				
 				
 				
 				//TODO is this needed anything besides debug?
