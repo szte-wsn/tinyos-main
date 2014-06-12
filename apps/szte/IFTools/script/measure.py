@@ -1,15 +1,13 @@
 #!/usr/bin/python
 import copy
-from subprocess import call
+from subprocess import call, Popen
 MOTES=[1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008]
 TXMOTES=MOTES[:6]
 CHANNELMIN=11
 CHANNELMAX=26
-TXLEN=1000
 STARTDELAY=100000
-TXDELAY=16
-DIFFDELAY=100000
-NUMMEASURES=4
+DIFFDELAY=1175
+NUMMEASURES=7
 MEASUREIDPADDING=10-NUMMEASURES
 
 currenttxindex=[0, 1]
@@ -33,9 +31,11 @@ while True:
   measurid+=MEASUREIDPADDING
   #print(transmitcmd)
   #print(receivecmd)
+  receivecmd=Popen(receivecmd, shell=True)
   call(transmitcmd, shell=True)
-  call(receivecmd, shell=True)
-  print("--------")
+  print("----", end="", flush=True)
+  receivecmd.wait()
+  print("|----")
   currenttxindex[1]+=1
   if currenttxindex[1] >= len(TXMOTES):
     currenttxindex[0] += 1
