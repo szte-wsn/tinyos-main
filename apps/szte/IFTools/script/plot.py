@@ -68,7 +68,10 @@ for filename in filenames:
   timeusbase=measureTime/arraylength
   for i in range(0, arraylength):
     timelist.append(i*timeusbase)
-    valuelist.append(values[i])
+    if( sys.version_info.major < 3):
+      valuelist.append(ord(values[i]))
+    else:
+      valuelist.append(int(values[i]))
   
   #plot
   plt.figure(index);
