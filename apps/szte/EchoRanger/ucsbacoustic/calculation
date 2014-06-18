@@ -1,0 +1,4 @@
+range in tick: ((range2-range1)+(range1-range0))/2 (range2>range1>range0, if not, sort them)
+sampling freq: 16666Hz
+speed of sound: 340m/s
+range in m: (340*(1/16666)*(((range2-range1)+(range1-range0))/2))/2

@@ -1,0 +1,3 @@
+-a log2 interface-ekre valószínűleg nincs szükség. Mivel az összes size konstans, úgyis a preprocesszor végzi vele a műveleteket, az meg had dolgozzon, ne bátorítsuk a usert log2-es használatra
+-a writeDone-ban a lostsectors nem lost sectors, hanem lost bytes, de egyébként is, legyen bool, úgyis mindig szektort törlünk
+-write/read/info path szétválasztása?

@@ -1,0 +1,18 @@
+#!/bin/sh
+JAVAC="javac"
+JFLAGS="-g -nowarn"
+FIND="find"
+SOURCE_DIR="."
+OUTPUT_DIR=$SOURCE_DIR
+
+all_classes="$OUTPUT_DIR/all.classed"
+
+$FIND $SOURCE_DIR -name '*.class' > $all_classes
+
+# compile - Compile the source
+
+while IFS= read -r LINE
+do
+  rm -f $LINE
+done<$all_classes
+rm $all_classes

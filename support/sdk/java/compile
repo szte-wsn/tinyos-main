@@ -1,0 +1,19 @@
+#!/bin/sh
+TOSJAR=/opt/tinyos-2.x/support/sdk/java/tinyos.jar
+JAVAC="javac"
+JFLAGS="-g -nowarn -classpath $CLASSPATH:$TOSJAR:."
+FIND="find"
+SOURCE_DIR="."
+OUTPUT_DIR=$SOURCE_DIR
+
+all_javas="$OUTPUT_DIR/all.javas"
+
+$FIND $SOURCE_DIR -name '*.java' > $all_javas
+
+# compile - Compile the source
+while IFS= read -r LINE
+do
+  echo "Compiling $LINE"
+  $JAVAC $JFLAGS $LINE
+done<$all_javas
+rm $all_javas
