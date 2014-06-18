@@ -19,7 +19,7 @@ implementation {
 	norace data_t buffer[MAX_MEASUREMENT_NUMBER];
 	norace uint8_t read=0, write=0, keep=0;//azert ennyi, hogy az elso store meghivasnal ne dobjon failt, mivel ha 0 lenne, akkor failt dobna vissza egybol a store
 	norace uint8_t write_send=0; 	//kuldes elott eltaroljuk, hogy hova mutat a write
-	norace uint8_t mes_id=0;
+	norace uint16_t mes_id=0;
 	norace bool full=FALSE;
 	uint8_t seq_num=0;			//hanyadik szeletet kuldjuk ki
 	norace bool sending = FALSE;		//ha kuldunk TRUE, egyebkent FALSE
@@ -28,7 +28,7 @@ implementation {
 	norace bool isOn = FALSE;
 
 //DEFINIALATLAN METODUSOK
-	error_t send(uint8_t a_mes_id, uint8_t a_slice_id);	//read-et a write-ig novelem
+	error_t send(uint16_t a_mes_id, uint8_t a_slice_id);	//read-et a write-ig novelem
 	task void stop();						//keep-et a read-ig novelem
 	task void sendControl();
 
@@ -78,7 +78,7 @@ implementation {
 	}
 
 //SEND
-	error_t send(uint8_t a_mes_id, uint8_t a_seq_num) {
+	error_t send(uint16_t a_mes_id, uint8_t a_seq_num) {
 		uint16_t i;
 		MeasureMsg* btrpkt = (MeasureMsg*) (call radSenMeasureMsg.getPayload(&pkt, sizeof(MeasureMsg)));
 

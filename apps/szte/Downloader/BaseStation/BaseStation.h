@@ -7,7 +7,7 @@
 
 
 #ifndef DATA_LENGTH					//payload meresi adat resze
-#define DATA_LENGTH TOSH_DATA_LENGTH-5				
+#define DATA_LENGTH TOSH_DATA_LENGTH-6			
 #endif
 
 #ifndef MEASUREMENT_LENGTH			//meres hossza 
@@ -24,7 +24,7 @@
 
 typedef nx_struct MeasureMsg {
 	nx_uint16_t mes_width;			//a teljes meres hossza
-	nx_uint8_t mes_id;				//packet_id - hanyadik csomagrol van szo
+	nx_uint16_t mes_id;				//packet_id - hanyadik csomagrol van szo
 	nx_uint8_t seq_num;				//hanyadik szeletrol van szo a meresen belul
 	nx_uint8_t data[DATA_LENGTH];
 	nx_uint8_t slice_width;
@@ -32,7 +32,7 @@ typedef nx_struct MeasureMsg {
 
 typedef nx_struct GetSliceMsg {		//elveszett csomag eseten
 	nx_uint8_t slice;				//melyik szelet
-	nx_uint8_t mes_id;				//melyik meresnek
+	nx_uint16_t mes_id;				//melyik meresnek
 	nx_uint16_t node_id;
 }GetSliceMsg;
 
@@ -52,7 +52,7 @@ typedef nx_struct FreeMsg {
 }FreeMsg;
 
 typedef struct data_t{
-    uint8_t mes_id;
+    uint16_t mes_id;
 	uint8_t data[MEASUREMENT_LENGTH];
 }data_t;
 
