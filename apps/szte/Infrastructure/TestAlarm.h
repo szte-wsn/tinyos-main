@@ -15,7 +15,7 @@ typedef nx_struct config_msg_t {
 } config_msg_t;
 
 typedef nx_struct sync_message_t{
-	nx_uint8_t todo;
+	nx_uint8_t frame;
 } sync_message_t;
 
 enum {

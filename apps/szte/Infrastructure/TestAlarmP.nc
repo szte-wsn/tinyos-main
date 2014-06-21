@@ -5,7 +5,7 @@
 #define NUMBER_OF_MEASURES (NUMBER_OF_INFRAST_NODES-2)
 #define BUFFER_LEN 500
 
-#define SENDING_TIME 50000
+#define SENDING_TIME 50
 
 module TestAlarmP{
 	uses interface Boot;
@@ -34,31 +34,28 @@ implementation{
 		TRIM2 = 0,
 		TX = 0,
 		RX = 1,
-		SENDS_DATA=2,
-		EMPTY_SLOT=3,
-		number_of_frames = 16
+		SEND_SYNCH=2,
+		RECV_SYNCH=3,
+		number_of_slots = 16
 	};
-	/*typedef struct measurement_setting_t{
-		bool isSender:1;
-		uint8_t channel;
-		int8_t fineTune;
-		uint8_t power;
-	} measurement_setting_t;
-	norace measurement_setting_t settings[8];*/
 
 	typedef struct schedule_t{
-		uint8_t work:2;
+		uint8_t work;
 	} schedule_t;
-	norace schedule_t settings[number_of_frames];
+	norace schedule_t settings[number_of_slots];
 
-	bool wait_to_start=FALSE;
+	norace bool wait_to_start=FALSE;
 	message_t packet;
-	uint32_t message_sended_time,message_received_time;
-	uint8_t active_measure=0;
-	uint32_t firetime=0;
-	uint8_t buffer[12][BUFFER_LEN];
-	uint32_t SLOT_TIME=100000;
-	uint8_t buffer_counter = 0;
+	norace uint32_t message_sended_time,message_received_time;
+	norace uint8_t active_measure=0;
+	norace uint32_t firetime=0;
+	uint8_t buffer[number_of_slots][BUFFER_LEN];
+	uint32_t SLOT_TIME = 65; //measure slot
+	uint32_t SYNCH_SLOT = 30; //between frames
+	uint32_t SEND_SLOT = 65000; //between super frames
+	norace uint8_t buffer_counter = 0;
+	norace bool wait_for_synch = FALSE;
+	norace bool synch_received = FALSE;
 
 	task void MeasureDone();
 	task void MeasureStart();
@@ -67,78 +64,78 @@ implementation{
 		call SplitControl.start();
 		if(NUMBER_OF_INFRAST_NODES == 4){
 			if(TOS_NODE_ID==1){
-				settings[0].work=TX;
+				settings[0].work=SEND_SYNCH;
 				settings[1].work=TX;
-				settings[2].work=RX;
-				settings[3].work=EMPTY_SLOT;
-				settings[4].work=TX;
+				settings[2].work=TX;
+				settings[3].work=RX;
+				settings[4].work=RECV_SYNCH;
 				settings[5].work=TX;
-				settings[6].work=RX;
-				settings[7].work=EMPTY_SLOT;
-				settings[8].work=TX;
+				settings[6].work=TX;
+				settings[7].work=RX;
+				settings[8].work=RECV_SYNCH;
 				settings[9].work=TX;
-				settings[10].work=RX;
-				settings[11].work=EMPTY_SLOT;
-				settings[12].work=RX;
+				settings[10].work=TX;
+				settings[11].work=RX;
+				settings[12].work=RECV_SYNCH;
 				settings[13].work=RX;
 				settings[14].work=RX;
-				settings[15].work=SENDS_DATA;
-				wait_to_start = TRUE;
+				settings[15].work=RX;
+				wait_to_start = TRUE; //it will start the action
 				call Alarm.startAt(0,(uint32_t)65000);
 			}
 			if(TOS_NODE_ID==2){
-				settings[0].work=RX;
+				settings[0].work=RECV_SYNCH;
 				settings[1].work=RX;
 				settings[2].work=RX;
-				settings[3].work=SENDS_DATA;
-				settings[4].work=TX;
-				settings[5].work=RX;
-				settings[6].work=TX;
-				settings[7].work=EMPTY_SLOT;
-				settings[8].work=TX;
-				settings[9].work=RX;
-				settings[10].work=TX;
-				settings[11].work=EMPTY_SLOT;
-				settings[12].work=TX;
+				settings[3].work=RX;
+				settings[4].work=SEND_SYNCH;
+				settings[5].work=TX;
+				settings[6].work=RX;
+				settings[7].work=TX;
+				settings[8].work=RECV_SYNCH;
+				settings[9].work=TX;
+				settings[10].work=RX;
+				settings[11].work=TX;
+				settings[12].work=RECV_SYNCH;
 				settings[13].work=TX;
-				settings[14].work=RX;
-				settings[15].work=EMPTY_SLOT;
+				settings[14].work=TX;
+				settings[15].work=RX;
 			}
 			if(TOS_NODE_ID==3){
-				settings[0].work=TX;
-				settings[1].work=RX;
-				settings[2].work=TX;
-				settings[3].work=EMPTY_SLOT;
-				settings[4].work=RX;
+				settings[0].work=RECV_SYNCH;
+				settings[1].work=TX;
+				settings[2].work=RX;
+				settings[3].work=TX;
+				settings[4].work=RECV_SYNCH;
 				settings[5].work=RX;
 				settings[6].work=RX;
-				settings[7].work=SENDS_DATA;
-				settings[8].work=RX;
-				settings[9].work=TX;
+				settings[7].work=RX;
+				settings[8].work=SEND_SYNCH;
+				settings[9].work=RX;
 				settings[10].work=TX;
-				settings[11].work=EMPTY_SLOT;
-				settings[12].work=TX;
-				settings[13].work=RX;
-				settings[14].work=TX;
-				settings[15].work=EMPTY_SLOT;
+				settings[11].work=TX;
+				settings[12].work=RECV_SYNCH;
+				settings[13].work=TX;
+				settings[14].work=RX;
+				settings[15].work=TX;
 			}
 			if(TOS_NODE_ID==4){
-				settings[0].work=RX;
-				settings[1].work=TX;
+				settings[0].work=RECV_SYNCH;
+				settings[1].work=RX;
 				settings[2].work=TX;
-				settings[3].work=EMPTY_SLOT;
-				settings[4].work=RX;
-				settings[5].work=TX;
+				settings[3].work=TX;
+				settings[4].work=RECV_SYNCH;
+				settings[5].work=RX;
 				settings[6].work=TX;
-				settings[7].work=EMPTY_SLOT;
-				settings[8].work=RX;
+				settings[7].work=TX;
+				settings[8].work=RECV_SYNCH;
 				settings[9].work=RX;
 				settings[10].work=RX;
-				settings[11].work=SENDS_DATA;
-				settings[12].work=RX;
-				settings[13].work=TX;
+				settings[11].work=RX;
+				settings[12].work=SEND_SYNCH;
+				settings[13].work=RX;
 				settings[14].work=TX;
-				settings[15].work=EMPTY_SLOT;
+				settings[15].work=TX;
 			}
 		}
 	}
@@ -152,6 +149,7 @@ implementation{
 	*LED1 : Waits before sending
 	*LED2 : Sending
 	*LED3 : Receiving
+	*All LEDS: between superframes
 	*/
 	
 	inline static uint8_t* getBuffer(uint8_t *buf){
@@ -164,74 +162,97 @@ implementation{
 				wait_to_start = FALSE;
 			}else{ //measure
 				call Leds.set(0);
-				if(active_measure<number_of_frames){
-					if(active_measure<number_of_frames-1){
-						call Alarm.startAt(message_received_time,SLOT_TIME);
-						message_received_time+=SLOT_TIME;
-					}
-					active_measure++;
-				}else{
+				if(active_measure == number_of_slots){//end of superframe
 					call Alarm.stop();
 					post MeasureDone();
-				} 
-				if(settings[active_measure-1].work==TX){ //sender
+					return;
+				}
+				if(wait_for_synch == TRUE && synch_received == FALSE){//did NOT get synch
+					if(settings[active_measure+4].work==RECV_SYNCH){//receives synch in the next frame
+						return;
+					}else{ //sends synch in the next frame
+						active_measure += 4; //does nothing
+						firetime += 3*SLOT_TIME; //waits until the end of the frame
+						call Alarm.startAt(message_received_time,firetime);
+						return;	
+					}
+				}
+				if(settings[active_measure].work==RECV_SYNCH){//waits for synch in this frame
+					wait_for_synch = TRUE;
+					synch_received = FALSE;
+					firetime += SYNCH_SLOT;
+					call Alarm.startAt(message_received_time,firetime);
+					return;					
+				}
+				if(settings[active_measure].work==TX || settings[active_measure].work==RX){
+					firetime += SLOT_TIME;
+					call Alarm.startAt(message_received_time,firetime);
+				}
+				if(settings[active_measure].work==TX){ //sender
 					call Leds.led2On();
 					call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
 					call Leds.led2Off();
-				}else if(settings[active_measure-1].work==RX){ //receiver
+				}else if(settings[active_measure].work==RX){ //receiver
 					uint16_t time = 0;
 					call Leds.led3On();
 					call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[buffer_counter]), BUFFER_LEN, &time);
-					buffer_counter++;
+					++buffer_counter%number_of_slots;
 					call Leds.led3Off();
-				}else if(settings[active_measure-1].work==SENDS_DATA){
+				}else if(settings[active_measure].work==SEND_SYNCH){//sends synch in this frame
+					uint8_t i;
 					sync_message_t* msg = (sync_message_t*)call Packet.getPayload(&packet,sizeof(sync_message_t));
+					msg->frame = active_measure/4;
+					while(i<255) i=i+1; //receiver must be ready
 					call AMSend.send(0xFFFF, &packet, sizeof(sync_message_t));
-					call Leds.set(15);
+					call Leds.set(7);
 				}
+				active_measure = (active_measure+1);
 			}
 	}
 
-
+	/*Synch msg sent*/
 	event void AMSend.sendDone(message_t* bufPtr, error_t error){
-			if(call PacketTimeStampRadio.isValid(bufPtr) && TOS_NODE_ID==1){
+			if(call PacketTimeStampRadio.isValid(bufPtr)){
 				call Alarm.stop();
 				message_sended_time = call PacketTimeStampRadio.timestamp(bufPtr);
 				//this node's "message_received_time" is when it sends the message
 				message_received_time = message_sended_time;
-				
-				call Alarm.startAt(message_received_time,SLOT_TIME);
-				message_received_time+=SLOT_TIME;
+				firetime = SYNCH_SLOT;
+				call Alarm.startAt(message_received_time,firetime);
 			}
 	}
 
 	event void RssiDone.sendDone(message_t* bufPtr, error_t error){
 
 	}
-
+	/*Synch msg received*/
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len){
 		sync_message_t* msg = (sync_message_t*)payload;
 		if(call PacketTimeStampRadio.isValid(bufPtr)){
 			call Alarm.stop();
 			message_received_time = call PacketTimeStampRadio.timestamp(bufPtr);
-			
-		    call Alarm.startAt(message_received_time,SLOT_TIME);
-			message_received_time+=SLOT_TIME;
-		} else
-			return bufPtr;
+			active_measure = msg->frame*4+1;
+			firetime = SYNCH_SLOT;
+		    call Alarm.startAt(message_received_time,firetime);
+			synch_received = TRUE;
+			wait_for_synch = FALSE;
+		}
 		return bufPtr;
 	}
 
-	task void MeasureDone(){
+	task void MeasureDone(){ //what to do between super frames
 		buffer_counter = 0;
 		active_measure = 0;
-		call Leds.set(7);
+		firetime += SEND_SLOT;
+		call Alarm.startAt(message_received_time,firetime);
+		call Leds.set(15);
 	}
 
 	task void MeasureStart(){
 		sync_message_t* msg = (sync_message_t*)call Packet.getPayload(&packet,sizeof(sync_message_t));
+		msg->frame = 0;
 		call AMSend.send(0xFFFF, &packet, sizeof(sync_message_t));
+		active_measure = 1;
 	}
-
 
 }
