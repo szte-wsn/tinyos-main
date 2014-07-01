@@ -21,6 +21,11 @@ implementation{
 	App.RssiDone -> RssiDone;
 	App.AMPacket -> AMSenderC;
 	App.PacketAcknowledgements -> AMSenderC;
+
+	components TimeSyncMessageC;
+	App.TimeSyncAMSend 	-> TimeSyncMessageC.TimeSyncAMSendRadio[AM_SYNCMSG];
+	App.TimeSyncPacket 	-> TimeSyncMessageC.TimeSyncPacketRadio;
+	App.SyncReceive 	-> TimeSyncMessageC.Receive[AM_SYNCMSG];
 	
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
@@ -29,7 +34,11 @@ implementation{
 	DelugeC.Leds -> LedsC;
 	
 	components DiagMsgC;
-	App.DiagMsg -> DiagMsgC;
+	components SerialActiveMessageC;
+	App.DiagMsg -> DiagMsgC.DiagMsg;
+	App.SerialSplitControl -> SerialActiveMessageC.SplitControl;
+
+	
 	
 }
 

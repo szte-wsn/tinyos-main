@@ -13,7 +13,7 @@ CFLAGS += -DUCMINI_REV=101
 
 # CFLAGS += -DDIAGMSG_RADIO
 # CFLAGS += -DRADIO_DEBUG
-# CFLAGS += -DDIAGMSG_SERIAL_START
+CFLAGS += -DDIAGMSG_SERIAL_START
 
 RssiMsg.java:
 	mig java -target=null $(CFLAGS) -java-classname=RssiMsg TestAlarm.h rssiMessage_t -o $@

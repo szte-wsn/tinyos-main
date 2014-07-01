@@ -20,6 +20,7 @@ typedef nx_struct sync_message_t{
 
 enum {
 	AM_RADIOMSG = 6,
+	AM_SYNCMSG = 7,
 };
 
 enum{
