@@ -89,7 +89,7 @@ implementation{
 				settings[13].work=RX;
 				settings[14].work=RX;
 				settings[15].work=RX;
-				firetime = 62000;
+				firetime = 62000U;
 				call Alarm.startAt(0,firetime);
 			}
 			if(TOS_NODE_ID==2){
@@ -209,7 +209,7 @@ implementation{
 				call DiagMsg.uint8(active_measure-1);
 				/*call DiagMsg.str("");
 				call DiagMsg.uint8(buffer_counter);
-				/*call DiagMsg.str("");
+				call DiagMsg.str("");
 				call DiagMsg.uint32(start_of_frame);*/
 				call DiagMsg.send();
 			}
