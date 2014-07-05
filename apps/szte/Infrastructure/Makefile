@@ -1,7 +1,7 @@
 COMPONENT=TestAlarmC
 BUILD_EXTRA_DEPS += Send.class Receive.class
 CLEAN_EXTRA = *.class RssiMsg.java CommandMsg.java RssiDoneMsg.java
-BOOTLOADER=tosboot
+# BOOTLOADER=tosboot
 include ../Makecommon
 
 CFLAGS += -DCONTINOUS_WAVE
@@ -12,7 +12,7 @@ CFLAGS+=-DDISABLE_BATTERY_CHECK
 CFLAGS += -DUCMINI_REV=101
 
 # CFLAGS += -DDIAGMSG_RADIO
-# CFLAGS += -DRADIO_DEBUG
+CFLAGS += -DRADIO_DEBUG
 CFLAGS += -DDIAGMSG_SERIAL_START
 
 RssiMsg.java:

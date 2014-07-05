@@ -30,8 +30,10 @@ implementation{
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
 	
+	#ifdef DELUGE
 	components DelugeC;
 	DelugeC.Leds -> LedsC;
+	#endif
 	
 	components DiagMsgC;
 	components SerialActiveMessageC;
