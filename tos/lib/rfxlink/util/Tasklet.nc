@@ -35,25 +35,26 @@
 #include <Tasklet.h>
 
 /**
- * This interface is useful in building state machines when the state 
- * transitions should be executed atomically but with interrupts enabled. 
+ * This interface is useful in building state machines when the state
+ * transitions should be executed atomically but with interrupts enabled.
  * All state transitions should take place in the run event handler or
  * in blocks protected by the suspend and resume commands.
  */
 interface Tasklet
 {
 	/**
-	 * This method is executed atomically. 
+	 * This method is executed atomically (will not be called recursively)
+	 * but not in an atomic context.
 	 */
 	tasklet_async event void run();
 
 	/**
-	 * Makes sure that the run event is called at least once more. If the 
-	 * run event is currently not executing, then it  is called immediately 
-	 * and this command returns only after the completion of the run event. 
-	 * If the run event is currently executed, then this method returns at 
-	 * once, and makes sure that the run event is called once more when 
-	 * it is finished. If this method is called from a task, then by the 
+	 * Makes sure that the run event is called at least once more. If the
+	 * run event is currently not executing, then it is called immediately
+	 * and this command returns only after the completion of the run event.
+	 * If the run event is currently executed, then this method returns at
+	 * once, and makes sure that the run event is called once more when
+	 * it is finished. If this method is called from a task, then by the
 	 * above rules, the run event will be called from a task as well.
 	 */
 	async command void schedule();
@@ -72,9 +73,28 @@ interface Tasklet
 	command void suspend();
 
 	/**
-	 * Leaves the critical section. This call is conly possible from 
-	 * task context. If there were scheduled executions of the run
-	 * event, then those will be called before this command returns.
+	 * Leaves the critical section from task context. If there is a
+	 * scheduled execution of the run event, then that will be called
+	 * when the last critical section is exited and before this command
+	 * returns.
 	 */
 	command void resume();
+
+	/**
+	 * Enters a critical section asyncronously and make sure that the
+	 * run event is not called while in this section. This call cannot
+	 * be nested! If the run event is currently being executed or it
+	 * has been scheduled or suspended, then this method will return FAIL.
+	 * Otherwise it enters the critical section, returns SUCCESS, and
+	 * you have to call asyncResume to leave the section. You MUST call resume
+	 * in the same async event handler and cannot do it later.
+	 */
+	async command error_t asyncSuspend();
+
+	/**
+	 * Leaves the critical section from async context. If there is a
+	 * scheduled execution of the run event, then that will be called
+	 * before this command returns.
+	 */
+	async command void asyncResume();
 }
