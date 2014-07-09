@@ -1079,7 +1079,7 @@ implementation
 #ifdef CONTINOUS_WAVE
 /*----------------------RadioContinuousWave---------------------*/
   async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
-    if( state == STATE_RX_ON && cmd == CMD_NONE ){
+    if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
       state = STATE_RSSI_MON;
       
       atomic{
@@ -1157,13 +1157,14 @@ implementation
           *(buffer+i) = *(buffer+i) & RFA1_RSSI_MASK;
         }
       #endif
+      call Tasklet.asyncResume();
       return SUCCESS;
     } else
       return EBUSY;
   }
   
   async command error_t RadioContinuousWave.sendWave(uint8_t testChannel, int8_t tune, uint8_t power, uint16_t time){
-    if( state == STATE_RX_ON && cmd == CMD_NONE ){
+    if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
       uint32_t end = time;
       state = STATE_CW_SEND;
       XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
@@ -1221,6 +1222,7 @@ implementation
       IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
       
       state = STATE_RX_ON;
+      call Tasklet.asyncResume();
       return SUCCESS;
     } else
       return EBUSY;
