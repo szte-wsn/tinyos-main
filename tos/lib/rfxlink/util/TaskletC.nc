@@ -44,9 +44,17 @@ implementation
 {
 #ifdef TASKLET_IS_TASK
 
+	uint8_t state;
+
 	task void tasklet()
 	{
+		RADIO_ASSERT( state == 0 );
+		state = 1;
+
 		signal Tasklet.run();
+
+		RADIO_ASSERT( state == 0 );
+		state = 0;
 	}
 
 	inline async command void Tasklet.schedule()
@@ -56,17 +64,40 @@ implementation
 
 	inline command void Tasklet.suspend()
 	{
+		RADIO_ASSERT( state != 255 );
+		state += 1;
 	}
 
 	inline command void Tasklet.resume()
 	{
+		RADIO_ASSERT( state != 255 && state != 0 );
+		state -= 1;
+	}
+
+	async command error_t Tasklet.asyncSuspend()
+	{
+		atomic
+		{
+			if( state != 0 )
+				return FAIL;
+
+			state = 255;
+		}
+
+		return SUCCESS;
+	}
+
+	inline async command void Tasklet.asyncResume()
+	{
+		RADIO_ASSERT( state == 255 );
+		state = 0;
 	}
 
 #else
-	
+
 	/**
-	 * The lower 7 bits contain the number of suspends plus one if the run 
-	 * event is currently beeing executed. The highest bit is set if the run 
+	 * The lower 7 bits contain the number of suspends plus one if the run
+	 * event is currently beeing executed. The highest bit is set if the run
 	 * event needs to be called again when the suspend count goes down to zero.
 	 */
 	uint8_t state;
@@ -107,6 +138,28 @@ implementation
 		}
 
 		doit();
+	}
+
+	async command error_t Tasklet.asyncSuspend()
+	{
+		atomic
+		{
+			if( state != 0 )
+				return FAIL;
+
+			state = 1;
+		}
+
+		return SUCCESS;
+	}
+
+	async command void Tasklet.asyncResume()
+	{
+		atomic
+		{
+			RADIO_ASSERT( state == 1 );
+			state = 0;
+		}
 	}
 
 	async command void Tasklet.schedule()
