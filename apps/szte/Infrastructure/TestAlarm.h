@@ -16,6 +16,8 @@ typedef nx_struct config_msg_t {
 
 typedef nx_struct sync_message_t{
 	nx_uint8_t frame;
+	nx_uint8_t freq;
+	nx_uint8_t phase;
 } sync_message_t;
 
 enum {

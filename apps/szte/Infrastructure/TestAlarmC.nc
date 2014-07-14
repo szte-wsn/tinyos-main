@@ -40,7 +40,8 @@ implementation{
 	App.DiagMsg -> DiagMsgC.DiagMsg;
 	App.SerialSplitControl -> SerialActiveMessageC.SplitControl;
 
-	
+	components PhaseFreqCounterC;
+	App.PhaseFreqCounter -> PhaseFreqCounterC.PhaseFreqCounter;
 	
 }
 
