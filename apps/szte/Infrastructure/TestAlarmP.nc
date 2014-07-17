@@ -1,12 +1,19 @@
+/* Scheduler
+
+	One measure = SLOT (sendWabe or sampleRSSI)
+	The set of slots = FRAME (1 sync/frame)
+	The set of frames = SUPERFRAME
+
+*/
+
 #include "TestAlarm.h"
 
 
 #define NUMBER_OF_INFRAST_NODES 4
-#define BUFFER_LEN 400
-#define NUMBER_OF_SLOT_IN_FRAME 4
 #define NUMBER_OF_FRAMES 4
-
+#define NUMBER_OF_SLOT_IN_FRAME 13
 #define SENDING_TIME 50
+#define BUFFER_LEN 400
 
 module TestAlarmP{
 	uses interface Boot;
@@ -39,33 +46,33 @@ implementation{
 		MODE = 0,
 		TRIM1 = 17,
 		TRIM2 = 0,
-		TX = 0,
-		RX = 1,
-		SEND_SYNC=2,
-		RECV_SYNC=3,
-		NUMBER_OF_SLOTS = NUMBER_OF_FRAMES * NUMBER_OF_SLOT_IN_FRAME,
+		TX = 0, //sendWave
+		RX = 1, //sampleRSSI
+		SEND_SYNC=2, //sends sync message
+		RECV_SYNC=3, //waits for sync message
+		NUMBER_OF_SLOTS = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES,
 		MEAS_SLOT = 62, //measure slot
-		SYNC_SLOT = 100, //between frames
-		SEND_SLOT = 5000 //between super frames
+		SYNC_SLOT = 400, //between frames
+		SEND_SLOT = 620, //between super frames
+		BUFFER_SIZE = 10 //size of the buffer
 	};
 
-	typedef struct schedule_t{
-		uint8_t work;
-	} schedule_t;
-	norace schedule_t settings[NUMBER_OF_SLOTS];
+	typedef	struct 	schedule_t{
+			uint8_t work;
+	}schedule_t;
 
+	norace 	schedule_t 	settings[NUMBER_OF_SLOTS];
 	norace 	bool 		waitToStart=TRUE;
 			message_t 	packet;
-	norace 	uint32_t 	message_sended_time,startOfFrame;
+	norace 	uint32_t 	startOfFrame;
 	norace 	uint8_t 	activeMeasure=0;
 	norace 	uint32_t 	firetime=0;
-			uint8_t 	buffer[NUMBER_OF_SLOTS][BUFFER_LEN];
+			uint8_t 	buffer[BUFFER_SIZE][BUFFER_LEN];
 	norace 	uint8_t 	bufferCounter = 0;
-			uint8_t 	cnt = 0;
-
-	task void measureDone();
-	task void measureStart();
-	task void sendSync();
+			uint8_t		cnt=0;
+	task 	void 		measureDone();
+	task 	void 		measureStart();
+	task 	void 		sendSync();
 	
 	event void Boot.booted(){
 		call SplitControl.start();
@@ -75,18 +82,54 @@ implementation{
 				settings[1].work=TX;
 				settings[2].work=TX;
 				settings[3].work=RX;
-				settings[4].work=RECV_SYNC;
+				settings[4].work=TX;
 				settings[5].work=TX;
-				settings[6].work=TX;
-				settings[7].work=RX;
-				settings[8].work=RECV_SYNC;
-				settings[9].work=TX;
-				settings[10].work=TX;
+				settings[6].work=RX;
+				settings[7].work=TX;
+				settings[8].work=TX;
+				settings[9].work=RX;
+				settings[10].work=RX;
 				settings[11].work=RX;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=RX;
-				settings[14].work=RX;
-				settings[15].work=RX;
+				settings[12].work=RX;
+				settings[13].work=RECV_SYNC;
+				settings[14].work=TX;
+				settings[15].work=TX;
+				settings[16].work=RX;
+				settings[17].work=TX;
+				settings[18].work=TX;
+				settings[19].work=RX;
+				settings[20].work=TX;
+				settings[21].work=TX;
+				settings[22].work=RX;
+				settings[23].work=RX;
+				settings[24].work=RX;
+				settings[25].work=RX;
+				settings[26].work=RECV_SYNC;
+				settings[27].work=TX;
+				settings[28].work=TX;
+				settings[29].work=RX;
+				settings[30].work=TX;
+				settings[31].work=TX;
+				settings[32].work=RX;
+				settings[33].work=TX;
+				settings[34].work=TX;
+				settings[35].work=RX;
+				settings[36].work=RX;
+				settings[37].work=RX;
+				settings[38].work=RX;
+				settings[39].work=RECV_SYNC;
+				settings[40].work=TX;
+				settings[41].work=TX;
+				settings[42].work=RX;
+				settings[43].work=TX;
+				settings[44].work=TX;
+				settings[45].work=RX;
+				settings[46].work=TX;
+				settings[47].work=TX;
+				settings[48].work=RX;
+				settings[49].work=RX;
+				settings[50].work=RX;
+				settings[51].work=RX;
 				firetime = 62000;
 				call Alarm.startAt(0,firetime);
 			}
@@ -95,18 +138,54 @@ implementation{
 				settings[1].work=RX;
 				settings[2].work=RX;
 				settings[3].work=RX;
-				settings[4].work=SEND_SYNC;
-				settings[5].work=TX;
-				settings[6].work=RX;
+				settings[4].work=TX;
+				settings[5].work=RX;
+				settings[6].work=TX;
 				settings[7].work=TX;
-				settings[8].work=RECV_SYNC;
+				settings[8].work=RX;
 				settings[9].work=TX;
-				settings[10].work=RX;
+				settings[10].work=TX;
 				settings[11].work=TX;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=TX;
-				settings[14].work=TX;
+				settings[12].work=RX;
+				settings[13].work=SEND_SYNC;
+				settings[14].work=RX;
 				settings[15].work=RX;
+				settings[16].work=RX;
+				settings[17].work=TX;
+				settings[18].work=RX;
+				settings[19].work=TX;
+				settings[20].work=TX;
+				settings[21].work=RX;
+				settings[22].work=TX;
+				settings[23].work=TX;
+				settings[24].work=TX;
+				settings[25].work=RX;
+				settings[26].work=RECV_SYNC;
+				settings[27].work=RX;
+				settings[28].work=RX;
+				settings[29].work=RX;
+				settings[30].work=TX;
+				settings[31].work=RX;
+				settings[32].work=TX;
+				settings[33].work=TX;
+				settings[34].work=RX;
+				settings[35].work=TX;
+				settings[36].work=TX;
+				settings[37].work=TX;
+				settings[38].work=RX;
+				settings[39].work=RECV_SYNC;
+				settings[40].work=RX;
+				settings[41].work=RX;
+				settings[42].work=RX;
+				settings[43].work=TX;
+				settings[44].work=RX;
+				settings[45].work=TX;
+				settings[46].work=TX;
+				settings[47].work=RX;
+				settings[48].work=TX;
+				settings[49].work=TX;
+				settings[50].work=TX;
+				settings[51].work=RX;
 				activeMeasure = 1;
 			}
 			if(TOS_NODE_ID==3){
@@ -114,18 +193,54 @@ implementation{
 				settings[1].work=TX;
 				settings[2].work=RX;
 				settings[3].work=TX;
-				settings[4].work=RECV_SYNC;
+				settings[4].work=RX;
 				settings[5].work=RX;
 				settings[6].work=RX;
 				settings[7].work=RX;
-				settings[8].work=SEND_SYNC;
-				settings[9].work=RX;
+				settings[8].work=TX;
+				settings[9].work=TX;
 				settings[10].work=TX;
-				settings[11].work=TX;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=TX;
-				settings[14].work=RX;
-				settings[15].work=TX;
+				settings[11].work=RX;
+				settings[12].work=TX;
+				settings[13].work=RECV_SYNC;
+				settings[14].work=TX;
+				settings[15].work=RX;
+				settings[16].work=TX;
+				settings[17].work=RX;
+				settings[18].work=RX;
+				settings[19].work=RX;
+				settings[20].work=RX;
+				settings[21].work=TX;
+				settings[22].work=TX;
+				settings[23].work=TX;
+				settings[24].work=RX;
+				settings[25].work=TX;
+				settings[26].work=SEND_SYNC;
+				settings[27].work=TX;
+				settings[28].work=RX;
+				settings[29].work=TX;
+				settings[30].work=RX;
+				settings[31].work=RX;
+				settings[32].work=RX;
+				settings[33].work=RX;
+				settings[34].work=TX;
+				settings[35].work=TX;
+				settings[36].work=TX;
+				settings[37].work=RX;
+				settings[38].work=TX;
+				settings[39].work=RECV_SYNC;
+				settings[40].work=TX;
+				settings[41].work=RX;
+				settings[42].work=TX;
+				settings[43].work=RX;
+				settings[44].work=RX;
+				settings[45].work=RX;
+				settings[46].work=RX;
+				settings[47].work=TX;
+				settings[48].work=TX;
+				settings[49].work=TX;
+				settings[50].work=RX;
+				settings[51].work=TX;
 				activeMeasure = 1;
 			}
 			if(TOS_NODE_ID==4){
@@ -133,18 +248,54 @@ implementation{
 				settings[1].work=RX;
 				settings[2].work=TX;
 				settings[3].work=TX;
-				settings[4].work=RECV_SYNC;
-				settings[5].work=RX;
+				settings[4].work=RX;
+				settings[5].work=TX;
 				settings[6].work=TX;
-				settings[7].work=TX;
-				settings[8].work=RECV_SYNC;
+				settings[7].work=RX;
+				settings[8].work=RX;
 				settings[9].work=RX;
 				settings[10].work=RX;
-				settings[11].work=RX;
-				settings[12].work=SEND_SYNC;
-				settings[13].work=RX;
-				settings[14].work=TX;
+				settings[11].work=TX;
+				settings[12].work=TX;
+				settings[13].work=RECV_SYNC;
+				settings[14].work=RX;
 				settings[15].work=TX;
+				settings[16].work=TX;
+				settings[17].work=RX;
+				settings[18].work=TX;
+				settings[19].work=TX;
+				settings[20].work=RX;
+				settings[21].work=RX;
+				settings[22].work=RX;
+				settings[23].work=RX;
+				settings[24].work=TX;
+				settings[25].work=TX;
+				settings[26].work=RECV_SYNC;
+				settings[27].work=RX;
+				settings[28].work=TX;
+				settings[29].work=TX;
+				settings[30].work=RX;
+				settings[31].work=TX;
+				settings[32].work=TX;
+				settings[33].work=RX;
+				settings[34].work=RX;
+				settings[35].work=RX;
+				settings[36].work=RX;
+				settings[37].work=TX;
+				settings[38].work=TX;
+				settings[39].work=SEND_SYNC;
+				settings[40].work=RX;
+				settings[41].work=TX;
+				settings[42].work=TX;
+				settings[43].work=RX;
+				settings[44].work=TX;
+				settings[45].work=TX;
+				settings[46].work=RX;
+				settings[47].work=RX;
+				settings[48].work=RX;
+				settings[49].work=RX;
+				settings[50].work=TX;
+				settings[51].work=TX;
 				activeMeasure = 1;
 			}
 		}
@@ -152,14 +303,22 @@ implementation{
 	
 	event void SplitControl.startDone(error_t error){}
 
-	event void SplitControl.stopDone(error_t error){
-		call SplitControl.start();	
-	}
+	event void SplitControl.stopDone(error_t error){}
 	
 	inline static uint8_t* getBuffer(uint8_t *buf){
 		return (uint8_t*)(buf);
 	}
 	
+	/*if it's not required to do something between the superframes:
+			- comment: 		if(activeMeasure == NUMBER_OF_SLOTS){//end of superframe
+								call Alarm.stop();
+								post measureDone();
+								return;
+							}
+			- comment: 		activeMeasure++;
+			- uncomment:	activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+	*/
+
 	async event void Alarm.fired(){
 			if(waitToStart){ //start the action
 				post measureStart();
@@ -187,104 +346,85 @@ implementation{
 				}else if(settings[activeMeasure].work==RX){ //receiver
 					uint16_t time = 0;
 					call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
-					bufferCounter = (bufferCounter+1)%NUMBER_OF_SLOTS;
+					bufferCounter = (bufferCounter+1)%BUFFER_SIZE;
 				}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
 					post sendSync();
 				}
 				//activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
 				activeMeasure++;
-			}
-			/*if(call DiagMsg.record()){
-				call DiagMsg.str("AS:");
-				call DiagMsg.uint8(activeMeasure-1);
-				/*call DiagMsg.str("");
-				call DiagMsg.uint8(bufferCounter);
-				call DiagMsg.str("");
-				call DiagMsg.uint32(startOfFrame);
-				call DiagMsg.send();
-			}*/
+			} 
 	}
-
+	/*
+		Sends sync message.
+	*/
 	task void sendSync(){
-		error_t ret;
-		uint8_t mphase, mfreq;
+		//uint8_t mphase, mfreq;
 		sync_message_t* msg = (sync_message_t*)call TimeSyncAMSend.getPayload(&packet,sizeof(sync_message_t));
-		msg->frame = activeMeasure/4;
+		msg->frame = activeMeasure;
 		//call PhaseFreqCounter.getPhaseAndFreq(&mphase, &mfreq);
-		msg->freq = mfreq;
-		msg->phase = mphase;
+		//msg->freq = mfreq;
+		//msg->phase = mphase;
 		startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
 		firetime = SYNC_SLOT;
 		call Alarm.startAt(startOfFrame,firetime);
-		ret = call TimeSyncAMSend.send(0xFFFF, &packet, sizeof(sync_message_t), startOfFrame);
+		call TimeSyncAMSend.send(0xFFFF, &packet, sizeof(sync_message_t), startOfFrame);
 		return;
 	}
-
+	/*Counting is done*/
 	event void PhaseFreqCounter.counterDone(){}
 
-	/*SYNC msg sent*/
-	event void AMSend.sendDone(message_t* bufPtr, error_t error){
-
-	}
+	event void AMSend.sendDone(message_t* bufPtr, error_t error){}
+	
 	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len){
-
 		return bufPtr;
 	}
 
-	event void RssiDone.sendDone(message_t* bufPtr, error_t error){
-		
-	}
+	event void RssiDone.sendDone(message_t* bufPtr, error_t error){}
 
-	/*SYNC msg received*/
+	/*
+		SYNC msg received
+	*/
 	event message_t* SyncReceive.receive(message_t* bufPtr, void* payload, uint8_t len){
 		sync_message_t* msg = (sync_message_t*)payload;
 		if(call TimeSyncPacket.isValid(bufPtr)){
-			//call Alarm.stop();
-			if(msg->frame*4+1 == activeMeasure){
+			if(msg->frame == activeMeasure){
 				startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
-				//activeMeasure = msg->frame*4+1;
 				firetime = SYNC_SLOT;
-				if(call DiagMsg.record()){
-					call DiagMsg.str("s");
-					call DiagMsg.send();
-				}
 				if(waitToStart){
 		    		call Alarm.startAt(startOfFrame,firetime);
 					waitToStart = FALSE;
 				}
-			}else{
-				if(call DiagMsg.record()){
-					call DiagMsg.uint8(msg->frame*4+1);
-					call DiagMsg.uint8(activeMeasure);
-					call DiagMsg.send();
-				}
 			}
-			
 		}
 		return bufPtr;
 	}
 
-
+	/*
+		Sync message sent
+	*/
 	event void TimeSyncAMSend.sendDone(message_t* msg, error_t error){
 
 	}
-
-	task void measureDone(){ //what to do between super frames
+	/*
+		What to do between super frames.
+	*/
+	task void measureDone(){
 		bufferCounter = 0;
 		activeMeasure = 0;
 		firetime += SEND_SLOT;
 		call Alarm.startAt(startOfFrame,firetime);
 		startOfFrame = startOfFrame + SEND_SLOT;
-		if(call DiagMsg.record()){
-				call DiagMsg.str("*");
-				call DiagMsg.send();
-			}
-		call Leds.led3Toggle();
+		if(++cnt == 10){
+			call Leds.led3Toggle();
+			cnt=0;
+		}
 	}
-
+	/*
+		Start the action.
+	*/
 	task void measureStart(){
 		sync_message_t* msg = (sync_message_t*)call Packet.getPayload(&packet,sizeof(sync_message_t));
-		msg->frame = 0;
+		msg->frame = 1;
 		startOfFrame = firetime;  //62000
 		call TimeSyncAMSend.send(0xFFFF, &packet, sizeof(sync_message_t),startOfFrame);
 		firetime = SYNC_SLOT;
@@ -292,12 +432,8 @@ implementation{
 		activeMeasure = 1;
 	}
 
-	event void SerialSplitControl.startDone(error_t error){
-		
-	}
+	event void SerialSplitControl.startDone(error_t error){}
 
-	event void SerialSplitControl.stopDone(error_t error){
-		
-	}
+	event void SerialSplitControl.stopDone(error_t error){}
 
 }
