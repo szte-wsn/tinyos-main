@@ -19,6 +19,8 @@ else:
 
 
 index=0;
+ptime = []
+pvalue = []
 for filename in filenames:
   f = open(filename, 'rb')
   
@@ -74,83 +76,87 @@ for filename in filenames:
       valuelist.append(ord(values[i]))
     else:
       valuelist.append(values[i])
+
+  fftvaluelist = []
+  ffttimelist = []
+  k = 0;
+
+  for i in valuelist:
+    if i > 5:
+      fftvaluelist.append(i) 
+  fftvaluelist = fftvaluelist[1:-2]    
+
+  ffttimeusbase=measureTime/len(fftvaluelist)
+  for i in range(0, len(fftvaluelist)):
+    ffttimelist.append(i*ffttimeusbase)
+
+  mean = np.mean(fftvaluelist)
+  fftvaluelist = fftvaluelist - mean
+
+  valuelist = fftvaluelist
+  timelist = ffttimelist
   
   #plot
-  plt.figure('Time ' + str(index));
-  plt.plot(timelist, valuelist)
-  plt.title(title)
-  plt.xlabel('time [us]')
-  plt.ylabel('RSSI')
-  plt.xlim(min(timelist),max(timelist))
-  plt.ylim(min(valuelist)-1,max(valuelist)+1)
+#  plt.figure('Time ' + str(index));
+#  plt.plot(timelist, valuelist)
+#  plt.title(title)
+#  plt.xlabel('time [us]')
+#  plt.ylabel('RSSI')
+#  plt.xlim(min(timelist),max(timelist))
+#  plt.ylim(min(valuelist)-1,max(valuelist)+1)
+     
 
-  FFT = fft.fft(valuelist)/arraylength;
+  FFT = fft.fft(valuelist)/len(valuelist);
   freq = fft.fftfreq(len(FFT),d=(timelist[1]-timelist[0]));
 
-#  FFT = fft.fftshift(FFT);
-#  freq = fft.fftshift(freq);
-
-  phase = np.arctan(min(FFT).imag/min(FFT).real)
-  print("Phase rad: "+str(phase)+" ,deg: "+str(np.rad2deg(phase)))
-
-  phase = np.angle(FFT,deg=True);
-  phase = np.unwrap(phase);
-
-  print("\nFFT size: "+str(len(FFT)))
-  print("FFT max value,freq,phase: "+str(max(FFT))+",\t"+str(freq[np.argmax(FFT)])+",\t"+str(phase[np.argmax(FFT)]))
-  print("FFT min value,freq,phase: "+str(min(FFT))+",\t"+str(freq[np.argmin(FFT)])+",\t"+str(phase[np.argmin(FFT)]))
-  print("FFT_real(cos) max value,freq,phase: "+str(max(np.real(FFT)))+",\t"+str(freq[np.argmax(np.real(FFT))])+",\t"+str(phase[np.argmax(np.real(FFT))]))
-  print("FFT_real(cos) min value,freq,phase: "+str(min(np.real(FFT)))+",\t"+str(freq[np.argmin(np.real(FFT))])+",\t"+str(phase[np.argmin(np.real(FFT))]))
-  print("FFT_imag(sin) max value,freq,phase: "+str(max(np.imag(FFT)))+",\t"+str(freq[np.argmax(np.imag(FFT))])+",\t"+str(phase[np.argmax(np.imag(FFT))]))
-  print("FFT_imag(sin) min value,freq,phase: "+str(min(np.imag(FFT)))+",\t"+str(freq[np.argmin(np.imag(FFT))])+",\t"+str(phase[np.argmin(np.imag(FFT))]))
-  print("FFT max real,imag,real_phase,imag_phase: "+str(max(FFT).real)+",\t"+str(max(FFT).imag)+",\t"+str(phase[max(FFT).real])+",\t"+str(phase[max(FFT).imag]))
-  print("FFT min real,imag,real_phase,imag_phase: "+str(min(FFT).real)+",\t"+str(min(FFT).imag)+",\t"+str(phase[min(FFT).real])+",\t"+str(phase[min(FFT).imag]))
-#  print("Phase rad: "+str(phase));
-  print("\n")
-
-
-  plt.figure('FFT ' + str(index))
-  plt.subplot(5, 1, 1)
-  plt.plot(timelist, valuelist)
-  plt.title('Measure')
-  plt.xlabel('time [us]')
-  plt.ylabel('Amplitude in time')
-  plt.xlim(min(timelist),max(timelist))
-  plt.ylim(min(valuelist)-1,max(valuelist)+1)
-  
-  plt.subplot(5, 1, 2)
-  plt.plot(freq, FFT, 'r.-')
-  plt.xlabel('freq [Hz]')
-  plt.ylabel('Amplitude in freq')
-#  plt.xlim(-0.1,0.1)   x tengely hatarai
-  plt.ylim(min(FFT)-1,max(FFT)+1)
-
-  plt.subplot(5, 1, 3)
-  plt.plot(freq, np.real(FFT), 'r.-')
-  plt.xlabel('freq [Hz]')
-  plt.ylabel('Real Amplitude')
-  plt.ylim(min(np.real(FFT))-1,max(np.real(FFT))+1)
-
-  plt.subplot(5, 1, 4)
-  plt.plot(freq, np.imag(FFT), 'r.-')
-  plt.xlabel('freq [Hz]')
-  plt.ylabel('Imag Amplitude')
-  plt.ylim(min(np.imag(FFT))-0.1,max(np.imag(FFT))+0.1)
-
   Fkabs= np.absolute(FFT)**2 ##Power spectrum
-  plt.subplot(5, 1, 5)
-  plt.plot(freq, Fkabs, 'r.-')
-  plt.xlabel('freq [Hz]')
-  plt.ylabel('Power Amplitude')
-  plt.ylim(min(Fkabs)-10,max(Fkabs)+10)
+  phase = np.angle(FFT,deg=False);
+#  print("FFT max value,freq,phase(np.angle): "+str(max(Fkabs))+",\t"+str(freq[np.argmax(Fkabs)])+",\t"+str(phase[np.argmax(Fkabs)]))
+#  phase = np.arctan2(np.sin(valuelist),np.cos(valuelist));
 
-  plt.subplot(6, 1, 6)
-  plt.plot(freq, phase, 'r.-')
-  plt.xlabel('freq [Hz]')
-  plt.ylabel('Phase')
+  ptime.append(index)
+  pvalue.append(phase[np.argmax(Fkabs)])
 
-  plt.draw()
-  index+=1
-  print("\n\n")  
+#  print("FFT max value,freq,phase(np.arctan2)): "+str(max(Fkabs))+",\t"+str(freq[np.argmax(Fkabs)])+",\t"+str(phase[np.argmax(Fkabs)]))
+  
+  #Draw measure FFT and phase
+#  plt.figure("Power Spectrum and Phase " + str(filename))
+#  plt.subplot(3, 1, 1)
+#  plt.plot(timelist, valuelist)
+#  plt.title('Measure')
+#  plt.xlabel('time [us]')
+#  plt.ylabel('Amplitude')
+#  plt.xlim(min(timelist),max(timelist))
+#  plt.ylim(min(valuelist)-1,max(valuelist)+1)
+
+#  plt.subplot(3, 1, 2)
+#  plt.plot(freq, Fkabs, 'r.-')
+#  plt.xlabel('freq [Hz]')
+#  plt.ylabel('Power Amplitude')
+#  plt.xlim(min(freq),max(freq))
+#  plt.ylim(min(Fkabs),max(Fkabs))
+
+#  plt.subplot(3, 1, 3)
+#  plt.plot(freq, phase, 'r.-')
+#  plt.xlabel('freq [Hz]')
+#  plt.ylabel('Wrap Phase')
+
+#  plt.draw()
+  index+=1  
+  print("Calculated Frequency: " + str(freq[np.argmax(Fkabs)]))
+  print("Calculated Phase: " + str(phase[np.argmax(Fkabs)]))  
+  print("\n\n")
+
+plt.figure("All calculated phase " + str(nodeid))
+plt.subplot(2, 1, 1)
+plt.plot(ptime,pvalue)
+plt.xlabel('time')
+plt.ylabel('wrap phase')
+uwphase = np.unwrap(pvalue)
+plt.subplot(2, 1, 2)
+plt.plot(ptime,uwphase)
+plt.xlabel('time')
+plt.ylabel('unwrap phase')
 
 plt.show()
+
