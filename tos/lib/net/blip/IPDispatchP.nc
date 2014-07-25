@@ -100,6 +100,7 @@ int lowpan_extern_match_context(struct in6_addr *addr, uint8_t *ctx_id) {
   };
   uint8_t state = S_STOPPED;
   bool radioBusy;
+  bool ack_required=TRUE;
   uint8_t current_local_label = 0;
   ip_statistics_t stats;
 
@@ -495,6 +496,13 @@ void SENDINFO_DECR(struct send_info *si) {
       return EOFF;
     }
 
+
+    //check whether the destination address is a multicast address or not
+    if(frame_addr->ieee_dst.i_saddr==IEEE154_BROADCAST_ADDR)
+      ack_required=FALSE;
+    else
+      ack_required=TRUE;
+
     /* set version to 6 in case upper layers forgot */
     msg->ip6_hdr.ip6_vfc &= ~IPV6_VERSION_MASK;
     msg->ip6_hdr.ip6_vfc |= IPV6_VERSION;
@@ -548,6 +556,11 @@ void SENDINFO_DECR(struct send_info *si) {
       if (call SendQueue.enqueue(s_entry) != SUCCESS) {
         BLIP_STATS_INCR(stats.encfail);
         s_info->failed = TRUE;
+        // Because we were unable to add this fragment to the send queue we need
+        // to return the fragment and send entry to their respective pools.
+        // The s_info will be taken care of in done:
+        call FragPool.put(outgoing);
+        call SendEntryPool.put(s_entry);
         printf("drops: IP send: enqueue failed\n");
         goto done;
       }
@@ -565,7 +578,8 @@ void SENDINFO_DECR(struct send_info *si) {
       }
       call PacketLink.setRetryDelay(s_entry->msg, BLIP_L2_DELAY);
 
-      SENDINFO_INCR(s_info);}
+      SENDINFO_INCR(s_info);
+    }
 
     // printf("got %i frags\n", s_info->link_fragments);
   done:
@@ -590,7 +604,8 @@ void SENDINFO_DECR(struct send_info *si) {
     s_entry->info->link_transmissions += (call PacketLink.getRetries(msg));
     s_entry->info->link_fragment_attempts++;
 
-    if (!call PacketLink.wasDelivered(msg)) {
+ //acknowledgements are not required for multicast packets, useful for fragmentation
+   if (!call PacketLink.wasDelivered(msg) && ack_required) {
       printf("sendDone: was not delivered! (%i tries)\n",
                  call PacketLink.getRetries(msg));
       s_entry->info->failed = TRUE;
