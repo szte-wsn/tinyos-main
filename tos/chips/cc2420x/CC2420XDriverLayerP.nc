@@ -376,6 +376,8 @@ implementation
 	
 /*----------------- INIT -----------------*/
 
+	void initRadio();
+	
 	command error_t SoftwareInit.init()
 	{
 //for apps/PPPSniffer
@@ -422,9 +424,12 @@ implementation
 		pppFull = FALSE;
 #endif
 
-		// request SPI, rest of the initialization will be done from
-		// the granted event
-		return call SpiResource.request();
+		if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
+			initRadio();
+			call SpiResource.release();
+			return SUCCESS;
+		} else
+			return FAIL;
 	}
 
 	inline void resetRadio() {
@@ -468,13 +473,7 @@ implementation
 		call CSN.makeOutput();
 		call CSN.set();
 
-		if( state == STATE_VR_ON )
-		{
-			initRadio();
-			call SpiResource.release();
-		}
-		else
-			call Tasklet.schedule();
+		call Tasklet.schedule();
 	}
 
 	bool isSpiAcquired()

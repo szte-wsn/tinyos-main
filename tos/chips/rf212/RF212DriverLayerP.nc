@@ -198,6 +198,8 @@ implementation
 
 /*----------------- INIT -----------------*/
 
+	void initRadio();
+	
 	command error_t PlatformInit.init()
 	{
 		call SELN.makeOutput();
@@ -219,7 +221,12 @@ implementation
 	command error_t SoftwareInit.init()
 	{
 		// for powering up the radio
-		return call SpiResource.request();
+		if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
+			initRadio();
+			call SpiResource.release();
+			return SUCCESS;
+		} else
+			return FAIL;
 	}
 
 	void resetRadio()
@@ -294,13 +301,7 @@ implementation
 		call SELN.makeOutput();
 		call SELN.set();
 
-		if( state == STATE_P_ON )
-		{
-			initRadio();
-			call SpiResource.release();
-		}
-		else
-			call Tasklet.schedule();
+		call Tasklet.schedule();
 	}
 
 	bool isSpiAcquired()
