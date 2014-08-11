@@ -14,15 +14,10 @@ typedef nx_struct config_msg_t {
 	nx_uint32_t Treceiver_wait;
 } config_msg_t;
 
-typedef nx_struct sync_message_t{
-	nx_uint8_t frame;
-	nx_uint8_t freq;
-	nx_uint8_t phase;
-} sync_message_t;
 
 enum {
-	AM_RADIOMSG = 6,
-	AM_SYNCMSG = 7,
+	AM_RADIOMSG = 7,
+	AM_SYNCMSG = 6,
 };
 
 enum{

@@ -42,6 +42,9 @@ implementation{
 
 	components PhaseFreqCounterC;
 	App.PhaseFreqCounter -> PhaseFreqCounterC.PhaseFreqCounter;
+
+	components MeasureWaveC;
+	App.MeasureWave -> MeasureWaveC;
 	
 }
 

@@ -1,6 +1,6 @@
 /* Scheduler
 
-	One measure = SLOT (sendWabe or sampleRSSI)
+	One measure = SLOT (sendWave or sampleRSSI)
 	The set of slots = FRAME (1 sync/frame)
 	The set of frames = SUPERFRAME
 
@@ -11,9 +11,14 @@
 
 #define NUMBER_OF_INFRAST_NODES 4
 #define NUMBER_OF_FRAMES 4
-#define NUMBER_OF_SLOT_IN_FRAME 13
+#define NUMBER_OF_SLOT_IN_FRAME 4
+#define NUMBER_OF_RX 6
 #define SENDING_TIME 50
 #define BUFFER_LEN 400
+
+					#define AMPLITUDE_THRESHOLD 2
+					#define TIME_THRESHOLD 10
+					#define START_OFFSET 16
 
 module TestAlarmP{
 	uses interface Boot;
@@ -38,6 +43,7 @@ module TestAlarmP{
 	uses interface DiagMsg;
 	uses interface SplitControl as SerialSplitControl;
 	uses interface PhaseFreqCounter;
+	uses interface MeasureWave;
 }
 implementation{
 
@@ -51,11 +57,17 @@ implementation{
 		SEND_SYNC=2, //sends sync message
 		RECV_SYNC=3, //waits for sync message
 		NUMBER_OF_SLOTS = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES,
-		MEAS_SLOT = 62, //measure slot
-		SYNC_SLOT = 400, //between frames
-		SEND_SLOT = 620, //between super frames
-		BUFFER_SIZE = 10 //size of the buffer
+		MEAS_SLOT = 10000, //measure slot
+		SYNC_SLOT = 15000, //sync slot
+		SEND_SLOT = 6200, //between super frames
 	};
+
+	typedef nx_struct sync_message_t{
+		nx_uint8_t frame;
+		nx_uint32_t freq[NUMBER_OF_RX];
+		nx_uint32_t phase[NUMBER_OF_RX];
+	} sync_message_t;
+
 
 	typedef	struct 	schedule_t{
 			uint8_t work;
@@ -65,71 +77,40 @@ implementation{
 	norace 	bool 		waitToStart=TRUE;
 			message_t 	packet;
 	norace 	uint32_t 	startOfFrame;
-	norace 	uint8_t 	activeMeasure=0;
+	norace 	uint8_t 	activeMeasure=1;
 	norace 	uint32_t 	firetime=0;
-			uint8_t 	buffer[BUFFER_SIZE][BUFFER_LEN];
+			uint8_t 	buffer[NUMBER_OF_RX][BUFFER_LEN];
 	norace 	uint8_t 	bufferCounter = 0;
+	norace 	uint8_t		tempBufferCounter;
 			uint8_t		cnt=0;
+	norace 	uint32_t	phases[NUMBER_OF_RX],freqs[NUMBER_OF_RX];
 	task 	void 		measureDone();
 	task 	void 		measureStart();
 	task 	void 		sendSync();
+	task 	void 		processData();
 	
 	event void Boot.booted(){
 		call SplitControl.start();
+		call Leds.set(sizeof(sync_message_t));
 		if(NUMBER_OF_INFRAST_NODES == 4){
 			if(TOS_NODE_ID==1){
 				settings[0].work=SEND_SYNC;
 				settings[1].work=TX;
 				settings[2].work=TX;
 				settings[3].work=RX;
-				settings[4].work=TX;
+				settings[4].work=RECV_SYNC;
 				settings[5].work=TX;
-				settings[6].work=RX;
-				settings[7].work=TX;
-				settings[8].work=TX;
-				settings[9].work=RX;
-				settings[10].work=RX;
+				settings[6].work=TX;
+				settings[7].work=RX;
+				settings[8].work=RECV_SYNC;
+				settings[9].work=TX;
+				settings[10].work=TX;
 				settings[11].work=RX;
-				settings[12].work=RX;
-				settings[13].work=RECV_SYNC;
-				settings[14].work=TX;
-				settings[15].work=TX;
-				settings[16].work=RX;
-				settings[17].work=TX;
-				settings[18].work=TX;
-				settings[19].work=RX;
-				settings[20].work=TX;
-				settings[21].work=TX;
-				settings[22].work=RX;
-				settings[23].work=RX;
-				settings[24].work=RX;
-				settings[25].work=RX;
-				settings[26].work=RECV_SYNC;
-				settings[27].work=TX;
-				settings[28].work=TX;
-				settings[29].work=RX;
-				settings[30].work=TX;
-				settings[31].work=TX;
-				settings[32].work=RX;
-				settings[33].work=TX;
-				settings[34].work=TX;
-				settings[35].work=RX;
-				settings[36].work=RX;
-				settings[37].work=RX;
-				settings[38].work=RX;
-				settings[39].work=RECV_SYNC;
-				settings[40].work=TX;
-				settings[41].work=TX;
-				settings[42].work=RX;
-				settings[43].work=TX;
-				settings[44].work=TX;
-				settings[45].work=RX;
-				settings[46].work=TX;
-				settings[47].work=TX;
-				settings[48].work=RX;
-				settings[49].work=RX;
-				settings[50].work=RX;
-				settings[51].work=RX;
+				settings[12].work=RECV_SYNC;
+				settings[13].work=RX;
+				settings[14].work=RX;
+				settings[15].work=RX;
+				waitToStart = TRUE; //it will start the action
 				firetime = 62000;
 				call Alarm.startAt(0,firetime);
 			}
@@ -138,165 +119,54 @@ implementation{
 				settings[1].work=RX;
 				settings[2].work=RX;
 				settings[3].work=RX;
-				settings[4].work=TX;
-				settings[5].work=RX;
-				settings[6].work=TX;
+				settings[4].work=SEND_SYNC;
+				settings[5].work=TX;
+				settings[6].work=RX;
 				settings[7].work=TX;
-				settings[8].work=RX;
+				settings[8].work=RECV_SYNC;
 				settings[9].work=TX;
-				settings[10].work=TX;
+				settings[10].work=RX;
 				settings[11].work=TX;
-				settings[12].work=RX;
-				settings[13].work=SEND_SYNC;
-				settings[14].work=RX;
+				settings[12].work=RECV_SYNC;
+				settings[13].work=TX;
+				settings[14].work=TX;
 				settings[15].work=RX;
-				settings[16].work=RX;
-				settings[17].work=TX;
-				settings[18].work=RX;
-				settings[19].work=TX;
-				settings[20].work=TX;
-				settings[21].work=RX;
-				settings[22].work=TX;
-				settings[23].work=TX;
-				settings[24].work=TX;
-				settings[25].work=RX;
-				settings[26].work=RECV_SYNC;
-				settings[27].work=RX;
-				settings[28].work=RX;
-				settings[29].work=RX;
-				settings[30].work=TX;
-				settings[31].work=RX;
-				settings[32].work=TX;
-				settings[33].work=TX;
-				settings[34].work=RX;
-				settings[35].work=TX;
-				settings[36].work=TX;
-				settings[37].work=TX;
-				settings[38].work=RX;
-				settings[39].work=RECV_SYNC;
-				settings[40].work=RX;
-				settings[41].work=RX;
-				settings[42].work=RX;
-				settings[43].work=TX;
-				settings[44].work=RX;
-				settings[45].work=TX;
-				settings[46].work=TX;
-				settings[47].work=RX;
-				settings[48].work=TX;
-				settings[49].work=TX;
-				settings[50].work=TX;
-				settings[51].work=RX;
-				activeMeasure = 1;
 			}
 			if(TOS_NODE_ID==3){
 				settings[0].work=RECV_SYNC;
 				settings[1].work=TX;
 				settings[2].work=RX;
 				settings[3].work=TX;
-				settings[4].work=RX;
+				settings[4].work=RECV_SYNC;
 				settings[5].work=RX;
 				settings[6].work=RX;
 				settings[7].work=RX;
-				settings[8].work=TX;
-				settings[9].work=TX;
+				settings[8].work=SEND_SYNC;
+				settings[9].work=RX;
 				settings[10].work=TX;
-				settings[11].work=RX;
-				settings[12].work=TX;
-				settings[13].work=RECV_SYNC;
-				settings[14].work=TX;
-				settings[15].work=RX;
-				settings[16].work=TX;
-				settings[17].work=RX;
-				settings[18].work=RX;
-				settings[19].work=RX;
-				settings[20].work=RX;
-				settings[21].work=TX;
-				settings[22].work=TX;
-				settings[23].work=TX;
-				settings[24].work=RX;
-				settings[25].work=TX;
-				settings[26].work=SEND_SYNC;
-				settings[27].work=TX;
-				settings[28].work=RX;
-				settings[29].work=TX;
-				settings[30].work=RX;
-				settings[31].work=RX;
-				settings[32].work=RX;
-				settings[33].work=RX;
-				settings[34].work=TX;
-				settings[35].work=TX;
-				settings[36].work=TX;
-				settings[37].work=RX;
-				settings[38].work=TX;
-				settings[39].work=RECV_SYNC;
-				settings[40].work=TX;
-				settings[41].work=RX;
-				settings[42].work=TX;
-				settings[43].work=RX;
-				settings[44].work=RX;
-				settings[45].work=RX;
-				settings[46].work=RX;
-				settings[47].work=TX;
-				settings[48].work=TX;
-				settings[49].work=TX;
-				settings[50].work=RX;
-				settings[51].work=TX;
-				activeMeasure = 1;
+				settings[11].work=TX;
+				settings[12].work=RECV_SYNC;
+				settings[13].work=TX;
+				settings[14].work=RX;
+				settings[15].work=TX;
 			}
 			if(TOS_NODE_ID==4){
 				settings[0].work=RECV_SYNC;
 				settings[1].work=RX;
 				settings[2].work=TX;
 				settings[3].work=TX;
-				settings[4].work=RX;
-				settings[5].work=TX;
+				settings[4].work=RECV_SYNC;
+				settings[5].work=RX;
 				settings[6].work=TX;
-				settings[7].work=RX;
-				settings[8].work=RX;
+				settings[7].work=TX;
+				settings[8].work=RECV_SYNC;
 				settings[9].work=RX;
 				settings[10].work=RX;
-				settings[11].work=TX;
-				settings[12].work=TX;
-				settings[13].work=RECV_SYNC;
-				settings[14].work=RX;
+				settings[11].work=RX;
+				settings[12].work=SEND_SYNC;
+				settings[13].work=RX;
+				settings[14].work=TX;
 				settings[15].work=TX;
-				settings[16].work=TX;
-				settings[17].work=RX;
-				settings[18].work=TX;
-				settings[19].work=TX;
-				settings[20].work=RX;
-				settings[21].work=RX;
-				settings[22].work=RX;
-				settings[23].work=RX;
-				settings[24].work=TX;
-				settings[25].work=TX;
-				settings[26].work=RECV_SYNC;
-				settings[27].work=RX;
-				settings[28].work=TX;
-				settings[29].work=TX;
-				settings[30].work=RX;
-				settings[31].work=TX;
-				settings[32].work=TX;
-				settings[33].work=RX;
-				settings[34].work=RX;
-				settings[35].work=RX;
-				settings[36].work=RX;
-				settings[37].work=TX;
-				settings[38].work=TX;
-				settings[39].work=SEND_SYNC;
-				settings[40].work=RX;
-				settings[41].work=TX;
-				settings[42].work=TX;
-				settings[43].work=RX;
-				settings[44].work=TX;
-				settings[45].work=TX;
-				settings[46].work=RX;
-				settings[47].work=RX;
-				settings[48].work=RX;
-				settings[49].work=RX;
-				settings[50].work=TX;
-				settings[51].work=TX;
-				activeMeasure = 1;
 			}
 		}
 	}
@@ -345,8 +215,11 @@ implementation{
 					//call PhaseFreqCounter.startCounter(getBuffer(buffer[bufferCounter]),BUFFER_LEN);
 				}else if(settings[activeMeasure].work==RX){ //receiver
 					uint16_t time = 0;
+					call Leds.set(1);
 					call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
-					bufferCounter = (bufferCounter+1)%BUFFER_SIZE;
+					post processData();
+					tempBufferCounter = bufferCounter;
+					bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
 				}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
 					post sendSync();
 				}
@@ -358,18 +231,35 @@ implementation{
 		Sends sync message.
 	*/
 	task void sendSync(){
-		//uint8_t mphase, mfreq;
+		uint8_t mphase, mfreq,i;
 		sync_message_t* msg = (sync_message_t*)call TimeSyncAMSend.getPayload(&packet,sizeof(sync_message_t));
 		msg->frame = activeMeasure;
 		//call PhaseFreqCounter.getPhaseAndFreq(&mphase, &mfreq);
-		//msg->freq = mfreq;
-		//msg->phase = mphase;
+		
+		for(i=0;i<NUMBER_OF_RX;i++){
+			msg->freq[i] = freqs[i];
+			msg->phase[i] = phases[i];
+		}
+		
 		startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
 		firetime = SYNC_SLOT;
 		call Alarm.startAt(startOfFrame,firetime);
 		call TimeSyncAMSend.send(0xFFFF, &packet, sizeof(sync_message_t), startOfFrame);
 		return;
 	}
+
+	task void processData(){
+		uint8_t temp[BUFFER_LEN];
+		uint8_t zeroPoint;
+		uint16_t startPoint;
+		startPoint = call MeasureWave.getStart(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, TIME_THRESHOLD);
+		memcpy(temp, getBuffer(buffer[tempBufferCounter]), BUFFER_LEN);
+		call MeasureWave.filter(temp, BUFFER_LEN, 3, 2);
+		freqs[tempBufferCounter] = call MeasureWave.getPeriod(temp+startPoint+START_OFFSET, BUFFER_LEN-startPoint-START_OFFSET, &zeroPoint);
+		phases[tempBufferCounter] = call MeasureWave.getPhase(temp+startPoint, BUFFER_LEN-startPoint, START_OFFSET, freqs[tempBufferCounter], zeroPoint);
+		call Leds.set(0);
+	}
+
 	/*Counting is done*/
 	event void PhaseFreqCounter.counterDone(){}
 
