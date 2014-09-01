@@ -75,7 +75,7 @@ implementation{
 	norace uint8_t bufferCounter = 0;
 	norace uint8_t tempBufferCounter;
 	uint8_t cnt=0;
-	norace uint32_tphases[NUMBER_OF_RX],freqs[NUMBER_OF_RX];
+	norace uint32_t phases[NUMBER_OF_RX],freqs[NUMBER_OF_RX];
 	task void measureDone();
 	task void measureStart();
 	task void sendSync();
