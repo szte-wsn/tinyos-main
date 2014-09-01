@@ -19,9 +19,9 @@ implementation{
 	App.AMPacket -> AMSenderC;
 
 	components TimeSyncMessageC;
-	App.TimeSyncAMSend 	-> TimeSyncMessageC.TimeSyncAMSendRadio[AM_SYNCMSG];
-	App.TimeSyncPacket 	-> TimeSyncMessageC.TimeSyncPacketRadio;
-	App.SyncReceive 	-> TimeSyncMessageC.Receive[AM_SYNCMSG];
+	App.TimeSyncAMSend -> TimeSyncMessageC.TimeSyncAMSendRadio[AM_SYNCMSG];
+	App.TimeSyncPacket -> TimeSyncMessageC.TimeSyncPacketRadio;
+	App.SyncReceive -> TimeSyncMessageC.Receive[AM_SYNCMSG];
 	
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;

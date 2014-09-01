@@ -1,6 +1,6 @@
 COMPONENT=TestAlarmC
 # BOOTLOADER=tosboot
-include ../Makecommon
+# include ../Makecommon
 
 CFLAGS += -DCONTINOUS_WAVE
 CFLAGS += -I$(TOSDIR)/lib/diagmsg

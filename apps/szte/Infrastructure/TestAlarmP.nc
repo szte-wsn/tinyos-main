@@ -17,7 +17,7 @@
 #define BUFFER_LEN 512
 
 #define AMPLITUDE_THRESHOLD 2
-#define TIME_THRESHOLD 10
+#define LEADTIME 10
 #define START_OFFSET 16
 
 module TestAlarmP{
@@ -61,25 +61,25 @@ implementation{
 	} sync_message_t;
 
 
-	typedef	struct 	schedule_t{
-			uint8_t work;
+	typedef struct schedule_t{
+		uint8_t work;
 	}schedule_t;
 
-	norace 	schedule_t 	settings[NUMBER_OF_SLOTS];
-	norace 	bool 		waitToStart=TRUE;
-			message_t 	packet;
-	norace 	uint32_t 	startOfFrame;
-	norace 	uint8_t 	activeMeasure=1;
-	norace 	uint32_t 	firetime=0;
-			uint8_t 	buffer[NUMBER_OF_RX][BUFFER_LEN];
-	norace 	uint8_t 	bufferCounter = 0;
-	norace 	uint8_t		tempBufferCounter;
-			uint8_t		cnt=0;
-	norace 	uint32_t	phases[NUMBER_OF_RX],freqs[NUMBER_OF_RX];
-	task 	void 		measureDone();
-	task 	void 		measureStart();
-	task 	void 		sendSync();
-	task 	void 		processData();
+	norace schedule_t settings[NUMBER_OF_SLOTS];
+	norace bool waitToStart=TRUE;
+	message_t packet;
+	norace uint32_t startOfFrame;
+	norace uint8_t activeMeasure=1;
+	norace uint32_t firetime=0;
+	uint8_t buffer[NUMBER_OF_RX][BUFFER_LEN];
+	norace uint8_t bufferCounter = 0;
+	norace uint8_t tempBufferCounter;
+	uint8_t cnt=0;
+	norace uint32_tphases[NUMBER_OF_RX],freqs[NUMBER_OF_RX];
+	task void measureDone();
+	task void measureStart();
+	task void sendSync();
+	task void processData();
 	
 	event void Boot.booted(){
 		call SplitControl.start();
@@ -102,7 +102,7 @@ implementation{
 				settings[14].work=RX;
 				settings[15].work=RX;
 				waitToStart = TRUE; //it will start the action
-				firetime = 62000;
+				firetime = 62000U;
 				call Alarm.startAt(0,firetime);
 			}
 			if(TOS_NODE_ID==2){
@@ -181,43 +181,43 @@ implementation{
 	*/
 
 	async event void Alarm.fired(){
-			if(waitToStart){ //start the action
-				post measureStart();
-				waitToStart = FALSE;
-			}else{ //measure
-				call Leds.set(activeMeasure);
-				if(activeMeasure == NUMBER_OF_SLOTS){//end of superframe
-					call Alarm.stop();
-					post measureDone();
-					return;
-				}
-				if(settings[activeMeasure].work==RECV_SYNC){//waits for SYNC in this frame
-					firetime = SYNC_SLOT;
-					startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
-					call Alarm.startAt(startOfFrame,firetime);
-					activeMeasure++;
-					return;					
-				}
-				if(settings[activeMeasure].work==TX || settings[activeMeasure].work==RX){
-					firetime += MEAS_SLOT;
-					call Alarm.startAt(startOfFrame,firetime);
-				}
-				if(settings[activeMeasure].work==TX){ //sender
-					call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
-					//call PhaseFreqCounter.startCounter(getBuffer(buffer[bufferCounter]),BUFFER_LEN);
-				}else if(settings[activeMeasure].work==RX){ //receiver
-					uint16_t time = 0;
-					//call Leds.set(1);
-					call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
-					post processData();
-					tempBufferCounter = bufferCounter;
-					bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
-				}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
-					post sendSync();
-				}
-				//activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+		if(waitToStart){ //start the action
+			post measureStart();
+			waitToStart = FALSE;
+		}else{ //measure
+			call Leds.set(activeMeasure);
+			if(activeMeasure == NUMBER_OF_SLOTS){//end of superframe
+				call Alarm.stop();
+				post measureDone();
+				return;
+			}
+			if(settings[activeMeasure].work==RECV_SYNC){//waits for SYNC in this frame
+				firetime = SYNC_SLOT;
+				startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
+				call Alarm.startAt(startOfFrame,firetime);
 				activeMeasure++;
-			} 
+				return;
+			}
+			if(settings[activeMeasure].work==TX || settings[activeMeasure].work==RX){
+				firetime += MEAS_SLOT;
+				call Alarm.startAt(startOfFrame,firetime);
+			}
+			if(settings[activeMeasure].work==TX){ //sender
+				call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
+				//call PhaseFreqCounter.startCounter(getBuffer(buffer[bufferCounter]),BUFFER_LEN);
+			}else if(settings[activeMeasure].work==RX){ //receiver
+				uint16_t time = 0;
+				//call Leds.set(1);
+				call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
+				post processData();
+				tempBufferCounter = bufferCounter;
+				bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
+			}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
+				post sendSync();
+			}
+			//activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+			activeMeasure++;
+		} 
 	}
 	/*
 		Sends sync message.
@@ -241,15 +241,11 @@ implementation{
 	}
 
 	task void processData(){
-		uint8_t temp[BUFFER_LEN];
-		uint8_t zeroPoint;
-		uint16_t startPoint;
-		startPoint = call MeasureWave.getStart(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, TIME_THRESHOLD);
-		memcpy(temp, getBuffer(buffer[tempBufferCounter]), BUFFER_LEN);
-		call MeasureWave.filter(temp, BUFFER_LEN, 3, 2);
-		freqs[tempBufferCounter] = call MeasureWave.getPeriod(temp+startPoint+START_OFFSET, BUFFER_LEN-startPoint-START_OFFSET, &zeroPoint);
-		phases[tempBufferCounter] = call MeasureWave.getPhase(temp+startPoint, BUFFER_LEN-startPoint, START_OFFSET, freqs[tempBufferCounter], zeroPoint);
-		//call Leds.set(0);
+		call MeasureWave.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+// 		minAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
+// 		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
+		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
+		phases[tempBufferCounter] = call MeasureWave.getPhase();
 	}
 
 
@@ -265,7 +261,7 @@ implementation{
 				startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 				firetime = SYNC_SLOT;
 				if(waitToStart){
-		    		call Alarm.startAt(startOfFrame,firetime);
+					call Alarm.startAt(startOfFrame,firetime);
 					waitToStart = FALSE;
 				}
 			}
