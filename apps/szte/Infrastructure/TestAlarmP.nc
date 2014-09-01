@@ -13,36 +13,25 @@
 #define NUMBER_OF_FRAMES 4
 #define NUMBER_OF_SLOT_IN_FRAME 4
 #define NUMBER_OF_RX 6
-#define SENDING_TIME 50
-#define BUFFER_LEN 400
+#define SENDING_TIME 1000
+#define BUFFER_LEN 512
 
-					#define AMPLITUDE_THRESHOLD 2
-					#define TIME_THRESHOLD 10
-					#define START_OFFSET 16
+#define AMPLITUDE_THRESHOLD 2
+#define TIME_THRESHOLD 10
+#define START_OFFSET 16
 
 module TestAlarmP{
 	uses interface Boot;
 	uses interface SplitControl;
 	uses interface Leds;
-	
 	uses interface Alarm<T62khz, uint32_t> as Alarm;
-	uses interface Receive;
-	uses interface PacketTimeStamp<TRadio, uint32_t> as PacketTimeStampRadio;
-	
 	uses interface RadioContinuousWave;
 	uses interface AMSend;
-	uses interface AMSend as RssiDone;
 	uses interface AMPacket;
 	uses interface Packet;
-	uses interface PacketAcknowledgements;
-
 	uses interface TimeSyncAMSend<TRadio, uint32_t> as TimeSyncAMSend;
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
-
-	uses interface DiagMsg;
-	uses interface SplitControl as SerialSplitControl;
-	uses interface PhaseFreqCounter;
 	uses interface MeasureWave;
 }
 implementation{
@@ -60,12 +49,15 @@ implementation{
 		MEAS_SLOT = 10000, //measure slot
 		SYNC_SLOT = 15000, //sync slot
 		SEND_SLOT = 6200, //between super frames
+		DUMMY_MIN = 15,
+		DUMMY_MAX = 20,
 	};
 
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
-		nx_uint32_t freq[NUMBER_OF_RX];
-		nx_uint32_t phase[NUMBER_OF_RX];
+		nx_uint16_t freq[NUMBER_OF_RX];
+		nx_uint8_t phase[NUMBER_OF_RX];
+		nx_uint8_t minmax[NUMBER_OF_RX];
 	} sync_message_t;
 
 
@@ -91,7 +83,6 @@ implementation{
 	
 	event void Boot.booted(){
 		call SplitControl.start();
-		call Leds.set(sizeof(sync_message_t));
 		if(NUMBER_OF_INFRAST_NODES == 4){
 			if(TOS_NODE_ID==1){
 				settings[0].work=SEND_SYNC;
@@ -194,6 +185,7 @@ implementation{
 				post measureStart();
 				waitToStart = FALSE;
 			}else{ //measure
+				call Leds.set(activeMeasure);
 				if(activeMeasure == NUMBER_OF_SLOTS){//end of superframe
 					call Alarm.stop();
 					post measureDone();
@@ -215,7 +207,7 @@ implementation{
 					//call PhaseFreqCounter.startCounter(getBuffer(buffer[bufferCounter]),BUFFER_LEN);
 				}else if(settings[activeMeasure].work==RX){ //receiver
 					uint16_t time = 0;
-					call Leds.set(1);
+					//call Leds.set(1);
 					call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
 					post processData();
 					tempBufferCounter = bufferCounter;
@@ -231,14 +223,14 @@ implementation{
 		Sends sync message.
 	*/
 	task void sendSync(){
-		uint8_t mphase, mfreq,i;
+		uint8_t i;
 		sync_message_t* msg = (sync_message_t*)call TimeSyncAMSend.getPayload(&packet,sizeof(sync_message_t));
 		msg->frame = activeMeasure;
-		//call PhaseFreqCounter.getPhaseAndFreq(&mphase, &mfreq);
 		
 		for(i=0;i<NUMBER_OF_RX;i++){
-			msg->freq[i] = freqs[i];
-			msg->phase[i] = phases[i];
+			msg->freq[i] = (uint16_t)freqs[i]; //=i for test
+			msg->phase[i] = (uint8_t)phases[i]; //=i for test
+			msg->minmax[i] = (DUMMY_MIN & 0x0F) | ((DUMMY_MAX & 0x0F)<<4);
 		}
 		
 		startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
@@ -257,19 +249,11 @@ implementation{
 		call MeasureWave.filter(temp, BUFFER_LEN, 3, 2);
 		freqs[tempBufferCounter] = call MeasureWave.getPeriod(temp+startPoint+START_OFFSET, BUFFER_LEN-startPoint-START_OFFSET, &zeroPoint);
 		phases[tempBufferCounter] = call MeasureWave.getPhase(temp+startPoint, BUFFER_LEN-startPoint, START_OFFSET, freqs[tempBufferCounter], zeroPoint);
-		call Leds.set(0);
+		//call Leds.set(0);
 	}
 
-	/*Counting is done*/
-	event void PhaseFreqCounter.counterDone(){}
 
 	event void AMSend.sendDone(message_t* bufPtr, error_t error){}
-	
-	event message_t* Receive.receive(message_t* bufPtr, void* payload, uint8_t len){
-		return bufPtr;
-	}
-
-	event void RssiDone.sendDone(message_t* bufPtr, error_t error){}
 
 	/*
 		SYNC msg received
@@ -321,9 +305,5 @@ implementation{
 		call Alarm.startAt(startOfFrame,firetime);
 		activeMeasure = 1;
 	}
-
-	event void SerialSplitControl.startDone(error_t error){}
-
-	event void SerialSplitControl.stopDone(error_t error){}
 
 }

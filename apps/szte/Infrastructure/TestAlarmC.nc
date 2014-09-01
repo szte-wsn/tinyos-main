@@ -11,16 +11,12 @@ implementation{
 	components new Alarm62khz32C();
 	App.Alarm -> Alarm62khz32C;
 	
-	components ActiveMessageC, new AMReceiverC(AM_RADIOMSG), new AMSenderC(AM_RADIOMSG), new AMSenderC(AM_RSSIDATADONE_T) as RssiDone;	
+	components ActiveMessageC, new AMSenderC(AM_RADIOMSG);	
 	App.SplitControl->ActiveMessageC;
-	App.Receive -> AMReceiverC.Receive;
 	App.Packet -> ActiveMessageC;
-	App.PacketTimeStampRadio -> ActiveMessageC;
 	
 	App.AMSend -> AMSenderC;
-	App.RssiDone -> RssiDone;
 	App.AMPacket -> AMSenderC;
-	App.PacketAcknowledgements -> AMSenderC;
 
 	components TimeSyncMessageC;
 	App.TimeSyncAMSend 	-> TimeSyncMessageC.TimeSyncAMSendRadio[AM_SYNCMSG];
@@ -29,19 +25,6 @@ implementation{
 	
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
-	
-	#ifdef DELUGE
-	components DelugeC;
-	DelugeC.Leds -> LedsC;
-	#endif
-	
-	components DiagMsgC;
-	components SerialActiveMessageC;
-	App.DiagMsg -> DiagMsgC.DiagMsg;
-	App.SerialSplitControl -> SerialActiveMessageC.SplitControl;
-
-	components PhaseFreqCounterC;
-	App.PhaseFreqCounter -> PhaseFreqCounterC.PhaseFreqCounter;
 
 	components MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
