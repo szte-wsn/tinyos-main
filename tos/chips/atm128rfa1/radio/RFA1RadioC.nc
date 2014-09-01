@@ -217,26 +217,37 @@ implementation
 // -------- MessageBuffer
 
 	components new MessageBufferLayerC();
+#ifdef NO_COLLISION_LAYER
+	MessageBufferLayerC.RadioSend -> SoftwareAckLayerC;
+#else
 	MessageBufferLayerC.RadioSend -> CollisionAvoidanceLayerC;
+#endif
 	MessageBufferLayerC.RadioReceive -> UniqueLayerC;
 	MessageBufferLayerC.RadioState -> TrafficMonitorLayerC;
 	RadioChannel = MessageBufferLayerC;
 
 // -------- UniqueLayer receive part (wired twice)
-
+#ifdef NO_COLLISION_LAYER
+	UniqueLayerC.SubReceive -> SoftwareAckLayerC;
+#else
 	UniqueLayerC.SubReceive -> CollisionAvoidanceLayerC;
+#endif
 
 // -------- CollisionAvoidance
 
-#ifdef SLOTTED_MAC
+#ifdef NO_COLLISION_LAYER
+	components new DummyLayerC() as CollisionAvoidanceLayerC;
+#elif defined(SLOTTED_MAC)
 	components new SlottedCollisionLayerC() as CollisionAvoidanceLayerC;
+	CollisionAvoidanceLayerC.RadioAlarm -> RadioAlarmC.RadioAlarm[unique(UQ_RADIO_ALARM)];
 #else
 	components new RandomCollisionLayerC() as CollisionAvoidanceLayerC;
+	CollisionAvoidanceLayerC.RadioAlarm -> RadioAlarmC.RadioAlarm[unique(UQ_RADIO_ALARM)];
 #endif
 	CollisionAvoidanceLayerC.Config -> RadioP;
 	CollisionAvoidanceLayerC.SubSend -> SoftwareAckLayerC;
 	CollisionAvoidanceLayerC.SubReceive -> SoftwareAckLayerC;
-	CollisionAvoidanceLayerC.RadioAlarm -> RadioAlarmC.RadioAlarm[unique(UQ_RADIO_ALARM)];
+
 
 // -------- SoftwareAcknowledgement
 
