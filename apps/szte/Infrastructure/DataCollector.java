@@ -231,16 +231,15 @@ class DataCollector{
 		for(int i=9; i<9+(NUMBER_OF_RX*2); i+=2) {    
 		  int b1 = packet[i] & 0xFF;
       int b2 = packet[i+1] & 0xFF;
-      p.print(tmp + ".: " + b1 + " " + b2 + " " + i +"\n");
-	    b1 <<= 8;
+      b1 <<= 8;
       b1 = (b1 | b2) & 0x0000FFFF;
-      p.print(tmp + ".freq: " + b1 + " " + i +"\n");
+      p.print(tmp + ".freq: " + b1 + "\n");
       freq[tmp++] = (short)b1;
     }
     tmp = 0;
     for(int i=9+(NUMBER_OF_RX*2); i<9+(NUMBER_OF_RX*3); i+=1) {
       int b1 = packet[i] & 0xFF;
-      p.print(tmp + ".phase: " + b1 + " " + i +"\n");
+      p.print(tmp + ".phase: " + b1 + "\n");
       phase[tmp++] = (byte)b1;
     }
     tmp = 0;
@@ -248,7 +247,7 @@ class DataCollector{
       int b1 = packet[i] & 0x0F;
       int b2 = packet[i] & 0xF0;
       b2 >>= 3;
-      p.print(tmp + ".minmax: " + b1 + " " + b2 + " " + i +"\n");
+      p.print(tmp + ".min: " + b1 + " max:" + b2 + "\n");
       min[tmp] = (byte)b1;
       max[tmp++] = (byte)b2;
     }
