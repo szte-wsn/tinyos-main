@@ -20,7 +20,7 @@ implementation{
 		uint16_t len;
 		uint16_t phaseRef;
 		uint16_t start;
-		uint16_t safelen;
+		uint16_t end;
 		uint8_t threshold;
 		uint8_t average;
 		uint16_t period:14;
@@ -33,17 +33,37 @@ implementation{
 	
 	measurement_t measurement;
 	
+	void debugPrint(){
+		#ifdef DEBUG_MEASUREWAVE
+		if (call DiagMsg.record()){
+			call DiagMsg.uint8(measurement.state);
+			call DiagMsg.uint16(measurement.len);
+			call DiagMsg.uint16(measurement.phaseRef);
+			call DiagMsg.uint16(measurement.start);
+			call DiagMsg.uint16(measurement.end);
+			call DiagMsg.uint8(measurement.threshold);
+			call DiagMsg.uint8(measurement.average);
+			call DiagMsg.uint16(measurement.period);
+			call DiagMsg.uint8(measurement.periodfraction);
+			call DiagMsg.uint8(measurement.phase);
+			call DiagMsg.uint8(measurement.minAmplitude);
+			call DiagMsg.uint8(measurement.maxAmplitude);
+			call DiagMsg.send();
+		}
+		#endif
+	}
+	
 	void getEnds(){
 		measurement.phaseRef = 0;
 		while( *(measurement.data + measurement.phaseRef) < measurement.threshold && measurement.phaseRef < measurement.len ){
 			measurement.phaseRef++;
 		}
-		measurement.safelen = measurement.len;
-		while( *(measurement.data + measurement.safelen) < measurement.threshold && measurement.safelen > 0 ){
-			measurement.safelen--;
+		measurement.end = measurement.len - 1;
+		while( *(measurement.data + measurement.end) < measurement.threshold && measurement.end > 0 ){
+			measurement.end--;
 		}
-		if( measurement.safelen < (measurement.phaseRef + 2*measurement.start) ){ //start currently holds the safety lead in/out time
-			measurement.safelen = 0;
+		if( measurement.end < (measurement.phaseRef + 2*measurement.start) ){ //start currently holds the safety lead in/out time
+			measurement.end = 0;
 			//no usable data
 			measurement.average = 0;
 			measurement.phase = 0;
@@ -52,7 +72,7 @@ implementation{
 			measurement.maxAmplitude = 0;
 			measurement.state = NODATA;
 		} else {
-			measurement.safelen -= measurement.phaseRef + 2*measurement.start;
+			measurement.end -= measurement.start;
 			measurement.start+=measurement.phaseRef;
 			measurement.state = ENDSFOUND;
 		}
@@ -63,14 +83,14 @@ implementation{
 		uint16_t i;
 		measurement.minAmplitude = *(measurement.data+measurement.start);
 		measurement.maxAmplitude = *(measurement.data+measurement.start);
-		for(i=measurement.start;i<measurement.safelen;i++){
+		for(i=measurement.start;i<measurement.end;i++){
 			temp += *(measurement.data+i);
 			if( measurement.minAmplitude > *(measurement.data+i) )
 				measurement.minAmplitude = *(measurement.data+i);
 			if( measurement.maxAmplitude < *(measurement.data+i) )
 				measurement.maxAmplitude = *(measurement.data+i);
 		}
-		measurement.average = temp/measurement.safelen;
+		measurement.average = temp/measurement.end;
 		measurement.state = AVERAGEFOUND;
 	}
 	
@@ -81,20 +101,20 @@ implementation{
 		uint16_t i = measurement.start;
 		
 		//we only search for RISING crossings (so we measure full periods, not half periods)
-		while(  i<measurement.safelen && *(measurement.data+i) >= (measurement.average - 1) )
+		while(  i<measurement.end && *(measurement.data+i) >= (measurement.average - 1) )
 			i++;
-		while( i<measurement.safelen ){
+		while( i<measurement.end ){
 			//search the next crossing
-			while( i<measurement.safelen && *(measurement.data+i) < measurement.average )
+			while( i<measurement.end && *(measurement.data+i) < measurement.average )
 				i++;
 			
-			if( i<measurement.safelen ){ //new crossing point
+			if( i<measurement.end ){ //new crossing point
 				if( crossingCount!=0 ){
 					temp += (i-lastCrossing);
 				}
 				crossingCount++;
 				lastCrossing = i;
-				while(  i<measurement.safelen && *(measurement.data+i) >= (measurement.average - 1) ) //go through the upper half period, and a bit more, to avoid oscillation near the average
+				while(  i<measurement.end && *(measurement.data+i) >= (measurement.average - 1) ) //go through the upper half period, and a bit more, to avoid oscillation near the average
 					i++;
 			}
 		}
@@ -123,12 +143,12 @@ implementation{
 		int32_t temp[PHASE_WINDOWS] = {0,0,0,0};
 		uint16_t count[PHASE_WINDOWS] = {0,0,0,0};
 		
-		if( end<measurement.safelen ){ //move the window to the middle of the sample
-			uint16_t offset2 = (measurement.safelen - end) >> 1;
+		if( end<measurement.end ){ //move the window to the middle of the sample
+			uint16_t offset2 = (measurement.end - end) >> 1;
 			end+=offset2;
 			i+=offset2;
 		} else {
-			end = measurement.safelen;
+			end = measurement.end;
 		}
 		
 		while(  i<end && *(measurement.data+i) >= (measurement.average - 1) )
@@ -203,6 +223,7 @@ implementation{
 					getPhase();
 				}break;
 			}
+			debugPrint();
 		}
 	}
 	

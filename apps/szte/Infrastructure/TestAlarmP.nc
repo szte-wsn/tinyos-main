@@ -245,7 +245,7 @@ implementation{
  		minAmplitudes[tempBufferCounter] = call MeasureWave.getMinAmplitude() >> 1;
  		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
 		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
-		phases[tempBufferCounter] = call MeasureWave.getPhase();
+// 		phases[tempBufferCounter] = call MeasureWave.getPhase();
 	}
 
 
