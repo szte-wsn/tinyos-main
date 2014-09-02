@@ -26,7 +26,14 @@ class DataCollector{
       1,2,3,4
   };
 
-  //Super frame structure
+  //Super frame structure 
+  //public static final int[][] SF_slots = 
+  //{ {TX, TX, RX, RX, RX, TX, TX, TX, RX, RX, RX, TX} ,
+    //{TX, RX, TX, TX, RX, RX, TX, RX, TX, TX, RX, RX},
+    //{RX, RX, RX, TX, TX, TX, RX, RX, RX, TX, TX, TX},
+    //{RX, TX, TX, RX, TX, RX, RX, TX, TX, RX, TX, RX} };
+
+  //old structure
   public static final int[][] SF_slots = 
   { {TX, TX, RX, TX, TX, RX, TX, TX, RX, RX, RX, RX} ,
     {RX, RX, RX, TX, RX, TX, TX, RX, TX, TX, TX, RX},
@@ -43,11 +50,15 @@ class DataCollector{
 	  int id;
 	  int freq;
 	  int phase;
+    int min;
+    int max;
 	
-	  public Node(int id, int freq, int phase) {
+	  public Node(int id, int freq, int phase, int min, int max) {
 		  this.id = id;
 		  this.freq = freq;
 		  this.phase = phase;
+      this.min = min;
+      this.max = max;
 	  }
 	
 	  public int getID() {
@@ -61,6 +72,14 @@ class DataCollector{
 	  public int getPhase() {
 		  return phase;
 	  }
+    
+    public int getMin() {
+      return min;
+    }
+
+    public int getMax() {
+      return max;
+    }
 
     public void setFreq(int freq) {
       this.freq = freq;
@@ -70,8 +89,16 @@ class DataCollector{
       this.phase = phase;
     }
 
+    public void setMin(int min) {
+      this.min = min;
+    }
+
+    public void setMax(int max) {
+      this.max = max;
+    }
+
     public String toString() {
-      return "id: " + id + " freq: " + freq + " phase: " + phase;
+      return "id: " + id + " freq: " + freq + " phase: " + phase + " min: " + min + " max: " + max;
     }
   }
 
@@ -91,7 +118,7 @@ class DataCollector{
         if(SF_slots[i][index] == TX) 
           trans.add(SEQ[i]);
         else 
-          nodes.add(new Node(SEQ[i],0,0));
+          nodes.add(new Node(SEQ[i],0,0,0,0));
 	  }
 	
 	  public void addTrans(int t) {
@@ -125,7 +152,7 @@ class DataCollector{
           return n;
         }
       }
-      return new Node(0,0,0);   //default
+      return new Node(0,0,0,0,0);   //default
 	  }
 	
 	  public ArrayList<Node> getAllNode() {
@@ -140,6 +167,13 @@ class DataCollector{
 		  return nodes.get(nodes.indexOf(id)).getPhase();
 	  }
 
+    public int getNodeMin(int id) {
+      return nodes.get(nodes.indexOf(id)).getMin();
+    }
+
+    public int getNodeMax(int id) {
+      return nodes.get(nodes.indexOf(id)).getMax();
+    }
   }
 
   public void initalize() {
@@ -167,8 +201,10 @@ class DataCollector{
 	}
 
   public void printPacketTimeStamp(PrintStream p, byte[] packet) {
-    int[] freq = new int[NUMBER_OF_RX];
-    int[] phase = new int[NUMBER_OF_RX];
+    short[] freq = new short[NUMBER_OF_RX];
+    byte[] phase = new byte[NUMBER_OF_RX];
+    byte[] min = new byte[NUMBER_OF_RX];
+    byte[] max = new byte[NUMBER_OF_RX];
     int frame_index = 0;
 		p.print("AM type: "+(int)(packet[0] & 0xFF)+" \n");
 		p.print("Destination address:");
@@ -191,49 +227,57 @@ class DataCollector{
 		p.print("AM handler type: "+(int)(packet[7] & 0xFF)+" \n");
 		p.print("Data:\n");
     frame_index = packet[8] & 0xFF;
-		for(int i=9;i<len;i+=4) {    
-		  long b1 = packet[i+3] & 0xFF;
-		  long b2 = packet[i+2] & 0xFF;
-		  b2 <<= 8;
-		  long b3 = packet[i+1] & 0xFF;
-		  b3 <<= 16;
-		  long b4 = packet[i] & 0xFF;
-		  b4 <<= 24;
-      p.print("b1: " + b1 + " b2: " + b2+ " b3: " + b3 + " b4: " + b4 + " " + ((i-9)/4) + "\n");
-		  b1 = (((b1 | b2) | b3) | b4) & 0x00000000FFFFFFFF; 
-      if(i<len-(NUMBER_OF_RX*4)) {
-        p.print((i-9)/4 + ".freq: " + b1 + " " + i +"\n");
-        freq[(i-9)/4] = (int)b1;
-      } else {
-        p.print((i-9-(NUMBER_OF_RX*4))/4 + ".phase: " + b1 + " " + i +"\n");
-        phase[(i-9-(NUMBER_OF_RX*4))/4] = (int)b1;
-      }
-		}
+    int tmp = 0;
+		for(int i=9; i<9+(NUMBER_OF_RX*2); i+=2) {    
+		  int b1 = packet[i] & 0xFF;
+      int b2 = packet[i+1] & 0xFF;
+      p.print(tmp + ".: " + b1 + " " + b2 + " " + i +"\n");
+	    b1 <<= 8;
+      b1 = (b1 | b2) & 0x0000FFFF;
+      p.print(tmp + ".freq: " + b1 + " " + i +"\n");
+      freq[tmp++] = (short)b1;
+    }
+    tmp = 0;
+    for(int i=9+(NUMBER_OF_RX*2); i<9+(NUMBER_OF_RX*3); i+=1) {
+      int b1 = packet[i] & 0xFF;
+      p.print(tmp + ".phase: " + b1 + " " + i +"\n");
+      phase[tmp++] = (byte)b1;
+    }
+    tmp = 0;
+    for(int i=9+(NUMBER_OF_RX*3); i<9+(NUMBER_OF_RX*4); i+=1) {
+      int b1 = packet[i] & 0x0F;
+      int b2 = packet[i] & 0xF0;
+      b2 >>= 3;
+      p.print(tmp + ".minmax: " + b1 + " " + b2 + " " + i +"\n");
+      min[tmp] = (byte)b1;
+      max[tmp++] = (byte)b2;
+    }
 		p.print(" \n");
-/*		long b1 = packet[8+len-4] & 0xFF;
-		long b2 = packet[8+len-3] & 0xFF;
-		b2 <<= 8;
-		long b3 = packet[8+len-2] & 0xFF;
-		b3 <<= 16;
-		long b4 = packet[8+len-1] & 0xFF;
-		b4 <<= 24;
-    p.print("b1: " + b1 + " b2: " + b2+ " b3: " + b3 + " b4: " + b4 + "\n");
-		b1 = (((b1 | b2) | b3) | b4) & 0x00000000FFFFFFFF; 
-		p.print("Timestamp: "+b1+" \n");*/
-    Upload(frame_index, freq, phase);
+		//long b1 = packet[8+len-4] & 0xFF;
+		//long b2 = packet[8+len-3] & 0xFF;
+		//b2 <<= 8;
+		//long b3 = packet[8+len-2] & 0xFF;
+		//b3 <<= 16;
+		//long b4 = packet[8+len-1] & 0xFF;
+		//b4 <<= 24;
+    //p.print("b1: " + b1 + " b2: " + b2+ " b3: " + b3 + " b4: " + b4 + "\n");
+		//b1 = (((b1 | b2) | b3) | b4) & 0x00000000FFFFFFFF; 
+		//p.print("Timestamp: "+b1+" \n");
+    Upload(frame_index, freq, phase, min, max);
 	}
 
-  public void Upload(int frame_mes, int[] freq, int[] phase) {
+  //Upload frame with measures    frame numbers: 1,5,9,13
+  public void Upload(int frame_mes, short[] freq, byte[] phase, byte[] min, byte[] max) {
     int frame = 0;    //frame counter
     if(frame_prev>=(frame_mes/4)) {    //superframe viewer
       DataPrinter();
       sf_cnt++;
     }
-    frame = frame_mes/4 + (sf_cnt*NUMBER_OF_INFRAST_NODES); 
+    frame = frame_mes/4 + (sf_cnt*NUMBER_OF_INFRAST_NODES); //hogy a 4.dik frame-t ne 0-t adjon ki a slot_start
     frame_prev = frame_mes/4;
-    int slot_start = (frame-NUMBER_OF_FRAMES) > 0 ? (frame-NUMBER_OF_FRAMES)*NUMBER_OF_SLOT_IN_FRAME : 0; 
+    int slot_start = (frame-NUMBER_OF_FRAMES) > 0 ? (frame-NUMBER_OF_FRAMES)*NUMBER_OF_SLOT_IN_FRAME : 0; //hanyadik slottol kezdjuk
     int slot_end = slot_start + NUMBER_OF_SLOTS_IN_SF;
-    int p_cnt = 0;  
+    int p_cnt = 0;  //hanyadik freq,phase parosnal tartunk
     for(int i=slot_start; i<slot_end; i++) {
       try{    
         Slot s = slots.get(i);      
@@ -241,6 +285,8 @@ class DataCollector{
           Node n = s.getNodeData(SEQ[node_index]);
           n.setFreq(freq[p_cnt]);
           n.setPhase(phase[p_cnt]);
+          n.setMin(min[p_cnt]);
+          n.setMax(max[p_cnt]);
           s.setNode(n, SEQ[node_index]);
           slots.set(i,s);
           p_cnt++;
@@ -251,6 +297,8 @@ class DataCollector{
           Node n = s.getNodeData(SEQ[node_index]);
           n.setFreq(freq[p_cnt]);
           n.setPhase(phase[p_cnt]);
+          n.setMin(min[p_cnt]);
+          n.setMax(max[p_cnt]);
           s.setNode(n,SEQ[node_index]);
           p_cnt++;
         } 
@@ -260,15 +308,15 @@ class DataCollector{
   }
 
 
-/*  public ArrayList<Integer> RelativePhase(int index_1, int index_2) {
-    ArrayList<Integer> relPhase = new ArrayList<Integer>();
-    for(int i=0; i<slots.size(); i++) {
-      ArrayList<Node> nodes = slots.get(i).getAllNode();
-//      relPhase.add();
-    }
-    return relPhase;
-  }  
-*/
+  //public ArrayList<Integer> RelativePhase(int index_1, int index_2) {
+    //ArrayList<Integer> relPhase = new ArrayList<Integer>();
+    //for(int i=0; i<slots.size(); i++) {
+      //ArrayList<Node> nodes = slots.get(i).getAllNode();
+      //relPhase.add();
+    //}
+    //return relPhase;
+  //}  
+
   public void DataPrinter() {
     try {
       if(sf_cnt>0) {

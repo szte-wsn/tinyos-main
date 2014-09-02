@@ -19,5 +19,11 @@ CFLAGS += -DTOSH_DATA_LENGTH=100
 CFLAGS += -DDIAGMSG_SERIAL_START
 CFLAGS += -DDIAGMSG_RECORDED_MSGS=50
 
+BUILD_EXTRA_DEPS = DataCollector.class
+CLEAN_EXTRA = *.class
+
+DataCollector.class: DataCollector.java
+	javac DataCollector.java
+
 
 include $(MAKERULES)
