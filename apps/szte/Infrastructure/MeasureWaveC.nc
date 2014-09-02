@@ -38,7 +38,7 @@ implementation{
 		while( *(measurement.data + measurement.phaseRef) < measurement.threshold && measurement.phaseRef < measurement.len ){
 			measurement.phaseRef++;
 		}
-		measurement.safelen = 0;
+		measurement.safelen = measurement.len;
 		while( *(measurement.data + measurement.safelen) < measurement.threshold && measurement.safelen > 0 ){
 			measurement.safelen--;
 		}
@@ -215,12 +215,12 @@ implementation{
 	}
 	
 	command uint8_t MeasureWave.getMinAmplitude(){
-		calculate(ENDSFOUND);
+		calculate(AVERAGEFOUND);
 		return measurement.minAmplitude;
 	}
 	
 	command uint8_t MeasureWave.getMaxAmplitude(){
-		calculate(ENDSFOUND);
+		calculate(AVERAGEFOUND);
 		return measurement.maxAmplitude;
 	}
 	
