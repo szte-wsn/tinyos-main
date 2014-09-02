@@ -49,8 +49,6 @@ implementation{
 		MEAS_SLOT = 10000, //measure slot
 		SYNC_SLOT = 15000, //sync slot
 		SEND_SLOT = 6200, //between super frames
-		DUMMY_MIN = 10,
-		DUMMY_MAX = 15,
 	};
 
 	typedef nx_struct sync_message_t{
@@ -73,7 +71,7 @@ implementation{
 	norace uint32_t firetime=0;
 	uint8_t buffer[NUMBER_OF_RX][BUFFER_LEN];
 	norace uint8_t bufferCounter = 0;
-	norace uint8_t tempBufferCounter;
+	norace uint8_t tempBufferCounter=0;
 	uint8_t cnt=0;
 	norace uint8_t phases[NUMBER_OF_RX];
 	norace uint16_t freqs[NUMBER_OF_RX];
@@ -211,9 +209,9 @@ implementation{
 				uint16_t time = 0;
 				//call Leds.set(1);
 				call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
-				post processData();
 				tempBufferCounter = bufferCounter;
 				bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
+				post processData();
 			}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
 				post sendSync();
 			}
@@ -244,7 +242,7 @@ implementation{
 
 	task void processData(){
 		call MeasureWave.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
- 		minAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
+ 		minAmplitudes[tempBufferCounter] = call MeasureWave.getMinAmplitude() >> 1;
  		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
 		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
 		phases[tempBufferCounter] = call MeasureWave.getPhase();
@@ -281,7 +279,6 @@ implementation{
 		What to do between super frames.
 	*/
 	task void measureDone(){
-		bufferCounter = 0;
 		activeMeasure = 0;
 		firetime += SEND_SLOT;
 		call Alarm.startAt(startOfFrame,firetime);
