@@ -49,8 +49,8 @@ implementation{
 		MEAS_SLOT = 10000, //measure slot
 		SYNC_SLOT = 15000, //sync slot
 		SEND_SLOT = 6200, //between super frames
-		DUMMY_MIN = 15,
-		DUMMY_MAX = 20,
+		DUMMY_MIN = 10,
+		DUMMY_MAX = 15,
 	};
 
 	typedef nx_struct sync_message_t{
@@ -75,7 +75,10 @@ implementation{
 	norace uint8_t bufferCounter = 0;
 	norace uint8_t tempBufferCounter;
 	uint8_t cnt=0;
-	norace uint32_tphases[NUMBER_OF_RX],freqs[NUMBER_OF_RX];
+	norace uint8_t phases[NUMBER_OF_RX];
+	norace uint16_t freqs[NUMBER_OF_RX];
+	norace uint8_t minAmplitudes[NUMBER_OF_RX];
+	norace uint8_t maxAmplitudes[NUMBER_OF_RX];
 	task void measureDone();
 	task void measureStart();
 	task void sendSync();
@@ -204,7 +207,6 @@ implementation{
 			}
 			if(settings[activeMeasure].work==TX){ //sender
 				call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
-				//call PhaseFreqCounter.startCounter(getBuffer(buffer[bufferCounter]),BUFFER_LEN);
 			}else if(settings[activeMeasure].work==RX){ //receiver
 				uint16_t time = 0;
 				//call Leds.set(1);
@@ -228,9 +230,9 @@ implementation{
 		msg->frame = activeMeasure;
 		
 		for(i=0;i<NUMBER_OF_RX;i++){
-			msg->freq[i] = (uint16_t)freqs[i]; //=i for test
-			msg->phase[i] = (uint8_t)phases[i]; //=i for test
-			msg->minmax[i] = (DUMMY_MIN & 0x0F) | ((DUMMY_MAX & 0x0F)<<4);
+			msg->freq[i] = freqs[i];
+			msg->phase[i] = phases[i];
+			msg->minmax[i] = (minAmplitudes[i] & 0x0F) | ((maxAmplitudes[i] & 0x0F)<<4);
 		}
 		
 		startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
@@ -242,8 +244,8 @@ implementation{
 
 	task void processData(){
 		call MeasureWave.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
-// 		minAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
-// 		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
+ 		minAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
+ 		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
 		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
 		phases[tempBufferCounter] = call MeasureWave.getPhase();
 	}
