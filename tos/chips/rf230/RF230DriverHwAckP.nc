@@ -227,33 +227,6 @@ implementation
 
 /*----------------- INIT -----------------*/
 
-	void initRadio();
-	
-	command error_t PlatformInit.init()
-	{
-		call SELN.makeOutput();
-		call SELN.set();
-		call SLP_TR.makeOutput();
-		call SLP_TR.clr();
-		call RSTN.makeOutput();
-		call RSTN.set();
-
-		rxMsg = &rxMsgBuffer;
-
-		return SUCCESS;
-	}
-
-	command error_t SoftwareInit.init()
-	{
-		// for powering up the radio
-		if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
-			initRadio();
-			call SpiResource.release();
-			return SUCCESS;
-		} else
-			return FAIL;
-	}
-
 	void initRadio()
 	{
 		uint16_t temp;
@@ -287,6 +260,33 @@ implementation
 
 		call SLP_TR.set();
 		state = STATE_SLEEP;
+	}
+	
+	command error_t PlatformInit.init()
+	{
+		call SELN.makeOutput();
+		call SELN.set();
+		call SLP_TR.makeOutput();
+		call SLP_TR.clr();
+		call RSTN.makeOutput();
+		call RSTN.set();
+
+		rxMsg = &rxMsgBuffer;
+
+		return SUCCESS;
+	}
+
+	command error_t SoftwareInit.init()
+	{
+		// for powering up the radio
+		if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
+			call SELN.makeOutput();
+			call SELN.set();
+			initRadio();
+			call SpiResource.release();
+			return SUCCESS;
+		} else
+			return FAIL;
 	}
 
 /*----------------- SPI -----------------*/

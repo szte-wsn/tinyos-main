@@ -641,55 +641,6 @@ implementation{
 
   /*----------------- INIT -----------------*/
 
-  void initRadio();
-  
-  command error_t SoftwareInit.init(){
-    // set pin directions
-    call CSN.makeOutput();
-    call VREN.makeOutput();
-    call RSTN.makeOutput();
-    call CCA.makeInput();
-    call SFD.makeInput();
-    call FIFO.makeInput();
-    call FIFOP.makeInput();
-
-    call FifopInterrupt.disable();
-    call FifopInterrupt.enableRisingEdge();
-
-    call FifoInterrupt.disable();
-    call FifoInterrupt.enableRisingEdge();
-
-    call SfdCapture.disable();
-    // rising edge just saves timestamp.
-    call SfdCapture.captureRisingEdge();
-
-    // CSN is active low
-    call CSN.set();
-
-    // start up voltage regulator
-    call VREN.clr();
-    call VREN.set();
-    // do a reset
-    call RSTN.clr();
-    // hold line low for Tdres
-    call BusyWait.wait( 200 ); // typical .1ms VR startup time
-
-    call RSTN.set();
-    // wait another .2ms for xosc to stabilize
-    call BusyWait.wait( 200 );
-
-    rxMsg = &rxMsgBuffer;
-
-    state = STATE_VR_ON;
-
-    if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
-      initRadio();
-      call SpiResource.release();
-      return SUCCESS;
-    } else
-      return FAIL;
-  }
-
   inline void resetRadio() {
     // now register access is enabled: set up defaults
     cc2520_fifopctrl_t fifopctrl;
@@ -753,6 +704,53 @@ implementation{
     channel = CC2520_DEF_CHANNEL & CC2520_CHANNEL_MASK;
 
     state = STATE_PD;
+  }
+  
+  command error_t SoftwareInit.init(){
+    // set pin directions
+    call CSN.makeOutput();
+    call VREN.makeOutput();
+    call RSTN.makeOutput();
+    call CCA.makeInput();
+    call SFD.makeInput();
+    call FIFO.makeInput();
+    call FIFOP.makeInput();
+
+    call FifopInterrupt.disable();
+    call FifopInterrupt.enableRisingEdge();
+
+    call FifoInterrupt.disable();
+    call FifoInterrupt.enableRisingEdge();
+
+    call SfdCapture.disable();
+    // rising edge just saves timestamp.
+    call SfdCapture.captureRisingEdge();
+
+    // CSN is active low
+    call CSN.set();
+
+    // start up voltage regulator
+    call VREN.clr();
+    call VREN.set();
+    // do a reset
+    call RSTN.clr();
+    // hold line low for Tdres
+    call BusyWait.wait( 200 ); // typical .1ms VR startup time
+
+    call RSTN.set();
+    // wait another .2ms for xosc to stabilize
+    call BusyWait.wait( 200 );
+
+    rxMsg = &rxMsgBuffer;
+
+    state = STATE_VR_ON;
+
+    if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
+      initRadio();
+      call SpiResource.release();
+      return SUCCESS;
+    } else
+      return FAIL;
   }
 
   /*----------------- SPI -----------------*/

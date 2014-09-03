@@ -215,7 +215,31 @@ implementation
 
 /*----------------- INIT -----------------*/
 
-	void initRadio();
+	void initRadio()
+	{
+		call BusyWait.wait(510);
+		
+		call RSTN.clr();
+		call SLP_TR.clr();
+		call BusyWait.wait(6);
+		call RSTN.set();
+		
+		writeRegister(RF230_TRX_CTRL_0, RF230_TRX_CTRL_0_VALUE);
+		writeRegister(RF230_TRX_STATE, RF230_TRX_OFF);
+		
+		call BusyWait.wait(510);
+		
+		writeRegister(RF230_IRQ_MASK, RF230_IRQ_TRX_UR | RF230_IRQ_PLL_LOCK | RF230_IRQ_TRX_END | RF230_IRQ_RX_START);
+		writeRegister(RF230_CCA_THRES, RF230_CCA_THRES_VALUE);
+		writeRegister(RF230_PHY_TX_PWR, RF230_TX_AUTO_CRC_ON | (RF230_DEF_RFPOWER & RF230_TX_PWR_MASK));
+		
+		txPower = RF230_DEF_RFPOWER & RF230_TX_PWR_MASK;
+		channel = RF230_DEF_CHANNEL & RF230_CHANNEL_MASK;
+		writeRegister(RF230_PHY_CC_CCA, RF230_CCA_MODE_VALUE | channel);
+		
+		call SLP_TR.set();
+		state = STATE_SLEEP;
+	}
 	
 	command error_t PlatformInit.init()
 	{
@@ -239,37 +263,13 @@ implementation
 	{
 		// for powering up the radio
 		if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
+			call SELN.makeOutput();
+			call SELN.set();
 			initRadio();
 			call SpiResource.release();
 			return SUCCESS;
 		} else
 			return FAIL;
-	}
-
-	void initRadio()
-	{
-		call BusyWait.wait(510);
-
-		call RSTN.clr();
-		call SLP_TR.clr();
-		call BusyWait.wait(6);
-		call RSTN.set();
-
-		writeRegister(RF230_TRX_CTRL_0, RF230_TRX_CTRL_0_VALUE);
-		writeRegister(RF230_TRX_STATE, RF230_TRX_OFF);
-
-		call BusyWait.wait(510);
-
-		writeRegister(RF230_IRQ_MASK, RF230_IRQ_TRX_UR | RF230_IRQ_PLL_LOCK | RF230_IRQ_TRX_END | RF230_IRQ_RX_START);
-		writeRegister(RF230_CCA_THRES, RF230_CCA_THRES_VALUE);
-		writeRegister(RF230_PHY_TX_PWR, RF230_TX_AUTO_CRC_ON | (RF230_DEF_RFPOWER & RF230_TX_PWR_MASK));
-
-		txPower = RF230_DEF_RFPOWER & RF230_TX_PWR_MASK;
-		channel = RF230_DEF_CHANNEL & RF230_CHANNEL_MASK;
-		writeRegister(RF230_PHY_CC_CCA, RF230_CCA_MODE_VALUE | channel);
-
-		call SLP_TR.set();
-		state = STATE_SLEEP;
 	}
 
 /*----------------- SPI -----------------*/

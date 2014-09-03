@@ -198,7 +198,39 @@ implementation
 
 /*----------------- INIT -----------------*/
 
-	void initRadio();
+	void initRadio()
+	{
+		call BusyWait.wait(510);
+		
+		call RSTN.clr();
+		call SLP_TR.clr();
+		call BusyWait.wait(6);
+		call RSTN.set();
+		
+		writeRegister(RF212_TRX_CTRL_0, RF212_TRX_CTRL_0_VALUE);
+		writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
+		
+		call BusyWait.wait(510);
+		
+		writeRegister(RF212_IRQ_MASK, RF212_IRQ_TRX_UR | RF212_IRQ_PLL_LOCK | RF212_IRQ_TRX_END | RF212_IRQ_RX_START | RF212_IRQ_CCA_ED_DONE);
+		
+		// update register values if different from default
+		if( RF212_CCA_THRES_VALUE != 0x77 )
+			writeRegister(RF212_CCA_THRES, RF212_CCA_THRES_VALUE);
+		
+		if( RF212_DEF_RFPOWER != 0x60 )
+			writeRegister(RF212_PHY_TX_PWR, RF212_DEF_RFPOWER);
+		
+		if( RF212_TRX_CTRL_2_VALUE != RF212_DATA_MODE_DEFAULT )
+			writeRegister(RF212_TRX_CTRL_2, RF212_TRX_CTRL_2_VALUE);
+		
+		txPower = RF212_DEF_RFPOWER;
+		channel = RF212_DEF_CHANNEL & RF212_CHANNEL_MASK;
+		writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | channel);
+		
+		call SLP_TR.set();
+		state = STATE_SLEEP;
+	}
 	
 	command error_t PlatformInit.init()
 	{
@@ -222,6 +254,8 @@ implementation
 	{
 		// for powering up the radio
 		if( call SpiResource.immediateRequest() == SUCCESS ){ //should be always success, there's no task context yet, so there are no background jobs
+			call SELN.makeOutput();
+			call SELN.set();
 			initRadio();
 			call SpiResource.release();
 			return SUCCESS;
@@ -260,39 +294,7 @@ implementation
 		state = STATE_TRX_OFF;
 	}
 
-	void initRadio()
-	{
-		call BusyWait.wait(510);
 
-		call RSTN.clr();
-		call SLP_TR.clr();
-		call BusyWait.wait(6);
-		call RSTN.set();
-
-		writeRegister(RF212_TRX_CTRL_0, RF212_TRX_CTRL_0_VALUE);
-		writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
-
-		call BusyWait.wait(510);
-
-		writeRegister(RF212_IRQ_MASK, RF212_IRQ_TRX_UR | RF212_IRQ_PLL_LOCK | RF212_IRQ_TRX_END | RF212_IRQ_RX_START | RF212_IRQ_CCA_ED_DONE);
-
-		// update register values if different from default
-		if( RF212_CCA_THRES_VALUE != 0x77 )
-			writeRegister(RF212_CCA_THRES, RF212_CCA_THRES_VALUE);
-
-		if( RF212_DEF_RFPOWER != 0x60 )
-			writeRegister(RF212_PHY_TX_PWR, RF212_DEF_RFPOWER);
-
-		if( RF212_TRX_CTRL_2_VALUE != RF212_DATA_MODE_DEFAULT )
-			writeRegister(RF212_TRX_CTRL_2, RF212_TRX_CTRL_2_VALUE);
-
-		txPower = RF212_DEF_RFPOWER;
-		channel = RF212_DEF_CHANNEL & RF212_CHANNEL_MASK;
-		writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | channel);
-
-		call SLP_TR.set();
-		state = STATE_SLEEP;
-	}
 
 /*----------------- SPI -----------------*/
 

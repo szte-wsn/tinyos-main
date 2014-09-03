@@ -375,8 +375,39 @@ implementation
 	}
 	
 /*----------------- INIT -----------------*/
+	
+	inline void resetRadio() {
+		
+		cc2420X_iocfg0_t iocfg0;
+		cc2420X_mdmctrl0_t mdmctrl0;
+		
+		// do a reset
+		call RSTN.clr();
+		call RSTN.set();
+		
+		// set up fifop polarity and threshold
+		iocfg0 = cc2420X_iocfg0_default;
+		iocfg0.f.fifop_thr = 127;
+		writeRegister(CC2420X_IOCFG0, iocfg0.value);
+		
+		// set up modem control
+		mdmctrl0 = cc2420X_mdmctrl0_default;
+		mdmctrl0.f.reserved_frame_mode = 1; //accept reserved frames
+		mdmctrl0.f.adr_decode = 0; // disable
+		writeRegister(CC2420X_MDMCTRL0, mdmctrl0.value);		
+		
+		state = STATE_PD;
+	}
 
-	void initRadio();
+
+	void initRadio()
+	{
+		resetRadio();		
+		
+		txPower = CC2420X_DEF_RFPOWER & CC2420X_TX_PWR_MASK;
+		channel = CC2420X_DEF_CHANNEL & CC2420X_CHANNEL_MASK;		
+		
+	}
 	
 	command error_t SoftwareInit.init()
 	{
@@ -430,39 +461,6 @@ implementation
 			return SUCCESS;
 		} else
 			return FAIL;
-	}
-
-	inline void resetRadio() {
-		
-		cc2420X_iocfg0_t iocfg0;
-		cc2420X_mdmctrl0_t mdmctrl0;
-
-	    	// do a reset
-		call RSTN.clr();
-		call RSTN.set();
-
-		// set up fifop polarity and threshold
-		iocfg0 = cc2420X_iocfg0_default;
-		iocfg0.f.fifop_thr = 127;
-      		writeRegister(CC2420X_IOCFG0, iocfg0.value);
-		      
-		// set up modem control
-		mdmctrl0 = cc2420X_mdmctrl0_default;
-		mdmctrl0.f.reserved_frame_mode = 1; //accept reserved frames
-		mdmctrl0.f.adr_decode = 0; // disable
-	      	writeRegister(CC2420X_MDMCTRL0, mdmctrl0.value);		
-
-		state = STATE_PD;
-	}
-
-
-	void initRadio()
-	{
-		resetRadio();		
-		
-		txPower = CC2420X_DEF_RFPOWER & CC2420X_TX_PWR_MASK;
-		channel = CC2420X_DEF_CHANNEL & CC2420X_CHANNEL_MASK;		
-
 	}
 
 /*----------------- SPI -----------------*/
