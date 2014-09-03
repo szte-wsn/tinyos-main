@@ -26,20 +26,20 @@ if test "$CXX" = no || test "$$CXX:$GXX" = "g++"; then
 fi
 
 m4_include([m4/python.m4])
-AM_PATH_PYTHON([2.5],,,)
 AM_PATH_PYTHON([3.0],,,3)
+AM_PATH_PYTHON([2.5])
 
 AC_PATH_PROG(pathperl, perl)
 if test -z "$pathperl" ; then
   AC_MSG_ERROR(I can't find perl);
 fi
 
-AC_PATH_PROGS(pathpython, [python2 python])
+AC_PATH_PROGS(pathpython, [python2 python2.7 python2.6 python2.5 python])
 if test -z "$pathpython" ; then
   AC_MSG_ERROR(I can't find python);
 fi
 
-AC_PATH_PROGS(pathpython3, [python3 python])
+AC_PATH_PROGS(pathpython3, [python3 python3.5 python3.4 python3.3 python3.2 python3.1 python3.0])
 if test -z "$pathpython3" ; then
   AC_MSG_ERROR(I can't find python3);
 fi
@@ -111,7 +111,13 @@ JDK=`dirname "$JAVAC_DIR"`
 AC_MSG_RESULT($JDK)
 
 AC_MSG_CHECKING(for location to put JARs)
-JAR_DIR=`/bin/sh tinyos/misc/tos-locate-jre --jni`/../ext
+
+if test "$prefix" != "NONE"; then
+    JAR_DIR="$prefix/lib/java"
+else
+    JAR_DIR=`/bin/sh tinyos/misc/tos-locate-jre --jni`/../ext
+fi
+
 AC_MSG_RESULT($JAR_DIR)
 
 function jnimap {
@@ -143,7 +149,12 @@ AM_COND_IF([CYGWIN], [], [
 	AC_CHECK_HEADERS([netinet/in.h ])
 	AC_CHECK_HEADERS([linux/if_tun.h])
 	AC_CHECK_HEADERS([arpa/inet.h])
-	AC_CHECK_HEADERS([sys/socket.h net/route.h net/if.h])
+	AC_CHECK_HEADERS([sys/socket.h net/route.h])
+        AC_CHECK_HEADERS([net/if.h], [], [],
+[#ifdef HAVE_SOCKET_H
+#include <sys/socket.h>
+#endif
+])
 
 	AC_MSG_CHECKING(whether struct in6_addr has u6_addrXX and defines s6_addrXX)
 	AC_TRY_COMPILE([#include <netinet/in.h>], [static struct in6_addr in6_u;
@@ -221,8 +232,8 @@ AC_OUTPUT(
 	platforms/ucmote/mcp2200gpio/Makefile
 	platforms/ucmote/motelist2/Makefile
 	platforms/ucmote/motelist2/motelist2
-	platforms/ucmote/motelist2/motelist2_getdevices-cygwin.py
-	platforms/ucmote/motelist2/motelist2_getdevices-linux.py
+	platforms/ucmote/motelist2/tosdevicesearch-cygwin.py
+	platforms/ucmote/motelist2/tosdevicesearch-linux.py
 	tinyos/Makefile
 	tinyos/c/Makefile
 	tinyos/c/blip/Makefile
@@ -280,8 +291,6 @@ AC_OUTPUT(
 	tinyos/python/packet/Makefile
 	tinyos/python/tossim/Makefile
 	tinyos/python/utils/Makefile
-	tinyos/tosthreads/Makefile
-	tinyos/tosthreads/tosthreads_standard_api.py
 	tinyos/safe/Makefile
 	tinyos/safe/tos-decode-flid
 	tinyos/safe/tos-ramsize

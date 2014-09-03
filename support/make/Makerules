@@ -35,6 +35,36 @@ endef
 $(warning $(BACKSLASH_WARNING))
 endif
 
+ifndef TINYOS_NO_DEPRECATION_WARNING
+define MAKE_VERSION_TWO_WARNING
+$(WARN_STRING) Old TinyOS environment variables detected.
+
+    This version of the TinyOS make system has deprecated the TOSDIR, TOSROOT,
+    and MAKERULES environment variables. Generally, you shouldn't need
+    environment variables with this version of the TinyOS make system, and if
+    you are not using any older versions of TinyOS on your system you should
+    delete these environment variables. If you wish to leave these variables
+    but hide this warning, set the TINYOS_NO_DEPRECATION_WARNING environment
+    variable. If you are looking to compile against a different TinyOS tree,
+    configure the makefiles used when compiling, or setup an external TinyOS
+    tree with additional source files, please visit
+    https://github.com/tinyos/tinyos-main/blob/master/support/make/README.md
+    for more information about the TinyOS make system.
+
+endef
+ifdef TOSROOT
+$(warning $(MAKE_VERSION_TWO_WARNING))
+else
+ifdef TOSDIR
+$(warning $(MAKE_VERSION_TWO_WARNING))
+else
+ifdef MAKERULES
+$(warning $(MAKE_VERSION_TWO_WARNING))
+endif
+endif
+endif
+endif
+
 #  Allow users to specify additional directories to find .target, .extra, and
 #  .rules files. This allows for platforms to be stored in separate repositories
 #  and still compile against the main TinyOS code.

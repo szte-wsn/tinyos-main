@@ -1,6 +1,41 @@
 TinyOS Make System Version 3
 ============================
 
+Building a TinyOS application consists of running `make` followed by a target
+and a series of optional extras. For example, to compile Blink, a very basic
+app, for the `telosb` platform you simply run:
+
+    $ cd ../../apps/Blink
+    $ make telosb
+
+Compiling an application requires `nesc` to be installed, as well as the correct
+toolchain for the hardware you are compiling for.
+
+Targets tell the Make system which hardware platform you are intending to build
+the application for. Extras allow you to further configure how an application is
+built or run additional commands after compilation is complete. One example is
+loading the executable onto the hardware itself. This typically looks like:
+
+    $ make telosb install
+
+To get a list of all valid targets and extras, run `make` in any application
+directory.
+
+The remainder of this README explains in depth how the TinyOS make system works,
+how to configure it, how to add a new target, platform, or extra, how to setup
+an external TinyOS tree and how to adapt TinyOS make system version 2 files
+to the current make system.
+
+Unlike prior versions of the TinyOS Make system, version 3 does not require
+configuring any environment variables: it automatically finds directories
+and files based on your current location. If you need to configure where
+the compilation toolchain looks for source files, see "External TinyOS
+Trees" below.
+
+
+Updated Make System (Summer 2014)
+---------------------------------
+
 The new version of the make system started out as a method to remove the
 environment variable requirement from the TinyOS install. All parts of the build
 system that relied on having those environment variables set now use reasonable
@@ -68,15 +103,6 @@ There are several main changes from version two:
   - **Colored output.** I added colored tags to the stdout to make the output
     easier to read.
 
-
-
-Quick Start
------------
-
-To use this build system find an application, and try make
-
-    cd ../../apps/Blink  #or any app dir
-    make telos help
 
 
 
@@ -154,15 +180,16 @@ will automatically be set by the build system (mostly in `Makefile.include`)
 which effectively removes setting environment variables from the TinyOS install.
 If needed, these defaults can be overridden with user set environment variables.
 
-| Old Variable          | New Variable Name            | Default Value                    | Purpose                                                             |
-|-----------------------|------------------------------|----------------------------------|---------------------------------------------------------------------|
-| `TOSROOT`             | `TINYOS_ROOT_DIR`            | relative to application Makefile | Base for all other variable defaults                                |
-| `TOSDIR`              | `TINYOS_OS_DIR`              | `$TINYOS_ROOT_DIR/tos`           | Path to `/tos` folder containing main system source to compile with |
-| `TINYOS_MAKE_PATH`    | `TINYOS_MAKE_DIR`            | `$TINYOS_ROOT_DIR/support/make`  | Path to `/make` that contains the targets, extras, and rules        |
-| `MAKERULES`           | `TINYOS_MAKERULES`           | `$TINYOS_MAKE_DIR/Makerules`     | Path to main makefile                                               |
-| `TINYOS_MAKELOCAL`    | `TINYOS_MAKELOCAL`           | `$TINYOS_MAKE_DIR/Makelocal`     | Path to optional Makelocal file                                     |
-| `TINYOS_MAKEDEFAULTS` | `TINYOS_MAKEDEFAULTS`        | `$TINYOS_MAKE_DIR/Makedefaults`  | Path to Makedefaults                                                |
-| `TOSMAKE_PATH`        | `TINYOS_ROOT_DIR_ADDITIONAL` | unset                            | Colon separated paths of additional TinyOS trees                    |
+| Old Variable          | New Variable Name               | Default Value                    | Purpose                                                             |
+|-----------------------|---------------------------------|----------------------------------|---------------------------------------------------------------------|
+| `TOSROOT`             | `TINYOS_ROOT_DIR`               | relative to application Makefile | Base for all other variable defaults                                |
+| `TOSDIR`              | `TINYOS_OS_DIR`                 | `$TINYOS_ROOT_DIR/tos`           | Path to `/tos` folder containing main system source to compile with |
+| `TINYOS_MAKE_PATH`    | `TINYOS_MAKE_DIR`               | `$TINYOS_ROOT_DIR/support/make`  | Path to `/make` that contains the targets, extras, and rules        |
+| `MAKERULES`           | `TINYOS_MAKERULES`              | `$TINYOS_MAKE_DIR/Makerules`     | Path to main makefile                                               |
+| `TINYOS_MAKELOCAL`    | `TINYOS_MAKELOCAL`              | `$TINYOS_MAKE_DIR/Makelocal`     | Path to optional Makelocal file                                     |
+| `TINYOS_MAKEDEFAULTS` | `TINYOS_MAKEDEFAULTS`           | `$TINYOS_MAKE_DIR/Makedefaults`  | Path to Makedefaults                                                |
+| `TOSMAKE_PATH`        | `TINYOS_ROOT_DIR_ADDITIONAL`    | unset                            | Colon separated paths of additional TinyOS trees                    |
+| n/a                   | `TINYOS_NO_DEPRECATION_WARNING` | unset                            | Hide warnings about deprecated environment variables                |
 
 
 
