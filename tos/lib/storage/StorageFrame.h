@@ -1,0 +1,8 @@
+#ifndef _STORAGEFRAME_H_
+#define _STORAGEFRAME_H_
+enum {
+	FRAMEBYTE=0x5e,
+	ESCAPEBYTE=0x5d,
+	XORESCAPEBYTE=0x20,
+};
+#endif
