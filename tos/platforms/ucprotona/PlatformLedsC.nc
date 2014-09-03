@@ -47,12 +47,17 @@ configuration PlatformLedsC
 
 implementation
 {
-  components HplAtm128GeneralIOC as IO;
+  components AtmegaGeneralIOC as IO;
 
   components PlatformC;
   Init = PlatformC.LedsInit;
+  
   Led0 = IO.PortD7;  
   Led1 = IO.PortD6; 
-  Led2 = IO.PortE2;  
+  #if UCDUAL_REV==1
+    Led2 = IO.PortD5;  
+  #else
+    Led2 = IO.PortE2;
+  #endif
   Led3 = IO.PortE3;
 }

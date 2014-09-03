@@ -1,7 +1,5 @@
-// $Id: NoLedsC.nc,v 1.1 2010-11-19 10:02:09 andrasbiro Exp $
-
 /*
- * Copyright (c) 2000-2005 The Regents of the University  of California.  
+ * Copyright (c) 2007, Vanderbilt University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the University of California nor the names of
+ * - Neither the name of the copyright holder nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -30,42 +28,52 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/**
- * A null operation replacement for the LedsC component. As many
- * components might concurrently signal information through LEDs,
- * using LedsC and NoLedsC allows an application builder to select
- * which components control the LEDs.
  *
- * @author Philip Levis
- * @date   March 19, 2005
+ * Author: Miklos Maroti
+ * Author: Krisztian Veress
  */
 
-module NoLedsC {
-  provides interface Init;
-  provides interface Leds;
-}
-implementation {
+#ifndef __SI443X_RADIO_H__
+#define __SI443X_RADIO_H__
 
-  command error_t Init.init() {return SUCCESS;}
+#include <RadioConfig.h>
+#include <TinyosNetworkLayer.h>
+#include <Ieee154PacketLayer.h>
+#include <ActiveMessageLayer.h>
+#include <MetadataFlagsLayer.h>
+#include <Si443xDriverLayer.h>
+#include <TimeStampingLayer.h>
+#include <LowPowerListeningLayer.h>
+#include <PacketLinkLayer.h>
 
-  async command void Leds.led0On() {}
-  async command void Leds.led0Off() {}
-  async command void Leds.led0Toggle() {}
+typedef nx_struct
+{
+	si443x_header_t si443x;
+	ieee154_simple_header_t ieee154;
+#ifndef TFRAMES_ENABLED
+	network_header_t network;
+#endif
+#ifndef IEEE154FRAMES_ENABLED
+	activemessage_header_t am;
+#endif
+} si443xpacket_header_t;
 
-  async command void Leds.led1On() {}
-  async command void Leds.led1Off() {}
-  async command void Leds.led1Toggle() {}
+typedef nx_struct
+{
+	// the time stamp is not recorded here, time stamped messages cannot have max length
+} si443xpacket_footer_t;
 
-  async command void Leds.led2On() {}
-  async command void Leds.led2Off() {}
-  async command void Leds.led2Toggle() {}
-  
-  async command void Leds.led3On() {}
-  async command void Leds.led3Off() {}
-  async command void Leds.led3Toggle() {}
+typedef struct
+{
+#ifdef LOW_POWER_LISTENING
+	lpl_metadata_t lpl;
+#endif
+#ifdef PACKET_LINK
+	link_metadata_t link;
+#endif
+	timestamp_metadata_t timestamp;
+	flags_metadata_t flags;
+	si443x_metadata_t si443x;
+} si443xpacket_metadata_t;
 
-  async command uint8_t Leds.get() {return 0;}
-  async command void Leds.set(uint8_t val) {}
-}
+#endif//__SI443X_RADIO_H__

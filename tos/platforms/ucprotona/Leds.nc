@@ -118,22 +118,6 @@ interface Leds {
    */
   async command void led3Toggle();
 
-  /**
-   * Turn on LED 4. The color of this LED depends on the platform.
-   */
-  async command void led4On();
-
-  /**
-   * Turn off LED 4. The color of this LED depends on the platform.
-   */
-  async command void led4Off();
-
-   /**
-   * Toggle LED 4; if it was off, turn it on, if was on, turn it off.
-   * The color of this LED depends on the platform.
-   */
-  async command void led4Toggle();
-
 
   /**
    * Get the current LED settings as a bitmask. Each bit corresponds to

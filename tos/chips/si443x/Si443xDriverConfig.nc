@@ -1,4 +1,5 @@
-/* Copyright (c) 2007 Johns Hopkins University.
+/*
+ * Copyright (c) 2007, Vanderbilt University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holders nor the names of
+ * - Neither the name of the copyright holder nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -27,23 +28,40 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/**
- * Battery Voltage. The returned value represents the difference
- * between the battery voltage and V_BG (1.23V). The formula to convert
- * it to mV is: 1223 * 1024 / value.
  *
- * @author Razvan Musaloiu-E.
+ * Author: Miklos Maroti
+ * Author: Krisztian Veress
  */
 
-generic configuration VoltageC()
+interface Si443xDriverConfig
 {
-  provides interface Read<uint16_t>;
-}
+	/**
+	 * Returns the length of a dummy header to align the payload properly.
+	 */
+	async command uint8_t headerLength(message_t* msg);
 
-implementation
-{
-	components new ConstantSensorC(uint16_t, 0);
-	Read = ConstantSensorC;
-	#warning "The Voltage Sensor on Proton DRD A doesn't work. Please remove this component"
+	/**
+	 * Returns the maximum length of the PHY payload including the
+	 * length field but not counting the FCF field.
+	 */
+	async command uint8_t maxPayloadLength();
+
+	/**
+	 * Returns the length of a dummy metadata section to align the
+	 * metadata section properly.
+	 */
+	async command uint8_t metadataLength(message_t* msg);
+
+	/**
+	 * Gets the number of bytes we should read before the RadioReceive.header
+	 * event is fired. If the length of the packet is less than this amount,
+	 * then that event is fired earlier. The header length must be at least one.
+	 */
+	async command uint8_t headerPreloadLength();
+
+	/**
+	 * Returns TRUE if before sending this message we should make sure that
+	 * the channel is clear via a very basic (and quick) RSSI check.
+	 */
+	async command bool requiresRssiCca(message_t* msg);
 }

@@ -36,19 +36,14 @@
  * @author Joe Polastre
  * @author Jan Beutel
  */
-#include "hardware.h"
+
 
 configuration LedsC {
   provides interface Leds;
 }
 implementation {
-  components PlatformLedsC;
-
-#ifdef LEDS_INVERT
-  components LedsInvP as LedsP;
-#else
-  components LedsP;
-#endif
+  components PlatformLedsC, LedsP;
+  
 
   Leds = LedsP;
 

@@ -39,13 +39,8 @@ configuration ActiveMessageC
 
 		interface PacketAcknowledgements;
 		interface LowPowerListening;
-#ifdef PACKET_LINK
 		interface PacketLink;
-#endif
-		interface PacketField<uint8_t> as PacketLinkQuality;
-		interface PacketField<uint8_t> as PacketTransmitPower;
-		interface PacketField<uint8_t> as PacketRSSI;
-		
+
 		interface PacketTimeStamp<TRadio, uint32_t> as PacketTimeStampRadio;
 		interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
 	}
@@ -53,8 +48,11 @@ configuration ActiveMessageC
 
 implementation
 {
+#ifdef DEFAULT_RADIO_SI443X
+	components Si443xActiveMessageC as MessageC;
+#else
 	components RFA1ActiveMessageC as MessageC;
-
+#endif
 	SplitControl = MessageC;
 
 	AMSend = MessageC;
@@ -67,14 +65,8 @@ implementation
 
 	PacketAcknowledgements = MessageC;
 	LowPowerListening = MessageC;
-#ifdef PACKET_LINK
 	PacketLink = MessageC;
-#endif
-	
-	PacketLinkQuality = MessageC.PacketLinkQuality;
-	PacketTransmitPower = MessageC.PacketTransmitPower;
-	PacketRSSI = MessageC.PacketRSSI;
-	
+
 	PacketTimeStampRadio = MessageC;
 	PacketTimeStampMilli = MessageC;
 }

@@ -41,17 +41,14 @@ configuration HplStm25pPinsC {
 
   provides interface GeneralIO as CSN;
   provides interface GeneralIO as Hold;
-  provides interface GeneralIO as Write;
-  provides interface GeneralIO as Power;
+
 }
 
 implementation {
 
-  components HplAtm128GeneralIOC as IO;
+  components AtmegaGeneralIOC as IO;
   components new NoPinC();
   CSN = IO.PortB0;
   Hold = NoPinC;
-  Power = NoPinC;
-  Write = NoPinC;
 
 }

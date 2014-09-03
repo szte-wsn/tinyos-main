@@ -1,7 +1,5 @@
-// $Id: NoLedsC.nc,v 1.1 2010-11-19 10:02:09 andrasbiro Exp $
-
 /*
- * Copyright (c) 2000-2005 The Regents of the University  of California.  
+ * Copyright (c) 2010, Univeristy of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -14,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the University of California nor the names of
+ * - Neither the name of the copyright holder nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -30,42 +28,75 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
-/**
- * A null operation replacement for the LedsC component. As many
- * components might concurrently signal information through LEDs,
- * using LedsC and NoLedsC allows an application builder to select
- * which components control the LEDs.
  *
- * @author Philip Levis
- * @date   March 19, 2005
+ * Author: Miklos Maroti
  */
 
-module NoLedsC {
-  provides interface Init;
-  provides interface Leds;
+#include <RadioConfig.h>
+#include <TimerConfig.h>
+
+module HplSi443xP
+{
+	provides
+	{
+		interface Init;
+		interface GpioCapture;
+	}
+
+	uses
+	{
+		interface GpioInterrupt as IRQ;
+		interface LocalTime<TRadio>;
+
+		// we need to use these to get precise timing
+		interface GeneralIO as GPIO;
+		interface AtmegaCapture<uint16_t>;
+		interface AtmegaCounter<uint16_t>;
+	}
 }
-implementation {
 
-  command error_t Init.init() {return SUCCESS;}
+#include "HplAtmRfa1Timer.h"
 
-  async command void Leds.led0On() {}
-  async command void Leds.led0Off() {}
-  async command void Leds.led0Toggle() {}
+implementation
+{
+	command error_t Init.init()
+	{
+		call AtmegaCapture.setMode(ATMRFA1_CAP16_RISING_EDGE);
+		call AtmegaCapture.start();
+		return SUCCESS;
+	}
 
-  async command void Leds.led1On() {}
-  async command void Leds.led1Off() {}
-  async command void Leds.led1Toggle() {}
+	async command error_t GpioCapture.captureRisingEdge()
+	{
+		return call IRQ.enableRisingEdge();
+	}
 
-  async command void Leds.led2On() {}
-  async command void Leds.led2Off() {}
-  async command void Leds.led2Toggle() {}
-  
-  async command void Leds.led3On() {}
-  async command void Leds.led3Off() {}
-  async command void Leds.led3Toggle() {}
+	async command error_t GpioCapture.captureFallingEdge()
+	{
+		return call IRQ.enableFallingEdge();
+	}
 
-  async command uint8_t Leds.get() {return 0;}
-  async command void Leds.set(uint8_t val) {}
+	async command void GpioCapture.disable()
+	{
+		call IRQ.disable();
+	}
+
+	async event void IRQ.fired()
+	{
+		uint16_t now;
+		uint16_t elapsed;
+
+		atomic
+		{
+			elapsed = call AtmegaCounter.get() - call AtmegaCapture.get();
+			now = call LocalTime.get();
+		}
+
+		now -= elapsed >> (MCU_TIMER_MHZ_LOG2 + 10 - 6);
+		signal GpioCapture.captured(now);
+	}
+	
+	async event void AtmegaCapture.fired() { }
+
+	async event void AtmegaCounter.overflow() { }
 }

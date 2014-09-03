@@ -1,0 +1,41 @@
+The SI443X radio driver has the following configuration options. Some of 
+these are set in the platforms/xxx/chips/si443x/RadioConfig.h header file, 
+others can be set in your Makefile.
+
+SI443X_DEF_RFPOWER:
+
+This is the default value of the TX POWER register. This can be cahanged via the 
+PacketTransmitPower interface provided by the SI443XActiveMessageC.
+
+SI443X_BASE_FREQ_10MHZ:
+SI443X_BASE_FREQ_KHZ:
+SI443X_BASE_FREQ_MILLIHZ:
+
+The base carrier frequency is set according to these two values. The carrier frequency is
+set to (SI443X_BASE_FREQ_10MHZ * 10^7 + SI443X_BASE_FREQ_KHZ * 10^3 + SI443X_BASE_FREQ_MILLIHZ * 10^(-2) ) Hz.
+Any values between 240000 kHz (240.000 MHz) and 959999 kHz (959.999 Mhz) can be given. For details, see the RadioConfig.h file.
+
+SI443X_CHANNEL_STEP_KHZ:
+
+This is the spacing between channels over the frequency band. The 0th channel starts
+from the preset base carrier frequency, the k'th channel starts from (base carrier frequency) +
+k * SI443X_CHANNEL_STEP_KHZ. The channel spacing is defined in kHz precision, minimum 
+value is 1 (1 kHz), maximum value is 2550 (2,55 Mhz).
+
+SI443X_MODEM_CONFIG:
+
+The modem is configured based on precomputed register values. These values can be found in RadioConfig.h, new config values should be
+inserted there. If multiple modem configuration exist, there is a possibility to choose from them using this constant.
+
+SI443X_DEF_CHANNEL:
+
+This is the default value of the Frequency Hopping Channel Select register
+This can be cahanged via the RadioChannel interface provided by the 
+SI443XActiveMessageC.
+
+SI443X_BACKOFF_MIN
+SI443X_BACKOFF_INIT
+SI443X_BACKOFF_CONG
+
+The minimum backoff time, the initial backoff time, and the cognestion backoff
+time in microseconds for the random CSMA/CA algorithm. See the SI443XRadioP.nc.

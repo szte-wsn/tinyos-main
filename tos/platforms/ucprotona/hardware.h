@@ -63,7 +63,8 @@ enum {
 // we have no external pullups
 #define ATM128_I2C_EXTERNAL_PULLDOWN TRUE
 
-//we have inverted leds
-#define LEDS_INVERT
+#if defined(UCPROTONA_REV) && UCPROTONA_REV<30
+#define DISABLE_SERIAL_AUTO
+#endif
 
 #endif //HARDWARE_H

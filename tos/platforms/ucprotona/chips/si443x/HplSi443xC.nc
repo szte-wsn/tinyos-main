@@ -1,4 +1,5 @@
-/* Copyright (c) 2007 Johns Hopkins University.
+/*
+ * Copyright (c) 2010, Univeristy of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -11,7 +12,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holders nor the names of
+ * - Neither the name of the copyright holder nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -27,25 +28,67 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/**
- * Battery Voltage. The returned value represents the difference
- * between the battery voltage and V_BG (1.23V). The formula to convert
- * it to mV is: 1223 * 1024 / value.
  *
- * @author Razvan Musaloiu-E.
+ * Author: Miklos Maroti
+ * Author: Andras Biro
  */
 
-generic configuration BatteryVoltageC()
-{
-  provides interface Read<uint16_t>;
-}
+#include <RadioConfig.h>
 
+configuration HplSi443xC
+{
+	provides
+	{
+		interface GeneralIO as NSEL;
+		interface GeneralIO as SDN;
+		
+#ifdef SI443X_GPIOCAPTURE		
+		interface GpioCapture as IRQ;
+#else
+		interface GpioInterrupt as IRQ;
+#endif
+ 	    
+		interface Resource as SpiResource;
+		interface FastSpiByte;
+		interface Alarm<TRadio, tradio_size> as Alarm;
+		interface LocalTime<TRadio> as LocalTimeRadio;
+	}
+}
 implementation
 {
-  components new AdcReadClientC(), BatteryVoltageP as VoltageP;
+	components AtmegaGeneralIOC as IO, new NoPinC();
+	NSEL = IO.PortF0;
+	SDN = NoPinC;
+    
+	components Atm128SpiC as SpiC;
+	SpiResource = SpiC.Resource[unique("Atm128SpiC.Resource")];
+	FastSpiByte = SpiC;
 
-  Read = AdcReadClientC;
+	components new Alarm62khz32C() as AlarmC;
+	Alarm = AlarmC;
+ 
+	components LocalTime62khzC as LocalTimeC;
+	LocalTimeRadio = LocalTimeC;
 
-  AdcReadClientC.Atm128AdcConfig -> VoltageP;
+	components AtmegaPinChange0C;
+	
+#ifdef SI443X_GPIOCAPTURE
+	components HplAtmRfa1Timer1C, HplSi443xP;
+	HplSi443xP.AtmegaCapture -> HplAtmRfa1Timer1C;
+	HplSi443xP.AtmegaCounter -> HplAtmRfa1Timer1C;
+	
+	IRQ = HplSi443xP.GpioCapture;
+	HplSi443xP.IRQ -> AtmegaPinChange0C.GpioInterrupt[4];
+	HplSi443xP.LocalTime -> LocalTimeC;
+
+	HplSi443xP.GPIO -> IO.PortD4;
+
+	components RealMainP;
+	RealMainP.PlatformInit -> HplSi443xP;
+	
+#else
+	IRQ = AtmegaPinChange0C.GpioInterrupt[4];
+
+#endif
+
 }

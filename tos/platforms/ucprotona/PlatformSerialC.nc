@@ -44,7 +44,11 @@ configuration PlatformSerialC
 
 implementation
 {
+  #ifdef MIB_SERIAL
+  components Atm128Uart0C as UartC;//0
+  #else
   components Atm128Uart1C as UartC;//1
+  #endif
   StdControl = UartC;
   UartStream = UartC;
   UartByte = UartC;
