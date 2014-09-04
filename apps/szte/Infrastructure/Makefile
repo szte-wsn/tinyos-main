@@ -8,6 +8,7 @@ CFLAGS += -I$(TOSDIR)/lib/diagmsg
 CFLAGS+=-DDISABLE_BATTERY_CHECK
 #for the mini 1
 CFLAGS += -DUCMINI_REV=101
+CFLAGS += -DUCPRTONA_REV=20
 #CFLAGS += -DRFA1_BACKOFF_MIN=30
 #CFLAGS += -DRFA1_BACKOFF_INIT=50
 #CFLAGS += -DRFA1_BACKOFF_CONG=40
@@ -19,11 +20,12 @@ CFLAGS += -DTOSH_DATA_LENGTH=100
 CFLAGS += -DDIAGMSG_SERIAL_START
 CFLAGS += -DDIAGMSG_RECORDED_MSGS=50
 
-BUILD_EXTRA_DEPS = DataCollector.class
-CLEAN_EXTRA = *.class
+TOSMAKE_PRE_EXE_DEPS = DataCollector.class
+TOSMAKE_CLEAN_EXTRA = *.class
 
 DataCollector.class: DataCollector.java
 	javac DataCollector.java
 
 
-include $(MAKERULES)
+TINYOS_ROOT_DIR?=../../..
+include $(TINYOS_ROOT_DIR)/Makefile.include

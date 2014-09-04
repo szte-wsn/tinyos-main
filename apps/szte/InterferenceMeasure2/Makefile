@@ -1,6 +1,6 @@
 COMPONENT=TestAlarmC
-BUILD_EXTRA_DEPS += Send.class
-CLEAN_EXTRA = *.class 
+TOSMAKE_PRE_EXE_DEPS += Send.class
+TOSMAKE_CLEAN_EXTRA = *.class 
 #BOOTLOADER=tosboot
 include ../Makecommon
 
@@ -25,4 +25,5 @@ CFLAGS+=-DMAX_MEASUREMENT_NUMBER=NUMBER_OF_MEASURES
 Send.class: 
 	javac Send.java
 
-include $(MAKERULES)
+TINYOS_ROOT_DIR?=../../..
+include $(TINYOS_ROOT_DIR)/Makefile.include

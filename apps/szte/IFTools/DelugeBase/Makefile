@@ -4,4 +4,5 @@ include ../../Makecommon
 
 CFLAGS += -DDELUGE_BASESTATION
 
-include $(MAKERULES)
+TINYOS_ROOT_DIR?=../../../..
+include $(TINYOS_ROOT_DIR)/Makefile.include

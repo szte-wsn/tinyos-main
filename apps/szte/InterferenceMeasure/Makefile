@@ -1,6 +1,6 @@
 COMPONENT=TestAlarmC
-BUILD_EXTRA_DEPS += Send.class Receive.class
-CLEAN_EXTRA = *.class RssiMsg.java CommandMsg.java RssiDoneMsg.java
+TOSMAKE_PRE_EXE_DEPS += Send.class Receive.class
+TOSMAKE_CLEAN_EXTRA = *.class RssiMsg.java CommandMsg.java RssiDoneMsg.java
 # BOOTLOADER=tosboot
 include ../Makecommon
 
@@ -17,10 +17,10 @@ CFLAGS += -DUCMINI_REV=101
 # CFLAGS += -DDIAGMSG_SERIAL_START
 
 RssiMsg.java:
-	mig java -target=null $(CFLAGS) -java-classname=RssiMsg TestAlarm.h rssiMessage_t -o $@
+	nescc-mig java $(CFLAGS) $(NESC_PFLAGS) -java-classname=RssiMsg TestAlarm.h rssiMessage_t -o $@
 
 RssiDoneMsg.java:
-	mig java -target=null $(CFLAGS) -java-classname=RssiDoneMsg TestAlarm.h rssiDataDone_t -o $@
+	nescc-mig java $(CFLAGS) $(NESC_PFLAGS) -java-classname=RssiDoneMsg TestAlarm.h rssiDataDone_t -o $@
 
 Send.class: 
 	javac Send.java
@@ -28,4 +28,6 @@ Send.class:
 Receive.class: RssiMsg.java RssiDoneMsg.java
 	javac Receive.java
 
-include $(MAKERULES)
+TINYOS_ROOT_DIR?=../../..
+include $(TINYOS_ROOT_DIR)/Makefile.include
+
