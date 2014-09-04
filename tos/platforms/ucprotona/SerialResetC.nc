@@ -32,7 +32,7 @@
 */
 
 #include "message.h"
-#warning Serial reset enabled (SERIAL_RESET_ENABLE)
+
 configuration SerialResetC
 {
 }
@@ -41,7 +41,7 @@ implementation
 { 
 	components SerialResetP, LedsC, SerialDispatcherC, MainC, PlatformSerialC;
 
-#ifdef ZBP_AUTOSTART
+#ifdef SERIAL_AUTOSTART
 	components SerialStartC;
 #endif
 
@@ -49,5 +49,4 @@ implementation
 	SerialResetP.Send -> SerialDispatcherC.Send[0x72];
 	SerialResetP.Receive -> SerialDispatcherC.Receive[0x72];
 	SerialDispatcherC.SerialPacketInfo[0x72] -> SerialResetP;
-	SerialResetP.StdControl -> PlatformSerialC;
 }

@@ -1,0 +1,12 @@
+The ucdual platform has the following configuration options:
+DISABLE_SERIAL_RESET
+You can disable the automatic serial reset by defining this
+SERIAL_AUTOSTART
+Defining this will turn on the serial stack at boot time. 
+It consumes a lot of power (doesn't let the cpu to enter sleep/powersave modes)!
+MIB_SERIAL
+The default serial (PlatformSerial) will be on the 51 pin connector (you can use it on pc with a mib bridge)
+instead of the USB
+UCDUAL_REV
+The ucdual revison you use, multiplied by 10. Known revisions (default is the highest):
+2

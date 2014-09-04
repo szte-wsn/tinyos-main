@@ -65,10 +65,6 @@ implementation {
   async command void Leds.led3On() {}
   async command void Leds.led3Off() {}
   async command void Leds.led3Toggle() {}
-  
-  async command void Leds.led4On() {}
-  async command void Leds.led4Off() {}
-  async command void Leds.led4Toggle() {}
 
   async command uint8_t Leds.get() {return 0;}
   async command void Leds.set(uint8_t val) {}

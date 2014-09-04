@@ -43,17 +43,11 @@ module SerialResetP
 		interface Send;
 		interface Receive;
 		interface Leds;
-		interface StdControl;
-		interface Boot;
 	}
 }
 
 implementation
 {
-	event void Boot.booted()
-	{
-		call StdControl.start();
-	}
 
 	// this is dirty, but we do to save ram
 	message_t* sendMsg;
@@ -61,7 +55,6 @@ implementation
 	task void sendAck()
 	{
 		uint8_t* p = (uint8_t*)sendMsg;
-
 		p[0] = 'Z';
 		p[1] = 'B';
 		p[2] = 'P';
