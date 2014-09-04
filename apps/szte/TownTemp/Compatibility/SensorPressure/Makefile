@@ -12,16 +12,17 @@ CFLAGS += -DSTM25P_HW_POWER_DISABLE
 CFLAGS += -DUCMINI_REV=101
 
 SerialMsg.java: TempStorage.h
-	mig -target=null -java-classname=SerialMsg java TempStorage.h BlinkToRadioMsg -o $@
+	nescc-mig java $(CFLAGS) $(NESC_PFLAGS) -java-classname=SerialMsg java TempStorage.h BlinkToRadioMsg -o $@
 
 ControlMsg.java: TempStorage.h
-	mig -target=null -java-classname=ControlMsg java TempStorage.h ControlMsg -o $@
+	nescc-mig java $(CFLAGS) $(NESC_PFLAGS) -java-classname=ControlMsg java TempStorage.h ControlMsg -o $@
 
 SerialConsts.java: TempStorage.h
-	ncg -target=null -java-classname=SerialConsts java TempStorage.h END_VALUE -o $@
+	nescc-ncg java $(CFLAGS) $(NESC_PFLAGS) -java-classname=SerialConsts java TempStorage.h END_VALUE -o $@
 
 SerialReceive.class: SerialMsg.java ControlMsg.java SerialConsts.java
 	javac SerialReceive.java
 
-include $(MAKERULES)
+TINYOS_ROOT_DIR?=../../../../..
+include $(TINYOS_ROOT_DIR)/Makefile.include
 
