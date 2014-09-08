@@ -33,6 +33,7 @@
  */
 
 #include "TimerConfig.h"
+#include "avr/boot.h"
 module McuInitP @safe()
 {
 	provides interface Init;
@@ -55,17 +56,31 @@ implementation
 		{
 			// enable changing the prescaler
 			CLKPR = 0x80;
-
 #if PLATFORM_MHZ == 16
-			CLKPR = 0x0F;	
+			if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 2 ) //internal RC oscillator
+				CLKPR = 0x0F;
+			else
+				CLKPR = 0x00;
 #elif PLATFORM_MHZ == 8
-			CLKPR = 0x00;
+			if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 2 ) //internal RC oscillator
+				CLKPR = 0x00;
+			else
+				CLKPR = 0x01;
 #elif PLATFORM_MHZ == 4
-			CLKPR = 0x01;
+			if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 2 ) //internal RC oscillator
+				CLKPR = 0x01;
+			else
+				CLKPR = 0x02;
 #elif PLATFORM_MHZ == 2
-			CLKPR = 0x02;
+			if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 2 ) //internal RC oscillator
+				CLKPR = 0x02;
+			else
+				CLKPR = 0x03;
 #elif PLATFORM_MHZ == 1
-			CLKPR = 0x03;
+			if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 2 ) //internal RC oscillator
+				CLKPR = 0x03;
+			else
+				CLKPR = 0x04;
 #else
 	#error "Unsupported MHZ"
 #endif
