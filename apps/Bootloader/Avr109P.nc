@@ -51,6 +51,7 @@ implementation{
   uint8_t buf[SPM_PAGESIZE];
   bool busy = FALSE;
   bool contacted = FALSE;
+  bool exitSuccess = FALSE;
 
   
   task void bootloaderStart(){
@@ -64,18 +65,21 @@ implementation{
     call StdControl.stop();
   }
 
-  async command void BootloaderInterface.start(){
+  async command error_t BootloaderInterface.start(){
     post bootloaderStart();
+    return SUCCESS;
   }
   
-  async command void BootloaderInterface.stop(){
+  async command error_t BootloaderInterface.stop(){
     call AtmelBootloader.enableFlash();
     post bootloaderStop();
+    return SUCCESS;
   }
   
   async command void BootloaderInterface.startMainProgram(){
-    call BootloaderInterface.stop();
-    signal BootloaderInterface.exitBootloader();
+    call AtmelBootloader.enableFlash();
+    post bootloaderStop();
+    signal BootloaderInterface.exitBootloader(exitSuccess);
   }
   
   
@@ -163,6 +167,7 @@ implementation{
           busy = TRUE;
           buf[0]='\r';//we're in programming mode while we're in the bootloader
           call UartStream.send(buf,1);
+          exitSuccess = TRUE;
           call BootloaderInterface.startMainProgram();
         }break;
         case 'p':{//return programmer type
@@ -310,23 +315,27 @@ implementation{
   }
     
   async event void AtmelBootloader.writePageDone(){
-    call UartStream.enableReceiveInterrupt();
-    call AtmelBootloader.enableFlash();
-    signal BootloaderInterface.write(address);
-    address+=call AtmelBootloader.getPageSize();
-    buf[0]='\r';
-    done();
+    if( contacted ) {
+      call UartStream.enableReceiveInterrupt();
+      call AtmelBootloader.enableFlash();
+      signal BootloaderInterface.write(address);
+      address+=call AtmelBootloader.getPageSize();
+      buf[0]='\r';
+      done();
+    }
   }
   
   async event void AtmelBootloader.erasePageDone(){
-    signal BootloaderInterface.erase(eraseAddress);
-    eraseAddress += call AtmelBootloader.getPageSize();
-    if( eraseAddress < call AtmelBootloader.getBootloaderStart() ){
-      call AtmelBootloader.erasePage(eraseAddress);
-    } else {
-      call AtmelBootloader.enableFlash();
-      buf[0]='\r';
-      done();
+    if( contacted ) {
+      signal BootloaderInterface.erase(eraseAddress);
+      eraseAddress += call AtmelBootloader.getPageSize();
+      if( eraseAddress < call AtmelBootloader.getBootloaderStart() ){
+        call AtmelBootloader.erasePage(eraseAddress);
+      } else {
+        call AtmelBootloader.enableFlash();
+        buf[0]='\r';
+        done();
+      }
     }
   }
   
@@ -335,5 +344,5 @@ implementation{
   default async event void BootloaderInterface.erase(uint32_t addr){}
   default async event void BootloaderInterface.read(uint32_t addr){}
   default async event void BootloaderInterface.write(uint32_t addr){}
-  default async event void BootloaderInterface.exitBootloader(){}
+  default async event void BootloaderInterface.exitBootloader(bool exitSucc){}
 }

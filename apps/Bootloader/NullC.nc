@@ -55,6 +55,7 @@ module NullC @safe()
   uses interface Alarm<TMicro, uint32_t>;
   uses interface Leds;
   uses interface BootloaderInterface;
+  uses interface BootloaderInterface as DelugeInterface;
   uses interface BusyWait<TMicro, uint16_t>;
   provides interface McuPowerOverride;
   uses interface McuPowerState;
@@ -70,10 +71,12 @@ implementation
   norace uint8_t exiting = 0;
   
   event void Boot.booted() {
-    call Leds.set((1<<ledCounter) - 1);
-    call BootloaderInterface.start();
-    call Alarm.start(BOOTLOADER_TIMEOUT/LEDCOUNT);
     call McuPowerState.update();
+    if( call DelugeInterface.start() != SUCCESS ){
+      call Leds.set((1<<ledCounter) - 1);
+      call Alarm.start(BOOTLOADER_TIMEOUT/LEDCOUNT);
+      call BootloaderInterface.start();
+    }
   }
   
   async event void Alarm.fired(){
@@ -120,18 +123,48 @@ implementation
     call Leds.led3Toggle();
   }
   
+  async event void DelugeInterface.erase(uint32_t address){
+    call Leds.set(0);
+    call Leds.led0On();
+    call Leds.led3Toggle();
+  }
+  
+  async event void DelugeInterface.read(uint32_t address){
+    call Leds.set(0);
+    call Leds.led1On();
+    call Leds.led3Toggle();
+  }
+  
+  async event void DelugeInterface.write(uint32_t address){
+    call Leds.set(0);
+    call Leds.led2On();
+    call Leds.led3Toggle();
+  }
+  
   task void startTimer(){
     exiting = 7;//three blinking
     call Leds.set(0xff);
     call Alarm.start(100000UL);
   }
   
-  async event void BootloaderInterface.exitBootloader(){
+  async event void BootloaderInterface.exitBootloader(bool programmingSuccessful){
     post startTimer();
+  }
+  
+  async event void DelugeInterface.exitBootloader(bool programmingSuccessful){
+    if( programmingSuccessful ){
+      post startTimer();
+    } else {
+      call Leds.set((1<<ledCounter) - 1);
+      call Alarm.start(BOOTLOADER_TIMEOUT/LEDCOUNT);
+      call BootloaderInterface.start();
+    }
   }
   
   async command mcu_power_t McuPowerOverride.lowestState() {
     return ATM128_POWER_IDLE; //somehow the sleep mode doesn't work in the bootloader
   }
+  
+  async event void DelugeInterface.contacted(){}
 }
 

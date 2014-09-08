@@ -1,4 +1,8 @@
+// $Id: InternalFlashC.nc,v 1.4 2010-06-29 22:07:50 scipio Exp $
+
 /*
+ *
+ *
  * Copyright (c) 2000-2005 The Regents of the University  of California.  
  * All rights reserved.
  *
@@ -12,7 +16,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the University of California nor the names of
+ * - Neither the name of the copyright holders nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -28,40 +32,45 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/*
- * Copyright (c) 2002-2005 Intel Corporation
- * All rights reserved.
  *
- * This file is distributed under the terms in the attached INTEL-LICENSE     
- * file. If you do not find these files, copies can be found by writing to
- * Intel Research Berkeley, 2150 Shattuck Avenue, Suite 1300, Berkeley, CA, 
- * 94704.  Attention:  Intel License Inquiry.
  */
 
 /**
- * Null is an empty skeleton application.  It is useful to test that the
- * build environment is functional in its most minimal sense, i.e., you
- * can correctly compile an application. It is also useful to test the
- * minimum power consumption of a node when it has absolutely no 
- * interrupts or resources active.
- *
- * @author Cory Sharp <cssharp@eecs.berkeley.edu>
- * @date February 4, 2006
+ * @author Jonathan Hui <jwhui@cs.berkeley.edu>
  */
-configuration NullAppC{}
-implementation {
-  components MainC, NullC, Avr109C, /*NoLedsC as */LedsC, new AlarmMicro32C(), McuSleepC;
 
-  MainC.Boot <- NullC;
-  NullC.BootloaderInterface -> Avr109C;
-  NullC.Leds -> LedsC;
-  NullC.Alarm -> AlarmMicro32C;
-  
-  NullC.McuPowerState -> McuSleepC;
-  NullC.McuPowerOverride <- McuSleepC;
-  
-  components DelugeBootloaderC;
-  NullC.DelugeInterface -> DelugeBootloaderC;
+#include "InternalFlash.h"
+
+module InternalFlashC {
+  provides interface InternalFlash;
 }
 
+implementation {
+
+  command error_t InternalFlash.write(void* addr, void* buf, uint16_t size) {
+
+    uint8_t *addrPtr = (uint8_t*)addr;
+    uint8_t *bufPtr = (uint8_t*)buf;
+
+    for ( ; size; size-- )
+      eeprom_write_byte(addrPtr++, *bufPtr++);
+
+    while(!eeprom_is_ready());
+
+    return SUCCESS;
+
+  }
+
+  command error_t InternalFlash.read(void* addr, void* buf, uint16_t size) {
+
+    uint8_t *addrPtr = (uint8_t*)addr;
+    uint8_t *bufPtr = (uint8_t*)buf;
+
+    for ( ; size; size-- )
+      *bufPtr++ = eeprom_read_byte(addrPtr++);
+
+    return SUCCESS;
+
+  }
+
+}
