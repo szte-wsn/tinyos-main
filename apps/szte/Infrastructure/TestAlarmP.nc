@@ -7,7 +7,7 @@
 */
 
 #include "TestAlarm.h"
-
+#include "RadioConfig.h"
 
 #define NUMBER_OF_INFRAST_NODES 5
 #define NUMBER_OF_FRAMES 5
