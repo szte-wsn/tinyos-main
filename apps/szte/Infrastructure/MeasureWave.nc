@@ -4,4 +4,5 @@ interface MeasureWave{
 	command uint8_t getPhase();
   command uint8_t getMinAmplitude();
 	command uint8_t getMaxAmplitude();
+	command uint8_t getPhaseRef();
 }

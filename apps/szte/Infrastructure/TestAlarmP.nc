@@ -303,6 +303,7 @@ implementation{
 
 	task void processData(){
 		/*call MeasureWave.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+		phaseRefs[tempBufferCounter] = call MeasureWave.getPhaseRef();
  		minAmplitudes[tempBufferCounter] = call MeasureWave.getMinAmplitude() >> 1;
  		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
 		freqs[tempBufferCounter] = call MeasureWave.getPeriod();*/

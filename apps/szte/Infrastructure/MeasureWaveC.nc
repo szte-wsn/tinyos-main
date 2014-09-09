@@ -90,7 +90,7 @@ implementation{
 			if( measurement.maxAmplitude < *(measurement.data+i) )
 				measurement.maxAmplitude = *(measurement.data+i);
 		}
-		measurement.average = temp/measurement.end;
+		measurement.average = temp/(measurement.end - measurement.start);
 		measurement.state = AVERAGEFOUND;
 	}
 	
@@ -235,6 +235,11 @@ implementation{
 		measurement.state = START;
 	}
 	
+	command uint8_t MeasureWave.getPhaseRef(){
+		calculate(ENDSFOUND);
+		return measurement.phaseRef;
+	}
+	
 	command uint8_t MeasureWave.getMinAmplitude(){
 		calculate(AVERAGEFOUND);
 		return measurement.minAmplitude;
@@ -247,7 +252,7 @@ implementation{
 	
 	command uint16_t MeasureWave.getPeriod(){
 		calculate(PERIODFOUND);
-		return measurement.period*100 + measurement.periodfraction;
+		return measurement.period;//*100 + measurement.periodfraction;
 	}
 	
 	command uint8_t MeasureWave.getPhase(){
