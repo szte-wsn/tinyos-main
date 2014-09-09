@@ -56,46 +56,47 @@ implementation
 		{
 			// enable changing the prescaler
 			CLKPR = 0x80;
-			#ifdef EXTERNAL_OSCILLATOR_MHZ
-				#if EXTERNAL_OSCILLATOR_MHZ > 16 || EXTERNAL_OSCILLATOR_MHZ/PLATFORM_MHZ-1>8
-					#error "Unsupported EXTERNAL_OSCILLATOR_MHZ or PLATFORM_MHZ"
-				#else
-					//don't check the fuse. We couldn't do much in runtime if it's set wrong
-					CLKPR = EXTERNAL_OSCILLATOR_MHZ/PLATFORM_MHZ-1;
-				#endif
-			#else
-				if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 0x02 ){ //internal RC oscillator
-					#if PLATFORM_MHZ == 16
-						CLKPR = 0x0F;
-					#elif PLATFORM_MHZ == 8
-						CLKPR = 0x00;
-					#elif PLATFORM_MHZ == 4
-						CLKPR = 0x01;
-					#elif PLATFORM_MHZ == 2
-						CLKPR = 0x02;
-					#elif PLATFORM_MHZ == 1
-						CLKPR = 0x03;
-					#else
-						#error "Unsupported MHZ"
-					#endif
-				} else if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) > 5 ){ //transciever clock
-					#if PLATFORM_MHZ == 16
-						CLKPR = 0x00;
-					#elif PLATFORM_MHZ == 8
-						CLKPR = 0x01;
-					#elif PLATFORM_MHZ == 4
-						CLKPR = 0x02;
-					#elif PLATFORM_MHZ == 2
-						CLKPR = 0x03;
-					#elif PLATFORM_MHZ == 1
-						CLKPR = 0x04;
-					#else
-						#error "Unsupported MHZ"
-					#endif
-				}
-				//TODO: fuse = 0x03: 128k internal RC oscillator.
-				//TODO: anything else: error
-			#endif
+			CLKPR = 0x0f;
+// 			#ifdef EXTERNAL_OSCILLATOR_MHZ
+// 				#if EXTERNAL_OSCILLATOR_MHZ > 16 || EXTERNAL_OSCILLATOR_MHZ/PLATFORM_MHZ-1>8
+// 					#error "Unsupported EXTERNAL_OSCILLATOR_MHZ or PLATFORM_MHZ"
+// 				#else
+// 					//don't check the fuse. We couldn't do much in runtime if it's set wrong
+// 					CLKPR = EXTERNAL_OSCILLATOR_MHZ/PLATFORM_MHZ-1;
+// 				#endif
+// 			#else
+// 				if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) == 0x02 ){ //internal RC oscillator
+// 					#if PLATFORM_MHZ == 16
+// 						CLKPR = 0x0F;
+// 					#elif PLATFORM_MHZ == 8
+// 						CLKPR = 0x00;
+// 					#elif PLATFORM_MHZ == 4
+// 						CLKPR = 0x01;
+// 					#elif PLATFORM_MHZ == 2
+// 						CLKPR = 0x02;
+// 					#elif PLATFORM_MHZ == 1
+// 						CLKPR = 0x03;
+// 					#else
+// 						#error "Unsupported MHZ"
+// 					#endif
+// 				} else if ( (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) > 5 ){ //transciever clock
+// 					#if PLATFORM_MHZ == 16
+// 						CLKPR = 0x00;
+// 					#elif PLATFORM_MHZ == 8
+// 						CLKPR = 0x01;
+// 					#elif PLATFORM_MHZ == 4
+// 						CLKPR = 0x02;
+// 					#elif PLATFORM_MHZ == 2
+// 						CLKPR = 0x03;
+// 					#elif PLATFORM_MHZ == 1
+// 						CLKPR = 0x04;
+// 					#else
+// 						#error "Unsupported MHZ"
+// 					#endif
+// 				}
+// 				//TODO: fuse = 0x03: 128k internal RC oscillator.
+// 				//TODO: anything else: error
+// 			#endif
 		}
 
 		return SUCCESS;
