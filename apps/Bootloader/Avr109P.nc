@@ -60,8 +60,8 @@ implementation{
     call UartByte.send('?'); //workaround: if avrdude is connected before the bootloader starts, it won't connect, unless we send something to it
   }
   
+  //TODO this task doesn't seems to run
   task void bootloaderStop(){
-    call UartStream.disableReceiveInterrupt();
     call StdControl.stop();
   }
 
@@ -72,12 +72,14 @@ implementation{
   
   async command error_t BootloaderInterface.stop(){
     call AtmelBootloader.enableFlash();
+    call UartStream.disableReceiveInterrupt();
     post bootloaderStop();
     return SUCCESS;
   }
   
   async command void BootloaderInterface.startMainProgram(){
     call AtmelBootloader.enableFlash();
+    call UartStream.disableReceiveInterrupt();
     post bootloaderStop();
     signal BootloaderInterface.exitBootloader(exitSuccess);
   }
