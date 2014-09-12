@@ -17,5 +17,10 @@ CFLAGS+=-DDISABLE_BATTERY_CHECK
 CFLAGS+=-DAVR109_HW_MAJOR=\'2\'
 CFLAGS+=-DAVR109_HW_MINOR=\'1\'
 
+#change the main oscillator to transciever oscillator
+#PROGRAMMER_EXTRA_FLAGS=-Ulfuse:w:0xef:m
+#change the main oscillator to RC oscillator
+#PROGRAMMER_EXTRA_FLAGS=-Ulfuse:w:0xe2:m
+
 TINYOS_ROOT_DIR?=../..
 include $(TINYOS_ROOT_DIR)/Makefile.include
