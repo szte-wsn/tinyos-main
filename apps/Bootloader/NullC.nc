@@ -90,6 +90,10 @@ implementation
     } else {
       if( --exiting == 1 ){
         call Leds.set(0);
+        call Alarm.stop();
+        //HACK The uart and this alarm uses a counter, but it's impossible to stop a counter through the Counter interface
+        CLR_BIT(TIMSK1, TOIE1);
+        CLR_BIT(TIMSK3, TOIE3);
         call BootloaderInterface.exitBootloaderReady();
       } else {
         call Alarm.start(100000UL);
