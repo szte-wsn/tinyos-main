@@ -19,10 +19,10 @@ implementation{
     FAILED = 3,
   };
   uint8_t  buf[TOSBOOT_INT_PAGE_SIZE];
-  uint32_t externalAddress;
-  uint32_t sectorRemains;
-  uint32_t internalAddress;
-  uint8_t programming = INACTIVE;
+  norace uint32_t externalAddress;
+  norace uint32_t sectorRemains;
+  norace uint32_t internalAddress;
+  norace uint8_t programming = INACTIVE;
   
   task void writeNextPage();
   
