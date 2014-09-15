@@ -117,11 +117,19 @@ implementation{
   
   async command void AtmelBootloader.exitBootloader(){
 		atomic{
-			uint8_t temp = MCUCR;
-			MCUCR = temp | (1<<IVCE);
-			MCUCR = temp & ~(1<<IVSEL);
-      asm("jmp 0000");
-		}    
+      uint8_t temp = MCUCR;
+      MCUCR = temp | (1<<IVCE);
+      MCUCR = temp & ~(1<<IVSEL);
+      atomic
+      {
+        //bootloader();
+//         uint32_t *magic=(uint32_t*)BOOTLOADER_MAGIC_PTR;
+        *magic = BOOTLOADER_MAGIC_VALUE;
+        wdt_enable(0);
+        while(1);
+      }
+//        asm("jmp 0000");
+    }    
   }
   
   AVR_ATOMIC_HANDLER(SPM_READY_vect){
