@@ -100,10 +100,10 @@ class PlotFunctionPanel extends JPanel{
 		}
 		
 		//draw the original waveform (0->start point)
-		//g2d.setColor(Color.BLUE);
-		//for(int i=0;i<start-1;i++){
-		//	g2d.drawLine(i*xScaleFactor,heigth-data[i],(i+1)*xScaleFactor,heigth-data[i+1]);
-		//}
+		/*g2d.setColor(Color.BLUE);
+		for(int i=0;i<start-1;i++){
+			g2d.drawLine(i*xScaleFactor,heigth-data[i],(i+1)*xScaleFactor,heigth-data[i+1]);
+		}*/
 		
 		//filtering
 		for(int i=start;i<bufferLength-4;i+=4){
@@ -121,8 +121,8 @@ class PlotFunctionPanel extends JPanel{
 			}
 		}
 		//draw the original waveform (start point->end)
-		//g2d.setColor(Color.BLACK);
-		/*for(int i=0;i<bufferLength-1;i++){
+		/*g2d.setColor(Color.BLACK);
+		for(int i=0;i<bufferLength-1;i++){
 			g2d.drawLine(i*xScaleFactor,heigth-data[i],(i+1)*xScaleFactor,heigth-data[i+1]);
 		}*/
 		g2d.setColor(Color.BLACK);
@@ -147,7 +147,7 @@ class PlotFunctionPanel extends JPanel{
 			}
 			if(state == 1 && temp[i]>mintresh){
 				state = 0;
-				minend[minendind++] = i;
+				minend[minendind++] = i-1;
 			}
 		}
 		int firstMin=0;
@@ -236,7 +236,7 @@ public class DrawWaveform {
           source = args[1];
         }
 		else if (args.length > 0) {
-	    	System.err.println("usage: java net.tinyos.tools.Listen [-comm PACKETSOURCE]");
+	    	System.err.println("usage: java DrawWaveform [-comm PACKETSOURCE]");
 	   		System.err.println("       (default packet source from MOTECOM environment variable)");
 	    	System.exit(2);
 		}
