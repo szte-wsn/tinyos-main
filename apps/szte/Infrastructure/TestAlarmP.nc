@@ -111,32 +111,32 @@ implementation{
 			if(TOS_NODE_ID==1){
 				settings[0].work=SEND_SYNC;
 				settings[1].work=TX1;
-				settings[2].work=RX;
+				settings[2].work=TX1;
 				settings[3].work=RECV_SYNC;
-				settings[4].work=RX;
-				settings[5].work=RX;
+				settings[4].work=TX1;
+				settings[5].work=TX1;
 				settings[6].work=RECV_SYNC;
-				settings[7].work=TX2;
-				settings[8].work=TX2;
+				settings[7].work=TX1;
+				settings[8].work=TX1;
 				settings[9].work=RECV_SYNC;
-				settings[10].work=RX;
-				settings[11].work=RX;
+				settings[10].work=TX1;
+				settings[11].work=TX1;
 				settings[12].work=RECV_SYNC;
-				settings[13].work=RX;
+				settings[13].work=TX1;
 				settings[14].work=TX1;
 			}
 			if(TOS_NODE_ID==2){
 				settings[0].work=RECV_SYNC;
-				settings[1].work=TX2;
-				settings[2].work=TX1;
+				settings[1].work=RX;
+				settings[2].work=RX;
 				settings[3].work=SEND_SYNC;
 				settings[4].work=RX;
 				settings[5].work=RX;
 				settings[6].work=RECV_SYNC;
 				settings[7].work=RX;
-				settings[8].work=TX1;
+				settings[8].work=RX;
 				settings[9].work=RECV_SYNC;
-				settings[10].work=TX2;
+				settings[10].work=RX;
 				settings[11].work=RX;
 				settings[12].work=RECV_SYNC;
 				settings[13].work=RX;
