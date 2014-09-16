@@ -118,7 +118,7 @@ class measurement:
     frequencies = numpy.fft.rfftfreq(signalsize, sampletime)
     amplitudediag = numpy.absolute(fftres)
     
-    maxAmplitudeIndex = numpy.argmax(amplitudediag[1:])+1
+    maxAmplitudeIndex = numpy.argmax(amplitudediag[1:signalsize/2])+1
     
     self.fftperiod = 1e6/frequencies[maxAmplitudeIndex]
     self.fftphase = numpy.angle(fftres[maxAmplitudeIndex], True)
