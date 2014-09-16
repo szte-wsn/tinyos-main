@@ -3,6 +3,7 @@ COMPONENT=TestAlarmC
 # include ../Makecommon
 
 CFLAGS += -DCONTINOUS_WAVE
+CFLAGS += -DCW_SYNC_TEST
 CFLAGS += -I$(TOSDIR)/lib/diagmsg
 #for the mini 2
 CFLAGS+=-DDISABLE_BATTERY_CHECK

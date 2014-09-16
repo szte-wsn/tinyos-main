@@ -1080,6 +1080,10 @@ implementation
 /*----------------------RadioContinuousWave---------------------*/
   async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
     if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
+      #ifdef CW_SYNC_TEST
+      DDRB|=1<<PB6;
+      PORTB|=1<<PB6;
+      #endif
       state = STATE_RSSI_MON;
       
       atomic{
@@ -1158,6 +1162,9 @@ implementation
         }
       #endif
       call Tasklet.asyncResume();
+      #ifdef CW_SYNC_TEST
+      PORTB&=~(1<<PB6);
+      #endif
       return SUCCESS;
     } else
       return EBUSY;
@@ -1167,6 +1174,10 @@ implementation
     if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
       uint32_t end = time;
       state = STATE_CW_SEND;
+      #ifdef CW_SYNC_TEST
+      DDRB|=1<<PB7;
+      PORTB|=1<<PB7;
+      #endif
       XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
       atomic{
         end += call LocalTime.get();
@@ -1223,6 +1234,9 @@ implementation
       
       state = STATE_RX_ON;
       call Tasklet.asyncResume();
+      #ifdef CW_SYNC_TEST
+      PORTB&=~(1<<PB7);
+      #endif
       return SUCCESS;
     } else
       return EBUSY;
