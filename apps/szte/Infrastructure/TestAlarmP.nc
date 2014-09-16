@@ -16,9 +16,9 @@
 #define SENDING_TIME 62
 #define BUFFER_LEN 512
 
-#define TX1_THRESHOLD 3
-#define TX2_THRESHOLD 0
-#define RX_THRESHOLD 1
+#define TX1_THRESHOLD 0
+#define TX2_THRESHOLD 2
+#define RX_THRESHOLD 0
 
 #define AMPLITUDE_THRESHOLD 2
 #define LEADTIME 10
@@ -27,7 +27,7 @@
 #ifdef SEND_WAVEFORM
 #define WAVE_MESSAGE_LENGTH 60
 #define WAVE_SENDER_ID 1
-#define SENDED_MEASURE_NUMBER 3
+#define SENDED_MEASURE_NUMBER 1
 #endif
 
 module TestAlarmP{
@@ -49,22 +49,22 @@ implementation{
 	enum {
 		CHANNEL = 11,
 		MODE = 0,
-		TRIM1 = 17,
-		TRIM2 = 0,
+		TRIM1 = 0,
+		TRIM2 = 7,
 		TX1 = 0, //sendWave 1
 		TX2 = 1, //sendWave 1
 		RX = 2, //sampleRSSI
 		SEND_SYNC=3, //sends sync message
 		RECV_SYNC=4, //waits for sync message
 		NUMBER_OF_SLOTS = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES,
-		MEAS_SLOT = 10000U, //measure slot
-		SYNC_SLOT = 15000U, //sync slot
+		MEAS_SLOT = 1000U, //measure slot
+		SYNC_SLOT = 1500U, //sync slot
 		SEND_SLOT = 65000U, //between super frames
 	};
 
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
-		nx_uint8_t dataStart[NUMBER_OF_RX];
+		nx_uint8_t phaseRef[NUMBER_OF_RX];
 		nx_uint16_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
 		nx_uint8_t minmax[NUMBER_OF_RX];
@@ -90,12 +90,11 @@ implementation{
 	norace uint8_t buffer[NUMBER_OF_RX][BUFFER_LEN];
 	norace uint8_t bufferCounter = 0;
 	norace uint8_t tempBufferCounter=0;
-	uint8_t cnt=0;
 	norace uint8_t phases[NUMBER_OF_RX];
 	norace uint16_t freqs[NUMBER_OF_RX];
 	norace uint8_t minAmplitudes[NUMBER_OF_RX];
 	norace uint8_t maxAmplitudes[NUMBER_OF_RX];
-	norace uint8_t dataStarts[NUMBER_OF_RX];
+	norace uint8_t phaseRefs[NUMBER_OF_RX];
 	#ifdef SEND_WAVEFORM
 	uint16_t sendedBytesCounter=0;
 	task void sendWaveform();
@@ -261,7 +260,6 @@ implementation{
 			uint16_t time = 0;
 			//call Leds.set(1);
 			call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
-			dataStarts[bufferCounter] = time;
 			tempBufferCounter = bufferCounter;
 			bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
 			post processData();
@@ -280,7 +278,7 @@ implementation{
 		msg->frame = activeMeasure; //activeMeasure is incremented before this task, so it indicates the next slot
 		
 		for(i=0;i<NUMBER_OF_RX;i++){
-			msg->dataStart[i] = dataStarts[i];
+			msg->phaseRef[i] = phaseRefs[i];
 			msg->freq[i] = freqs[i];
 			msg->phase[i] = phases[i];
 			msg->minmax[i] = (minAmplitudes[i] & 0x0F) | ((maxAmplitudes[i] & 0x0F)<<4);
@@ -306,8 +304,8 @@ implementation{
 		phaseRefs[tempBufferCounter] = call MeasureWave.getPhaseRef();
  		minAmplitudes[tempBufferCounter] = call MeasureWave.getMinAmplitude() >> 1;
  		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
-		freqs[tempBufferCounter] = call MeasureWave.getPeriod();*/
-// 		phases[tempBufferCounter] = call MeasureWave.getPhase();
+		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
+ 		phases[tempBufferCounter] = call MeasureWave.getPhase();*/
 	}
 
 
@@ -328,9 +326,15 @@ implementation{
 				startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 				firetime = SYNC_SLOT;
 				if(waitToStart){
+					int i;
 					activeMeasure = msg->frame;
 					call Alarm.startAt(startOfFrame,firetime);
 					waitToStart = FALSE;
+					for(i=0;i<activeMeasure;i++){
+						if(settings[i].work==RX){
+							bufferCounter++;
+						}
+					}
 				}
 			}
 		}
@@ -348,6 +352,7 @@ implementation{
 	*/
 	task void measureDone(){
 		activeMeasure = 0;
+		bufferCounter = 0;
 		firetime += SEND_SLOT;
 		if(settings[activeMeasure].work==TX1){
 			call Alarm.startAt(startOfFrame,firetime+TX1_THRESHOLD);
@@ -359,10 +364,6 @@ implementation{
 			call Alarm.startAt(startOfFrame,firetime);
 		}
 		startOfFrame = startOfFrame + SEND_SLOT;
-		if(++cnt == 10){
-			call Leds.led3Toggle();
-			cnt=0;
-		}
 		#ifdef SEND_WAVEFORM
 		if(TOS_NODE_ID == WAVE_SENDER_ID){
 			post sendWaveform();
