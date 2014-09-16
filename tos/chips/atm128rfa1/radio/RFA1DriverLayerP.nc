@@ -394,7 +394,7 @@ implementation
 
   enum {
     // 16 us delay (1 tick), 4 bytes preamble (2 ticks each), 1 byte SFD (2 ticks)
-    TX_SFD_DELAY = 11,
+    TX_SFD_DELAY = 75,
   };
 
   tasklet_async command error_t RadioSend.send(message_t* msg)
