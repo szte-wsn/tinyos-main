@@ -191,6 +191,9 @@ implementation
   static inline void initRadio(){
     CCA_THRES=RFA1_CCA_THRES_VALUE;
     
+    #ifdef CW_SYNC_TEST
+    DDRB|=1<<PB6|1<<PB7;
+    #endif
     #ifdef RFA1_ENABLE_PA
     SET_BIT(DDRG,0);  // DIG3
     CLR_BIT(PORTG,0);
@@ -394,7 +397,7 @@ implementation
 
   enum {
     // 16 us delay (1 tick), 4 bytes preamble (2 ticks each), 1 byte SFD (2 ticks)
-    TX_SFD_DELAY = 75,
+    TX_SFD_DELAY = 12,
   };
 
   tasklet_async command error_t RadioSend.send(message_t* msg)
@@ -1081,7 +1084,6 @@ implementation
   async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
     if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
       #ifdef CW_SYNC_TEST
-      DDRB|=1<<PB6;
       PORTB|=1<<PB6;
       #endif
       state = STATE_RSSI_MON;
@@ -1175,7 +1177,6 @@ implementation
       uint32_t end = time;
       state = STATE_CW_SEND;
       #ifdef CW_SYNC_TEST
-      DDRB|=1<<PB7;
       PORTB|=1<<PB7;
       #endif
       XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
