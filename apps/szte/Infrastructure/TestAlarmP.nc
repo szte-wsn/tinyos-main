@@ -13,8 +13,8 @@
 #define NUMBER_OF_FRAMES 4
 #define NUMBER_OF_SLOT_IN_FRAME 4
 #define NUMBER_OF_RX 6
-#define SENDING_TIME 62
-#define BUFFER_LEN 512
+#define SENDING_TIME 64
+#define BUFFER_LEN 500
 
 #define TX1_THRESHOLD 0
 #define TX2_THRESHOLD 0
@@ -57,8 +57,8 @@ implementation{
 		SEND_SYNC=3, //sends sync message
 		RECV_SYNC=4, //waits for sync message
 		NUMBER_OF_SLOTS = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES,
-		MEAS_SLOT = 1000U, //measure slot
-		SYNC_SLOT = 1500U, //sync slot
+		MEAS_SLOT = 75, //measure slot
+		SYNC_SLOT = 250, //sync slot
 		SEND_SLOT = 65000U, //between super frames
 	};
 
@@ -193,80 +193,80 @@ implementation{
 				settings[13].work=TX1;
 				settings[14].work=TX2;
 			}
-    } else if(NUMBER_OF_INFRAST_NODES == 4){
-      if(TOS_NODE_ID==1){
-        settings[0].work=SEND_SYNC;
-        settings[1].work=TX1;
-        settings[2].work=TX1;
-        settings[3].work=RX;
-        settings[4].work=RECV_SYNC;
-        settings[5].work=TX1;
-        settings[6].work=TX1;
-        settings[7].work=RX;
-        settings[8].work=RECV_SYNC;
-        settings[9].work=TX1;
-        settings[10].work=TX1;
-        settings[11].work=RX;
-        settings[12].work=RECV_SYNC;
-        settings[13].work=RX;
-        settings[14].work=RX;
-        settings[15].work=RX;
-      }
-      if(TOS_NODE_ID==2){
-        settings[0].work=RECV_SYNC;
-        settings[1].work=RX;
-        settings[2].work=RX;
-        settings[3].work=RX;
-        settings[4].work=SEND_SYNC;
-        settings[5].work=TX2;
-        settings[6].work=RX;
-        settings[7].work=TX1;
-        settings[8].work=RECV_SYNC;
-        settings[9].work=TX2;
-        settings[10].work=RX;
-        settings[11].work=TX1;
-        settings[12].work=RECV_SYNC;
-        settings[13].work=TX1;
-        settings[14].work=TX1;
-        settings[15].work=RX;
-      }
-      if(TOS_NODE_ID==3){
-        settings[0].work=RECV_SYNC;
-        settings[1].work=TX2;
-        settings[2].work=RX;
-        settings[3].work=TX1;
-        settings[4].work=RECV_SYNC;
-        settings[5].work=RX;
-        settings[6].work=RX;
-        settings[7].work=RX;
-        settings[8].work=SEND_SYNC;
-        settings[9].work=RX;
-        settings[10].work=TX2;
-        settings[11].work=TX2;
-        settings[12].work=RECV_SYNC;
-        settings[13].work=TX2;
-        settings[14].work=RX;
-        settings[15].work=TX1;
-      }
-      if(TOS_NODE_ID==4){
-        settings[0].work=RECV_SYNC;
-        settings[1].work=RX;
-        settings[2].work=TX2;
-        settings[3].work=TX2;
-        settings[4].work=RECV_SYNC;
-        settings[5].work=RX;
-        settings[6].work=TX2;
-        settings[7].work=TX2;
-        settings[8].work=RECV_SYNC;
-        settings[9].work=RX;
-        settings[10].work=RX;
-        settings[11].work=RX;
-        settings[12].work=SEND_SYNC;
-        settings[13].work=RX;
-        settings[14].work=TX2;
-        settings[15].work=TX2;
-      }
-    }
+		} else if(NUMBER_OF_INFRAST_NODES == 4){
+			if(TOS_NODE_ID==1){
+				settings[0].work=SEND_SYNC;
+				settings[1].work=TX1;
+				settings[2].work=TX1;
+				settings[3].work=RX;
+				settings[4].work=RECV_SYNC;
+				settings[5].work=TX1;
+				settings[6].work=TX1;
+				settings[7].work=RX;
+				settings[8].work=RECV_SYNC;
+				settings[9].work=TX1;
+				settings[10].work=TX1;
+				settings[11].work=RX;
+				settings[12].work=RECV_SYNC;
+				settings[13].work=RX;
+				settings[14].work=RX;
+				settings[15].work=RX;
+			}
+			if(TOS_NODE_ID==2){
+				settings[0].work=RECV_SYNC;
+				settings[1].work=RX;
+				settings[2].work=RX;
+				settings[3].work=RX;
+				settings[4].work=SEND_SYNC;
+				settings[5].work=TX2;
+				settings[6].work=RX;
+				settings[7].work=TX1;
+				settings[8].work=RECV_SYNC;
+				settings[9].work=TX2;
+				settings[10].work=RX;
+				settings[11].work=TX1;
+				settings[12].work=RECV_SYNC;
+				settings[13].work=TX1;
+				settings[14].work=TX1;
+				settings[15].work=RX;
+			}
+			if(TOS_NODE_ID==3){
+				settings[0].work=RECV_SYNC;
+				settings[1].work=TX2;
+				settings[2].work=RX;
+				settings[3].work=TX1;
+				settings[4].work=RECV_SYNC;
+				settings[5].work=RX;
+				settings[6].work=RX;
+				settings[7].work=RX;
+				settings[8].work=SEND_SYNC;
+				settings[9].work=RX;
+				settings[10].work=TX2;
+				settings[11].work=TX2;
+				settings[12].work=RECV_SYNC;
+				settings[13].work=TX2;
+				settings[14].work=RX;
+				settings[15].work=TX1;
+			}
+			if(TOS_NODE_ID==4){
+				settings[0].work=RECV_SYNC;
+				settings[1].work=RX;
+				settings[2].work=TX2;
+				settings[3].work=TX2;
+				settings[4].work=RECV_SYNC;
+				settings[5].work=RX;
+				settings[6].work=TX2;
+				settings[7].work=TX2;
+				settings[8].work=RECV_SYNC;
+				settings[9].work=RX;
+				settings[10].work=RX;
+				settings[11].work=RX;
+				settings[12].work=SEND_SYNC;
+				settings[13].work=RX;
+				settings[14].work=TX2;
+				settings[15].work=TX2;
+			}
+		}
 	}
 	
 	event void SplitControl.startDone(error_t error){
