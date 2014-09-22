@@ -1,6 +1,7 @@
 import static java.lang.System.out;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.lang.Math.*;
 
 import java.io.*;
 import net.tinyos.packet.*;
@@ -8,15 +9,15 @@ import net.tinyos.util.*;
 
 class DataCollector{
 
-  //for 1. and 2. Super frame structure
-  //public static final int NUMBER_OF_INFRAST_NODES = 4;
-  //public static final int NUMBER_OF_FRAMES = 4;          
-  //public static final int NUMBER_OF_SLOT_IN_FRAME = 3;  //not 4 because one slot for sync
+  //for 4 node Super frame structure
+  public static final int NUMBER_OF_INFRAST_NODES = 4;
+  public static final int NUMBER_OF_FRAMES = 4;          
+  public static final int NUMBER_OF_SLOT_IN_FRAME = 3;  //not 4 because one slot for sync
 
-  //for 3. Super frame structure
-  public static final int NUMBER_OF_INFRAST_NODES = 5;
-  public static final int NUMBER_OF_FRAMES = 5;          
-  public static final int NUMBER_OF_SLOT_IN_FRAME = 2;  //not 3 because one slot for sync
+  //for 5 node Super frame structure
+  //public static final int NUMBER_OF_INFRAST_NODES = 5;
+  //public static final int NUMBER_OF_FRAMES = 5;          
+  //public static final int NUMBER_OF_SLOT_IN_FRAME = 2;  //not 3 because one slot for sync
   public static final int NUMBER_OF_RX = 6;
 
   public static final int NUMBER_OF_SLOTS_IN_SF = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES;
@@ -27,31 +28,43 @@ class DataCollector{
   //SYNC receive sequence (node ids)
   public static final int[] SEQ = 
   {
-      1,2,3,4,5
+      //for 5 node
+      //1,2,3,4,5
+      //for 4 node
+      1,2,3,4
   };
 
-  // 1. Super frame structure
+  // 1. Super frame structure OLD
   //public static final int[][] SF_slots = 
   //{ {TX, TX, RX, RX, RX, TX, TX, TX, RX, RX, RX, TX} ,
     //{TX, RX, TX, TX, RX, RX, TX, RX, TX, TX, RX, RX} ,
     //{RX, RX, RX, TX, TX, TX, RX, RX, RX, TX, TX, TX} ,
     //{RX, TX, TX, RX, TX, RX, RX, TX, TX, RX, TX, RX} };
-
-  // 2. Super frame structure
+    
+  // 3. Super frame structure OLD
   //public static final int[][] SF_slots = 
-  //{ {TX, TX, RX, TX, TX, RX, TX, TX, RX, RX, RX, RX} ,
-    //{RX, RX, RX, TX, RX, TX, TX, RX, TX, TX, TX, RX} ,
-    //{TX, RX, TX, RX, RX, RX, RX, TX, TX, TX, RX, TX} ,
-    //{RX, TX, TX, RX, TX, TX, RX, RX, RX, RX, TX, TX} };
+  //{ {TX, RX, RX, RX, TX, TX, RX, RX, RX, TX} ,
+    //{TX, TX, RX, RX, RX, TX, TX, RX, RX, RX} ,
+    //{RX, TX, TX, RX, RX, RX, TX, TX, RX, RX} ,
+    //{RX, RX, TX, TX, RX, RX, RX, TX, TX, RX} ,
+    //{RX, RX, RX, TX, TX, RX, RX, RX, TX, TX} };
 
-  // 3. Super frame structure
+  // 2. Super frame structure 4 node
   public static final int[][] SF_slots = 
-  { {TX, RX, RX, RX, TX, TX, RX, RX, RX, TX} ,
-    {TX, TX, RX, RX, RX, TX, TX, RX, RX, RX} ,
-    {RX, TX, TX, RX, RX, RX, TX, TX, RX, RX} ,
-    {RX, RX, TX, TX, RX, RX, RX, TX, TX, RX} ,
-    {RX, RX, RX, TX, TX, RX, RX, RX, TX, TX} };
+  { {TX, TX, RX, TX, TX, RX, TX, TX, RX, RX, RX, RX} ,
+    {RX, RX, RX, TX, RX, TX, TX, RX, TX, TX, TX, RX} ,
+    {TX, RX, TX, RX, RX, RX, RX, TX, TX, TX, RX, TX} ,
+    {RX, TX, TX, RX, TX, TX, RX, RX, RX, RX, TX, TX} };
 
+  // 4. Super frame structure 5 node
+  //public static final int[][] SF_slots = 
+  //{ {TX, TX, TX, TX, TX, TX, TX, TX, TX, TX} ,
+    //{RX, RX, RX, RX, RX, RX, RX, RX, RX, RX} ,
+    //{RX, TX, TX, RX, RX, RX, TX, TX, RX, RX} ,
+    //{RX, RX, TX, TX, RX, RX, RX, TX, TX, RX} ,
+    //{RX, RX, RX, TX, TX, RX, RX, RX, TX, TX} };
+  
+    
 
   ArrayList<Slot> slots;  //Store slots
   int node_index;   //The actual node index in SEQ array
@@ -121,7 +134,9 @@ class DataCollector{
     }
 
     public String toString() {
-      return "id: " + id + " dataStart: " + dataStart + " freq: " + freq + " phase: " + phase + " min: " + min + " max: " + max;
+      if(freq == 0)
+        return "id: " + id + " invalid data! Frequency = 0\n";
+      return "id: " + id + "\tdataStart: " + dataStart + "\tmin: " + min + "\tmax: " + max + "\tfreq: " + freq + "\tphase: " + phase;
     }
   }
 
@@ -180,6 +195,18 @@ class DataCollector{
 	
 	  public ArrayList<Node> getAllNode() {
 		  return nodes;
+	  }
+	  
+	  public String getAllNodeString() {
+	    String str = "";
+	    Node relnode = nodes.get(0);
+	    for(Node n : nodes) {
+	      if(nodes.get(0).getFreq() == 0 || n.getFreq() == 0) 
+	        str += "RX: " + n;
+	      else
+	        str += "RX: " + n + "\t relphase: " + (Math.abs(n.getPhase() - nodes.get(0).getPhase())%nodes.get(0).getFreq()) + "\n";
+	    }
+	    return str;
 	  }
 	
 	  public int getNodeFreq(int id) {
@@ -253,8 +280,8 @@ class DataCollector{
     if(terminal_write_option == 0) 
 	    p.print(a1 + "\n");
     node_index = Arrays.binarySearch(SEQ, a1);
-    //if(terminal_write_option == 0) 
-      //p.print("node_index: " + node_index + "\n");
+    if(terminal_write_option == 0) 
+      p.print("node_index: " + node_index + "\n");
 		int len = (int)(packet[5] & 0xFF);
     if(terminal_write_option == 0) {
 	    p.print("Message length "+len+" \n");
@@ -321,10 +348,11 @@ class DataCollector{
     }
     frame = frame_mes-(NUMBER_OF_SLOT_IN_FRAME*node_index) + (sf_cnt*NUMBER_OF_INFRAST_NODES); //hogy a 5.dik frame-t ne 0-t adjon ki a slot_start
     frame_prev = frame_mes;
-    int slot_start = (frame-NUMBER_OF_FRAMES) > 0 ? (frame-NUMBER_OF_FRAMES)*NUMBER_OF_SLOT_IN_FRAME : 0; //hanyadik slottol kezdjuk
+    int slot_start = (frame-NUMBER_OF_FRAMES) > 0 ? (frame-NUMBER_OF_FRAMES-1)*NUMBER_OF_SLOT_IN_FRAME : 0; //hanyadik slottol kezdjuk
     int slot_end = slot_start + NUMBER_OF_SLOTS_IN_SF;
     if(terminal_write_option == 0) 
-      System.out.println("frame_number: " + frame + "\n-------------------\n");
+//      System.out.println("frame_number: " + frame + " slot_start " + slot_start + " slot_end " + slot_end + " sf_cnt " + sf_cnt +  " slot_start: " + ((frame-NUMBER_OF_FRAMES-1)*NUMBER_OF_SLOT_IN_FRAME) + " a: " + (frame-NUMBER_OF_FRAMES) + " b " + NUMBER_OF_SLOT_IN_FRAME  + "\n-------------------\n");
+    System.out.println("frame_number: " + frame + "\n");
     int p_cnt = 0;  //hanyadik freq,phase parosnal tartunk
     for(int i=slot_start; i<slot_end; i++) {
       try{    
@@ -332,7 +360,10 @@ class DataCollector{
         if(SF_slots[node_index][i%NUMBER_OF_SLOTS_IN_SF] == RX) {
           Node n = s.getNodeData(SEQ[node_index]);
           n.setFreq(freq[p_cnt]);
-          n.setPhase(phase[p_cnt]);
+          if(freq[p_cnt] != 0)
+            n.setPhase(phase[p_cnt]%freq[p_cnt]);
+          else 
+            n.setPhase(phase[p_cnt]);
           n.setMin(min[p_cnt]);
           n.setMax(max[p_cnt]);
           n.setDataStart(dataStart[p_cnt]);
@@ -345,7 +376,10 @@ class DataCollector{
         if(SF_slots[node_index][i%NUMBER_OF_SLOTS_IN_SF] == RX) {
           Node n = s.getNodeData(SEQ[node_index]);
           n.setFreq(freq[p_cnt]);
-          n.setPhase(phase[p_cnt]);
+          if(freq[p_cnt] != 0)
+            n.setPhase(phase[p_cnt]%freq[p_cnt]);
+          else 
+            n.setPhase(phase[p_cnt]);
           n.setMin(min[p_cnt]);
           n.setMax(max[p_cnt]);
           n.setDataStart(dataStart[p_cnt]);
@@ -390,10 +424,10 @@ class DataCollector{
        		String pathprefix = "measures/Slots/" + i + "_slot";	
           FileWriter fw = new FileWriter(pathprefix + ".txt");	
        		BufferedWriter out = new BufferedWriter(fw);
-          out.write("TX:\n"+item.getTrans()+"\nRX:\n"+item.getAllNode());
-          out_sf.write("TX:\n"+item.getTrans()+"\nRX:\n"+item.getAllNode() + "\n\n");
+          out.write("TX: "+item.getTrans()+"\nRX:\n"+item.getAllNodeString());
+          out_sf.write("TX: "+item.getTrans()+"\n"+item.getAllNodeString() + "\n\n");
           if(terminal_write_option == 1) 
-            System.out.println("TX:\n"+item.getTrans()+"\nRX:\n"+item.getAllNode() + "\n");
+            System.out.println("TX:\n"+item.getTrans()+"\nRX:\n"+item.getAllNodeString() + "\n");
           out.close();
 				  fw.close();
         }
