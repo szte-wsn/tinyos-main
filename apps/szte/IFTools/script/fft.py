@@ -7,7 +7,7 @@ import numpy #mathematical library for calculating with the values
 import matplotlib.pyplot as plt #plotter
 
 class measurement:
-  def __init__(self, filename=None):
+  def __init__(self, filename=None, realTime = True):
     self.measureId = 0
     self.nodeid = 0
     self.samples = []
@@ -29,6 +29,8 @@ class measurement:
     self.endpoint = 0
     self.fftperiod = 0
     self.fftphase = 0
+    self.testperiod = 0
+    self.testphase = 0
     if filename != None:
       f = open(filename, 'rb')
     
@@ -58,7 +60,10 @@ class measurement:
       #set up the time axis, and convert the value axis to integer
       timeusbase=self.measureTime/arraylength
       for i in range(0, arraylength):
-        self.times.append(i*timeusbase)
+        if(realTime):
+          self.times.append(i*timeusbase)
+        else:
+          self.times.append(i)
         if( sys.version_info.major < 3):
           self.values.append(ord(chrvalues[i]))
         else:
@@ -81,8 +86,8 @@ class measurement:
     print("Phase: "+str(self.phase))
     print("Calculated values:")
     print("Endpoints: "+str(self.startpoint)+" "+str(self.endpoint))
-    print("Period: "+str(self.fftperiod))
-    print("Phase: "+str(self.fftphase))
+    print("Period (FFT; test; diff): "+str(self.fftperiod)+" "+str(self.testperiod)+" "+str(self.testperiod-self.fftperiod))
+    print("Phase (FFT; test; diff): "+str(self.fftphase)+" "+str(self.testphase)+" "+str(self.testphase-self.fftphase))
     
   def plot(self, onlyRealData=True, index=0, show=True):
     #set up the title
@@ -118,7 +123,7 @@ class measurement:
     frequencies = numpy.fft.rfftfreq(signalsize, sampletime)
     amplitudediag = numpy.absolute(fftres)
     
-    maxAmplitudeIndex = numpy.argmax(amplitudediag[1:signalsize/2])+1
+    maxAmplitudeIndex = numpy.argmax(amplitudediag[1:])+1
     
     self.fftperiod = 1e6/frequencies[maxAmplitudeIndex]
     self.fftphase = numpy.angle(fftres[maxAmplitudeIndex], True)
@@ -138,6 +143,11 @@ class measurement:
       if show:
         plt.show()
     return index
+  
+  def calculateTest(self, leadTime=10):
+    #NOTE add algorithm here
+    self.phase=0
+    self.period=0
 
 if len(sys.argv) < 2: #no argument was given, use the newest file
   allfilenames = []
@@ -151,10 +161,11 @@ else:
 
 index=0;
 for filename in filenames:
-  m = measurement(filename)
-  m.searchEndpoints(5)
+  m = measurement(filename, False)
+  m.searchEndpoints(2)
   #index = m.calculateFft(True, index, False)
   m.calculateFft()
+  m.calculateTest()
   m.printData()
   index = m.plot(True, index, False)
 plt.show()
