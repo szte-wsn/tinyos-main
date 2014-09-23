@@ -8,63 +8,37 @@ import net.tinyos.packet.*;
 import net.tinyos.util.*;
 
 class DataCollector{
-
-  //for 4 node Super frame structure
+  
+  public static final int TX = 0;
+  public static final int RX = 1;
+  
+  //4 mote structure
   public static final int NUMBER_OF_INFRAST_NODES = 4;
   public static final int NUMBER_OF_FRAMES = 4;          
   public static final int NUMBER_OF_SLOT_IN_FRAME = 3;  //not 4 because one slot for sync
-
-  //for 5 node Super frame structure
-  //public static final int NUMBER_OF_INFRAST_NODES = 5;
-  //public static final int NUMBER_OF_FRAMES = 5;          
-  //public static final int NUMBER_OF_SLOT_IN_FRAME = 2;  //not 3 because one slot for sync
   public static final int NUMBER_OF_RX = 6;
-
-  public static final int NUMBER_OF_SLOTS_IN_SF = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES;
-
-  public static final int TX = 0;
-  public static final int RX = 1;
-
-  //SYNC receive sequence (node ids)
-  public static final int[] SEQ = 
-  {
-      //for 5 node
-      //1,2,3,4,5
-      //for 4 node
-      1,2,3,4
-  };
-
-  // 1. Super frame structure OLD
-  //public static final int[][] SF_slots = 
-  //{ {TX, TX, RX, RX, RX, TX, TX, TX, RX, RX, RX, TX} ,
-    //{TX, RX, TX, TX, RX, RX, TX, RX, TX, TX, RX, RX} ,
-    //{RX, RX, RX, TX, TX, TX, RX, RX, RX, TX, TX, TX} ,
-    //{RX, TX, TX, RX, TX, RX, RX, TX, TX, RX, TX, RX} };
-    
-  // 3. Super frame structure OLD
-  //public static final int[][] SF_slots = 
-  //{ {TX, RX, RX, RX, TX, TX, RX, RX, RX, TX} ,
-    //{TX, TX, RX, RX, RX, TX, TX, RX, RX, RX} ,
-    //{RX, TX, TX, RX, RX, RX, TX, TX, RX, RX} ,
-    //{RX, RX, TX, TX, RX, RX, RX, TX, TX, RX} ,
-    //{RX, RX, RX, TX, TX, RX, RX, RX, TX, TX} };
-
-  // 2. Super frame structure 4 node
+  public static final int[] SEQ = { 1,2,3,4 };
   public static final int[][] SF_slots = 
   { {TX, TX, RX, TX, TX, RX, TX, TX, RX, RX, RX, RX} ,
     {RX, RX, RX, TX, RX, TX, TX, RX, TX, TX, TX, RX} ,
     {TX, RX, TX, RX, RX, RX, RX, TX, TX, TX, RX, TX} ,
     {RX, TX, TX, RX, TX, TX, RX, RX, RX, RX, TX, TX} };
-
-  // 4. Super frame structure 5 node
-  //public static final int[][] SF_slots = 
-  //{ {TX, TX, TX, TX, TX, TX, TX, TX, TX, TX} ,
-    //{RX, RX, RX, RX, RX, RX, RX, RX, RX, RX} ,
-    //{RX, TX, TX, RX, RX, RX, TX, TX, RX, RX} ,
-    //{RX, RX, TX, TX, RX, RX, RX, TX, TX, RX} ,
-    //{RX, RX, RX, TX, TX, RX, RX, RX, TX, TX} };
   
-    
+  //5 mote structure
+  /*public static final int NUMBER_OF_INFRAST_NODES = 5;
+  public static final int NUMBER_OF_FRAMES = 5;          
+  public static final int NUMBER_OF_SLOT_IN_FRAME = 2;  //not 3 because one slot for sync
+  public static final int NUMBER_OF_RX = 6;
+  public static final int[] SEQ = { 1,2,3,4,5 };
+  public static final int[][] SF_slots = 
+  { {TX, TX, TX, TX, TX, TX, TX, TX, TX, TX} ,
+    {RX, RX, RX, RX, RX, RX, RX, RX, RX, RX} ,
+    {RX, TX, TX, RX, RX, RX, TX, TX, RX, RX} ,
+    {RX, RX, TX, TX, RX, RX, RX, TX, TX, RX} ,
+    {RX, RX, RX, TX, TX, RX, RX, RX, TX, TX} };*/
+
+  public static final int NUMBER_OF_SLOTS_IN_SF = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES;
+
 
   ArrayList<Slot> slots;  //Store slots
   int node_index;   //The actual node index in SEQ array
@@ -136,7 +110,7 @@ class DataCollector{
     public String toString() {
       if(freq == 0)
         return "id: " + id + " invalid data! Frequency = 0\n";
-      return "id: " + id + "\tdataStart: " + dataStart + "\tmin: " + min + "\tmax: " + max + "\tfreq: " + freq + "\tphase: " + phase;
+      return "id: " + id + "\tdataStart: " + dataStart + "\tmin: " + min + "\tmax: " + max + "\tfreq: " + freq + "   \tphase: " + phase;
     }
   }
 
@@ -315,7 +289,7 @@ class DataCollector{
       phase[tmp++] = (byte)b1;
     }
     tmp = 0;
-    for(int i=9+(NUMBER_OF_RX*3); i<9+(NUMBER_OF_RX*4); i++) {
+    for(int i=9+(NUMBER_OF_RX*4); i<9+(NUMBER_OF_RX*5); i++) {
       int b1 = packet[i] & 0x0F;
       int b2 = packet[i] & 0xF0;
       b2 >>= 3;
@@ -361,7 +335,7 @@ class DataCollector{
           Node n = s.getNodeData(SEQ[node_index]);
           n.setFreq(freq[p_cnt]);
           if(freq[p_cnt] != 0)
-            n.setPhase(phase[p_cnt]%freq[p_cnt]);
+            n.setPhase((phase[p_cnt]*4)%freq[p_cnt]);
           else 
             n.setPhase(phase[p_cnt]);
           n.setMin(min[p_cnt]);
@@ -377,7 +351,7 @@ class DataCollector{
           Node n = s.getNodeData(SEQ[node_index]);
           n.setFreq(freq[p_cnt]);
           if(freq[p_cnt] != 0)
-            n.setPhase(phase[p_cnt]%freq[p_cnt]);
+            n.setPhase((phase[p_cnt]*4)%freq[p_cnt]);
           else 
             n.setPhase(phase[p_cnt]);
           n.setMin(min[p_cnt]);
@@ -417,12 +391,12 @@ class DataCollector{
      		if (null != dir) 
      			dir.mkdirs();
         String pathprefix_sf = "measures/SF/" + sf_cnt + "_SF";	
-        FileWriter fw_sf = new FileWriter(pathprefix_sf + ".txt", true);	
+        FileWriter fw_sf = new FileWriter(pathprefix_sf + ".txt", false);	
      		BufferedWriter out_sf = new BufferedWriter(fw_sf);
         for(int i = (sf_cnt-1)*NUMBER_OF_SLOTS_IN_SF; i<sf_cnt*NUMBER_OF_SLOTS_IN_SF; i++) {
           Slot item = slots.get(i);
        		String pathprefix = "measures/Slots/" + i + "_slot";	
-          FileWriter fw = new FileWriter(pathprefix + ".txt");	
+          FileWriter fw = new FileWriter(pathprefix + ".txt", false);	
        		BufferedWriter out = new BufferedWriter(fw);
           out.write("TX: "+item.getTrans()+"\nRX:\n"+item.getAllNodeString());
           out_sf.write("TX: "+item.getTrans()+"\n"+item.getAllNodeString() + "\n\n");
