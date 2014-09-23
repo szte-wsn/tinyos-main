@@ -10,9 +10,22 @@
 #include "RadioConfig.h"
 
 #define NUMBER_OF_INFRAST_NODES 4
-#define NUMBER_OF_FRAMES 4
-#define NUMBER_OF_SLOT_IN_FRAME 4
-#define NUMBER_OF_RX 6
+#ifndef SEND_WAVEFORM
+	#if NUMBER_OF_INFRAST_NODES == 4
+		#include "4_infrastruct_mote_consts.h"
+	#endif
+	#if NUMBER_OF_INFRAST_NODES == 5
+		#include "5_infrastruct_mote_consts.h"
+	#endif
+#else
+	#if NUMBER_OF_INFRAST_NODES == 4
+		#include "4_infrastruct_mote_debug_consts.h"
+	#endif
+	#if NUMBER_OF_INFRAST_NODES == 5
+		#include "5_infrastruct_mote_debug_consts.h"
+	#endif
+#endif
+
 #define SENDING_TIME 64
 #define BUFFER_LEN 500
 
@@ -20,14 +33,12 @@
 #define TX2_THRESHOLD 0
 #define RX_THRESHOLD 0
 
-#define AMPLITUDE_THRESHOLD 5
+#define AMPLITUDE_THRESHOLD 2
 #define LEADTIME 10
 #define START_OFFSET 16
 
 #ifdef SEND_WAVEFORM
-#define WAVE_MESSAGE_LENGTH 60
-#define WAVE_SENDER_ID 1
-#define SENDED_MEASURE_NUMBER 1
+#define WAVE_MESSAGE_LENGTH 80
 #endif
 
 module TestAlarmP{
@@ -51,16 +62,18 @@ implementation{
 		CHANNEL = 11,
 		MODE = 0,
 		TRIM1 = 0,
-		TRIM2 = 7,
+		TRIM2 = 2,
 		TX1 = 0, //sendWave 1
 		TX2 = 1, //sendWave 1
 		RX = 2, //sampleRSSI
 		SEND_SYNC=3, //sends sync message
 		RECV_SYNC=4, //waits for sync message
-		NUMBER_OF_SLOTS = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES,
-		MEAS_SLOT = 50000U, //measure slot
-		SYNC_SLOT = 250, //sync slot
-		SEND_SLOT = 65000U, //between super frames
+		DEBUG = 5,
+		NO_TXRX = 6,
+		NO_DEBUG = 7,
+		MEAS_SLOT = 10000, //measure slot
+		SYNC_SLOT = 10000, //sync slot
+		DEBUG_SLOT = 30000, //between super frames
 	};
 
 	typedef nx_struct sync_message_t{
@@ -73,6 +86,8 @@ implementation{
 
 	#ifdef SEND_WAVEFORM
 	typedef nx_struct wave_message_t{
+		nx_uint8_t whichWaveform;
+		nx_uint8_t whichPartOfTheWaveform;
 		nx_uint8_t data[WAVE_MESSAGE_LENGTH+4];
 	} wave_message_t;
 	#endif
@@ -98,180 +113,29 @@ implementation{
 	norace uint8_t phaseRefs[NUMBER_OF_RX];
 	#ifdef SEND_WAVEFORM
 	uint16_t sendedBytesCounter=0;
+	uint8_t sendedMeasureCounter = 0;
+	uint8_t sendedMessageCounter = 0;
+	uint8_t failedSendCounter = 0;
 	task void sendWaveform();
 	#endif
-	task void measureDone();
+	task void debugProcess();
 	task void sendSync();
 	task void processData();
 	
 	event void Boot.booted(){
 		call SplitControl.start();
-		firetime = 300000UL;
-		startOfFrame = firetime-(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT - SYNC_SLOT;
-		if(NUMBER_OF_INFRAST_NODES == 5){
-			if(TOS_NODE_ID==1){
-				settings[0].work=SEND_SYNC;
-				settings[1].work=TX1;
-				settings[2].work=TX1;
-				settings[3].work=RECV_SYNC;
-				settings[4].work=TX1;
-				settings[5].work=TX1;
-				settings[6].work=RECV_SYNC;
-				settings[7].work=TX1;
-				settings[8].work=TX1;
-				settings[9].work=RECV_SYNC;
-				settings[10].work=TX1;
-				settings[11].work=TX1;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=TX1;
-				settings[14].work=TX1;
-			}
-			if(TOS_NODE_ID==2){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=RX;
-				settings[2].work=RX;
-				settings[3].work=SEND_SYNC;
-				settings[4].work=RX;
-				settings[5].work=RX;
-				settings[6].work=RECV_SYNC;
-				settings[7].work=RX;
-				settings[8].work=RX;
-				settings[9].work=RECV_SYNC;
-				settings[10].work=RX;
-				settings[11].work=RX;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=RX;
-				settings[14].work=RX;
-			}
-			if(TOS_NODE_ID==3){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=RX;
-				settings[2].work=TX2;
-				settings[3].work=RECV_SYNC;
-				settings[4].work=TX1;
-				settings[5].work=RX;
-				settings[6].work=SEND_SYNC;
-				settings[7].work=RX;
-				settings[8].work=RX;
-				settings[9].work=RECV_SYNC;
-				settings[10].work=TX1;
-				settings[11].work=TX2;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=RX;
-				settings[14].work=RX;
-			}
-			if(TOS_NODE_ID==4){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=RX;
-				settings[2].work=RX;
-				settings[3].work=RECV_SYNC;
-				settings[4].work=TX2;
-				settings[5].work=TX1;
-				settings[6].work=RECV_SYNC;
-				settings[7].work=RX;
-				settings[8].work=RX;
-				settings[9].work=SEND_SYNC;
-				settings[10].work=RX;
-				settings[11].work=TX1;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=TX2;
-				settings[14].work=RX;
-			}
-			if(TOS_NODE_ID==5){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=RX;
-				settings[2].work=RX;
-				settings[3].work=RECV_SYNC;
-				settings[4].work=RX;
-				settings[5].work=TX2;
-				settings[6].work=RECV_SYNC;
-				settings[7].work=TX1;
-				settings[8].work=RX;
-				settings[9].work=RECV_SYNC;
-				settings[10].work=RX;
-				settings[11].work=RX;
-				settings[12].work=SEND_SYNC;
-				settings[13].work=TX1;
-				settings[14].work=TX2;
-			}
-		} else if(NUMBER_OF_INFRAST_NODES == 4){
-			if(TOS_NODE_ID==1){
-				settings[0].work=SEND_SYNC;
-				settings[1].work=TX1;
-				settings[2].work=TX1;
-				settings[3].work=RX;
-				settings[4].work=RECV_SYNC;
-				settings[5].work=TX1;
-				settings[6].work=TX1;
-				settings[7].work=RX;
-				settings[8].work=RECV_SYNC;
-				settings[9].work=TX1;
-				settings[10].work=TX1;
-				settings[11].work=RX;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=RX;
-				settings[14].work=RX;
-				settings[15].work=RX;
-			}
-			if(TOS_NODE_ID==2){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=RX;
-				settings[2].work=RX;
-				settings[3].work=RX;
-				settings[4].work=SEND_SYNC;
-				settings[5].work=TX2;
-				settings[6].work=RX;
-				settings[7].work=TX1;
-				settings[8].work=RECV_SYNC;
-				settings[9].work=TX2;
-				settings[10].work=RX;
-				settings[11].work=TX1;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=TX1;
-				settings[14].work=TX1;
-				settings[15].work=RX;
-			}
-			if(TOS_NODE_ID==3){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=TX2;
-				settings[2].work=RX;
-				settings[3].work=TX1;
-				settings[4].work=RECV_SYNC;
-				settings[5].work=RX;
-				settings[6].work=RX;
-				settings[7].work=RX;
-				settings[8].work=SEND_SYNC;
-				settings[9].work=RX;
-				settings[10].work=TX2;
-				settings[11].work=TX2;
-				settings[12].work=RECV_SYNC;
-				settings[13].work=TX2;
-				settings[14].work=RX;
-				settings[15].work=TX1;
-			}
-			if(TOS_NODE_ID==4){
-				settings[0].work=RECV_SYNC;
-				settings[1].work=RX;
-				settings[2].work=TX2;
-				settings[3].work=TX2;
-				settings[4].work=RECV_SYNC;
-				settings[5].work=RX;
-				settings[6].work=TX2;
-				settings[7].work=TX2;
-				settings[8].work=RECV_SYNC;
-				settings[9].work=RX;
-				settings[10].work=RX;
-				settings[11].work=RX;
-				settings[12].work=SEND_SYNC;
-				settings[13].work=RX;
-				settings[14].work=TX2;
-				settings[15].work=TX2;
-			}
-		}
+		firetime = 65000UL;
+		startOfFrame = firetime;	
+		#ifdef schedule_include
+			#include schedule_include
+		#endif
 	}
 	
 	event void SplitControl.startDone(error_t error){
-		call Alarm.startAt(0,(firetime+((uint32_t)TOS_NODE_ID<<16)));
+		if(TOS_NODE_ID <= NUMBER_OF_INFRAST_NODES){
+			call Alarm.startAt(0,(firetime+((uint32_t)TOS_NODE_ID<<16)));
+			firetime = 0; //! 
+		}
 	}
 
 	event void SplitControl.stopDone(error_t error){}
@@ -279,69 +143,68 @@ implementation{
 	inline static uint8_t* getBuffer(uint8_t *buf){
 		return (uint8_t*)(buf);
 	}
-	
-	/*if it's not required to do something between the superframes:
-			- comment: 		if(activeMeasure == NUMBER_OF_SLOTS){//end of superframe
-								call Alarm.stop();
-								post measureDone();
-								return;
-							}
-			- comment: 		activeMeasure++;
-			- uncomment:	activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
-	*/
+
+	void startAlarm(uint8_t nextMeas, uint32_t start,uint32_t fire){
+		if(settings[nextMeas].work==TX1){
+				call Alarm.startAt(start,fire+TX1_THRESHOLD);
+			}else if(settings[nextMeas].work==TX2){
+				call Alarm.startAt(start,fire+TX2_THRESHOLD);
+			}else if(settings[nextMeas].work==RX){
+				call Alarm.startAt(start,fire+RX_THRESHOLD);
+			}else{
+				call Alarm.startAt(start,fire);
+		}
+	}
+
+
+
+
+
+
+
 
 	async event void Alarm.fired(){
 		if(waitToStart){
 			waitToStart = FALSE;
 		}
 		call Leds.set(activeMeasure);
-		if(activeMeasure == NUMBER_OF_SLOTS){//end of superframe
-			call Alarm.stop();
-			post measureDone();
-			return;
-		}
 		if(settings[activeMeasure].work==RECV_SYNC){//waits for SYNC in this frame
-			activeMeasure++;
+			activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+			startOfFrame = startOfFrame+firetime;
 			firetime = SYNC_SLOT;
-			startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
-			if(settings[activeMeasure].work==TX1){
-				call Alarm.startAt(startOfFrame,firetime+TX1_THRESHOLD);
-			}else if(settings[activeMeasure].work==TX2){
-				call Alarm.startAt(startOfFrame,firetime+TX2_THRESHOLD);
-			}else if(settings[activeMeasure].work==RX){
-				call Alarm.startAt(startOfFrame,firetime+RX_THRESHOLD);
-			}else{
-				call Alarm.startAt(startOfFrame,firetime);
-			}
+			startAlarm(activeMeasure,startOfFrame,firetime);
 			return;
 		}
-		if(settings[activeMeasure].work==TX1 || settings[activeMeasure].work==TX2 || settings[activeMeasure].work==RX){
-			uint8_t nextMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+		if(settings[activeMeasure].work==TX1 || settings[activeMeasure].work==TX2 || settings[activeMeasure].work==RX || settings[activeMeasure].work==NO_TXRX){
 			firetime += MEAS_SLOT;
-			if(settings[nextMeasure].work==TX1){
-				call Alarm.startAt(startOfFrame,firetime+TX1_THRESHOLD);
-			}else if(settings[nextMeasure].work==TX2){
-				call Alarm.startAt(startOfFrame,firetime+TX2_THRESHOLD);
-			}else if(settings[nextMeasure].work==RX){
-				call Alarm.startAt(startOfFrame,firetime+RX_THRESHOLD);
-			}else{
-				call Alarm.startAt(startOfFrame,firetime);
-			}
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
-		if(settings[activeMeasure].work==TX1 || settings[activeMeasure].work==TX2){ //sender
+		if(settings[activeMeasure].work==TX1){ //sender
 			call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
+		}else if(settings[activeMeasure].work==TX2){
+			call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
 		}else if(settings[activeMeasure].work==RX){ //receiver
 			uint16_t time = 0;
-			//call Leds.set(1);
 			call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
 			tempBufferCounter = bufferCounter;
 			bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
 			post processData();
 		}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
 			post sendSync();
+		}else if(settings[activeMeasure].work==DEBUG || settings[activeMeasure].work==NO_DEBUG){
+			firetime += DEBUG_SLOT;
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);		
+			if(settings[activeMeasure].work==DEBUG){
+				post debugProcess();
+			}else{
+				#ifdef SEND_WAVEFORM
+				sendedBytesCounter = 0;
+				sendedMessageCounter = 0;
+				sendedMeasureCounter = 0;
+				#endif
+			}
 		}
-			//activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
-		activeMeasure++;
+		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
 	}
 	/*
 		Sends sync message.
@@ -353,35 +216,19 @@ implementation{
 		
 		for(i=0;i<NUMBER_OF_RX;i++){
 			msg->phaseRef[i] = phaseRefs[i];
-			msg->freq[i] = 2;//freqs[i];
-			msg->phase[i] = 2;//phases[i];
+			msg->freq[i] = freqs[i];
+			msg->phase[i] = phases[i];
 			msg->minmax[i] = (minAmplitudes[i] & 0x0F) | ((maxAmplitudes[i] & 0x0F)<<4);
 		}
-		
-		startOfFrame = startOfFrame+(NUMBER_OF_SLOT_IN_FRAME-1)*MEAS_SLOT+SYNC_SLOT;
+		startOfFrame = startOfFrame+firetime;
 		firetime = SYNC_SLOT;
-		if(settings[activeMeasure].work==TX1){
-			call Alarm.startAt(startOfFrame,firetime+TX1_THRESHOLD);
-		}else if(settings[activeMeasure].work==TX2){
-			call Alarm.startAt(startOfFrame,firetime+TX2_THRESHOLD);
-		}else if(settings[activeMeasure].work==RX){
-			call Alarm.startAt(startOfFrame,firetime+RX_THRESHOLD);
-		}else{
-			call Alarm.startAt(startOfFrame,firetime);
-		}
+		startAlarm(activeMeasure,startOfFrame,firetime);
 		call TimeSyncAMSend.send(0xFFFF, &packet, sizeof(sync_message_t), startOfFrame);
 		return;
 	}
 
 	task void processData(){
-		/*call MeasureWave.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
-		phaseRefs[tempBufferCounter] = call MeasureWave.getPhaseRef();
- 		minAmplitudes[tempBufferCounter] = call MeasureWave.getMinAmplitude() >> 1;
- 		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
-		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
- 		phases[tempBufferCounter] = call MeasureWave.getPhase();*/
- 		
- 		call Process.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+		call Process.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
 		phaseRefs[tempBufferCounter] = call Process.getStartPoint();
  		minAmplitudes[tempBufferCounter] = call Process.getMinAmplitude() >> 1;
  		maxAmplitudes[tempBufferCounter] = call Process.getMaxAmplitude() >> 1;
@@ -431,38 +278,38 @@ implementation{
 	/*
 		What to do between super frames.
 	*/
-	task void measureDone(){
-		activeMeasure = 0;
-		bufferCounter = 0;
-		firetime += SEND_SLOT;
-		if(settings[activeMeasure].work==TX1){
-			call Alarm.startAt(startOfFrame,firetime+TX1_THRESHOLD);
-		}else if(settings[activeMeasure].work==TX2){
-			call Alarm.startAt(startOfFrame,firetime+TX2_THRESHOLD);
-		}else if(settings[activeMeasure].work==RX){
-			call Alarm.startAt(startOfFrame,firetime+RX_THRESHOLD);
-		}else{
-			call Alarm.startAt(startOfFrame,firetime);
-		}
-		startOfFrame = startOfFrame + SEND_SLOT;
+	task void debugProcess(){
 		#ifdef SEND_WAVEFORM
-		if(TOS_NODE_ID == WAVE_SENDER_ID){
-			post sendWaveform();
-		}
+		post sendWaveform();
 		#endif
 	}
 	#ifdef SEND_WAVEFORM
 	task void sendWaveform(){
 		if(sendedBytesCounter < BUFFER_LEN){
-			uint8_t i;
+			uint8_t i,nop;
 			wave_message_t* msg = (wave_message_t*)call AMSend.getPayload(&packet,sizeof(wave_message_t));
+			msg->whichWaveform = sendedMeasureCounter;
+			msg->whichPartOfTheWaveform = sendedMessageCounter;
 			for(i=0;i<WAVE_MESSAGE_LENGTH;i++){
 				if(sendedBytesCounter+i < BUFFER_LEN)
-					msg->data[i] = buffer[SENDED_MEASURE_NUMBER][sendedBytesCounter+i];
+					msg->data[i] = buffer[sendedMeasureCounter][sendedBytesCounter+i];
 			}
-			call AMSend.send(0xFFFF, &packet, sizeof(wave_message_t));
+			if(call AMSend.send(0xFFFF, &packet, sizeof(wave_message_t)) == SUCCESS){
+				sendedMessageCounter++;
+			}else{
+				failedSendCounter++;
+				if(failedSendCounter<4){
+					post sendWaveform();
+				}else{
+					failedSendCounter = 0;
+					sendedBytesCounter = 0;
+					sendedMessageCounter = 0;
+				}
+			}
 		}else{
 			sendedBytesCounter = 0;
+			sendedMessageCounter = 0;
+			sendedMeasureCounter = (sendedMeasureCounter+1)%NUMBER_OF_RX;
 		}
 	}
 	#endif

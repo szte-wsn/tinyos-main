@@ -15,20 +15,20 @@ CFLAGS += -DTOSH_DATA_LENGTH=100
 
 #CFLAGS += -DDIAGMSG_SERIAL_START
 #CFLAGS += -DDIAGMSG_RECORDED_MSGS=50
-#CFLAGS += -DSEND_WAVEFORM
+CFLAGS += -DSEND_WAVEFORM
 
-TOSMAKE_PRE_EXE_DEPS = DataCollector.class DrawWaveform.class ProcessWave.class
+TOSMAKE_PRE_EXE_DEPS = DataCollector.class
 TOSMAKE_CLEAN_EXTRA = *.class
 
 DataCollector.class: DataCollector.java
 	javac DataCollector.java
 
-DrawWaveform.class: DrawWaveform.java
-	javac DrawWaveform.java
-	
 ProcessWave.class: ProcessWave.java
 	javac ProcessWave.java
-	
+
+DrawWaveform.class: DrawWaveform.java
+	javac DrawWaveform.java
+
 
 TINYOS_ROOT_DIR?=../../..
 include $(TINYOS_ROOT_DIR)/Makefile.include
