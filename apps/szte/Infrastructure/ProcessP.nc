@@ -1,5 +1,5 @@
 module ProcessP{
-	provides interface Process;
+	provides interface MeasureWave;
 }
 implementation{
   typedef struct measurement_t{
@@ -21,18 +21,14 @@ implementation{
 		uint16_t period;
 		uint8_t phase;
 		uint8_t state;
-		uint16_t firstMin;
+		uint8_t firstMin;
 	} measurement_t;
 	
 	measurement_t measurement;
 	
 	void init() {
-	  uint16_t i=0;
-	  for(i=0; i<128; i++) 
-	    measurement.temp[i] = 0;
 	  measurement.start = 0;
 	  measurement.tempcnt = 0;
-	  measurement.mintresh = 0;
 	  measurement.absmin = 250;
 	  measurement.absminind = 0;
 	  measurement.absmax = 0;
@@ -41,14 +37,18 @@ implementation{
 	  measurement.minendind = 0;
 	  measurement.state = 0;
 	  measurement.firstMin = 0;
-	  for(i=0; i<20; i++) {
-	    measurement.minstart[i] = 0;
-	    measurement.minend[i] = 0;
-	  }
+	  measurement.mintresh = 0;
 	  measurement.period = 0;
 	  measurement.phase = 0;
 	}
 	
+	command void MeasureWave.changeData(uint8_t *data, uint16_t len, uint8_t threshold, uint8_t leadTime){
+		measurement.data = data;
+		measurement.len = len;
+		measurement.startTreshold = threshold;
+		init();
+	}
+		
 	void filtering() {
 	  uint16_t i = 0;
 	  for(i=measurement.start;i<measurement.len-4;i+=4){
@@ -58,18 +58,14 @@ implementation{
 		}  
 	}
 	
-	command void Process.changeData(uint8_t *data, uint16_t len, uint8_t threshold, uint8_t leadTime){
-		measurement.data = data;
-		measurement.len = len;
-		measurement.startTreshold = threshold;
-		init();
-	}
-	
 	void getStartPoint() {
 	  uint16_t i = 0;
 	  for(i=10; i<measurement.len-1; i++) {
-	    if(measurement.data[i]>measurement.startTreshold){
+	    if(i<255 && measurement.data[i]>measurement.startTreshold){
 	      measurement.start = i;
+	      break;
+	    } else if(i>=255) {
+	      measurement.start = 0xF;
 	      break;
 	    }
 	  }
@@ -77,7 +73,7 @@ implementation{
 	}
 	
 	void getAmplitude() {
-	  uint16_t i = 0;
+	  uint8_t i = 0;
 	  for(i=10; i<measurement.tempcnt>>1; i++){
 			if(measurement.temp[i]<measurement.absmin){
 				measurement.absmin = measurement.temp[i];
@@ -92,7 +88,7 @@ implementation{
 	}
 	
 	void getPeriod() {
-	  uint16_t i = 0;
+	  uint8_t i = 0;
 	  for(i=10; i<measurement.tempcnt-2; i++){
 			if(measurement.state == 0 && measurement.temp[i]<=measurement.mintresh){
 				measurement.state = 1;
@@ -106,72 +102,76 @@ implementation{
 			  break;
 		}
 		if(measurement.minendind<3 && measurement.minendind>0){
-			int firstindex = (measurement.minstart[0]+measurement.minend[0])>>1;
-			int secondindex = (measurement.minstart[1]+measurement.minend[1])>>1;
-			int period = secondindex-firstindex;
+			uint8_t firstindex = (measurement.minstart[0]+measurement.minend[0])>>1;
+			uint8_t secondindex = (measurement.minstart[1]+measurement.minend[1])>>1;
+			uint8_t period = secondindex-firstindex;
 			//Period: period * 4, because of the filter
-			if(period > 0x00FF) 
+			if(period*4 >= 0xFF) 
 			  measurement.period = 0xFF;
-			else if(period < 0)
+			else if(period <= 0)
 			  measurement.period = 0;
 			else
-			  measurement.period = period & 0x00FF;
-			if(measurement.firstMin > 0x00FF)
-			  measurement.firstMin = 0x00FF;
+			  measurement.period = period*4 & 0xFF;
+			if(firstindex >= 0xF)
+			  measurement.firstMin = 0xF;
+			else if(firstindex <= 0)
+			  measurement.firstMin = 0;
 			else 
-			  measurement.firstMin = firstindex & 0x00FF;
+			  measurement.firstMin = firstindex & 0xF;
 		}else if(measurement.minendind>=3){
-			int firstindex = (measurement.minstart[0]+measurement.minend[0])>>1;
-			int secondindex = (measurement.minstart[1]+measurement.minend[1])>>1;	
-			int thirdindex = (measurement.minstart[2]+measurement.minend[2])>>1;
-			int period1 = secondindex-firstindex;
-			int period2 = thirdindex-secondindex;
+			uint8_t firstindex = (measurement.minstart[0]+measurement.minend[0])>>1;
+			uint8_t secondindex = (measurement.minstart[1]+measurement.minend[1])>>1;	
+			uint8_t thirdindex = (measurement.minstart[2]+measurement.minend[2])>>1;
+			uint8_t period1 = secondindex-firstindex;
+			uint8_t period2 = thirdindex-secondindex;
   		//the final period value is the avarage of the two periods
-  		if(((period1+period2)>>1) > 0x00FF) 
+  		if(((period1+period2)>>1)*4 >= 0xFF) 
   		  measurement.period = 0xFF;
-  		else if(((period1+period2)>>1) < 0) 
+  		else if(((period1+period2)>>1) <= 0) 
   		  measurement.period = 0;
 			else
-			  measurement.period = ((period1+period2)>>1) & 0x00FF;
-			if(measurement.firstMin > 0x00FF)
-			  measurement.firstMin = 0x00FF;
+			  measurement.period = ((period1+period2)>>1)*4 & 0xFF;
+			if(firstindex >= 0xF)
+			  measurement.firstMin = 0xF;
+			else if(firstindex <= 0)
+			  measurement.firstMin = 0;
 			else
-			  measurement.firstMin = firstindex & 0x00FF;
+			  measurement.firstMin = firstindex & 0xF;
+		} else {
+		  measurement.period = 1;
 		}
 	}
 	
 	void getPhase() {
-	  if(measurement.firstMin >= 0x00FF)
-		  measurement.phase = 0x000F;
-	  else if(measurement.firstMin >= measurement.period)
-	    measurement.phase = measurement.firstMin - measurement.period;
-	  else if(measurement.firstMin < 0)
+	  if(measurement.firstMin >= 0xF)
+		  measurement.phase = 0xF;
+	  else if(measurement.firstMin <= 0)
 	    measurement.phase = 0;
 	  else
-	    measurement.phase = measurement.firstMin;
+	    measurement.phase = measurement.firstMin && 0xF;
 	}
 	
-	command uint8_t Process.getStartPoint(){
+	command uint8_t MeasureWave.getPhaseRef(){
 	  getStartPoint();
 		return measurement.start;
 	}
 	
-	command uint8_t Process.getMinAmplitude() {
+	command uint8_t MeasureWave.getMinAmplitude() {
 	  getAmplitude();
 	  return measurement.absmin;
 	}
 	
-	command uint8_t Process.getMaxAmplitude() {
+	command uint8_t MeasureWave.getMaxAmplitude() {
 	  getAmplitude();
 	  return measurement.absmax;
 	}
 	
-	command uint16_t Process.getPeriod() {
+	command uint16_t MeasureWave.getPeriod() {
 	  getPeriod();
 	  return measurement.period;
 	}
 	
-	command uint8_t Process.getPhase() {
+	command uint8_t MeasureWave.getPhase() {
 	  getPhase();
 	  return measurement.phase;
 	}
