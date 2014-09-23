@@ -17,7 +17,7 @@ CFLAGS += -DTOSH_DATA_LENGTH=100
 #CFLAGS += -DDIAGMSG_RECORDED_MSGS=50
 CFLAGS += -DSEND_WAVEFORM
 
-TOSMAKE_PRE_EXE_DEPS = DataCollector.class
+TOSMAKE_PRE_EXE_DEPS = DataCollector.class ProcessWave.class DrawWaveform.class
 TOSMAKE_CLEAN_EXTRA = *.class
 
 DataCollector.class: DataCollector.java

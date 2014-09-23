@@ -104,7 +104,7 @@ class PlotFunctionPanel extends JPanel{
 				state = 1;
 				minstart[minstartind++] = i;
 			}
-			if(state == 1 && data[i]>=mintresh){
+			if(state == 1 && data[i]>mintresh){
 				state = 0;
 				minend[minendind++] = i-1;
 			}

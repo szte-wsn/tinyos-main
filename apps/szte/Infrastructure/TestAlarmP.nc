@@ -54,7 +54,7 @@ module TestAlarmP{
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
-	uses interface Process;
+	uses interface MeasureWave as Process;
 }
 implementation{
 
@@ -229,11 +229,11 @@ implementation{
 
 	task void processData(){
 		call Process.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
-		phaseRefs[tempBufferCounter] = call Process.getStartPoint();
+		phaseRefs[tempBufferCounter] = call Process.getPhaseRef();
  		minAmplitudes[tempBufferCounter] = call Process.getMinAmplitude() >> 1;
  		maxAmplitudes[tempBufferCounter] = call Process.getMaxAmplitude() >> 1;
-		//freqs[tempBufferCounter] = call Process.getPeriod();
- 		//phases[tempBufferCounter] = call Process.getPhase();
+		freqs[tempBufferCounter] = call Process.getPeriod();
+ 		phases[tempBufferCounter] = call Process.getPhase();
 	}
 
 
