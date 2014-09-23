@@ -28,6 +28,8 @@ implementation{
 
 	components MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
+	components ProcessP;
+	App.Process -> ProcessP;
 	#ifdef DEBUG_MEASUREWAVE
 	components DiagMsgC;
 	MeasureWaveC.DiagMsg -> DiagMsgC;

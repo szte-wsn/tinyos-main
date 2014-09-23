@@ -20,7 +20,7 @@
 #define TX2_THRESHOLD 0
 #define RX_THRESHOLD 0
 
-#define AMPLITUDE_THRESHOLD 2
+#define AMPLITUDE_THRESHOLD 5
 #define LEADTIME 10
 #define START_OFFSET 16
 
@@ -43,6 +43,7 @@ module TestAlarmP{
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
+	uses interface Process;
 }
 implementation{
 
@@ -57,7 +58,7 @@ implementation{
 		SEND_SYNC=3, //sends sync message
 		RECV_SYNC=4, //waits for sync message
 		NUMBER_OF_SLOTS = NUMBER_OF_SLOT_IN_FRAME*NUMBER_OF_FRAMES,
-		MEAS_SLOT = 75, //measure slot
+		MEAS_SLOT = 50000U, //measure slot
 		SYNC_SLOT = 250, //sync slot
 		SEND_SLOT = 65000U, //between super frames
 	};
@@ -352,8 +353,8 @@ implementation{
 		
 		for(i=0;i<NUMBER_OF_RX;i++){
 			msg->phaseRef[i] = phaseRefs[i];
-			msg->freq[i] = freqs[i];
-			msg->phase[i] = phases[i];
+			msg->freq[i] = 2;//freqs[i];
+			msg->phase[i] = 2;//phases[i];
 			msg->minmax[i] = (minAmplitudes[i] & 0x0F) | ((maxAmplitudes[i] & 0x0F)<<4);
 		}
 		
@@ -379,6 +380,13 @@ implementation{
  		maxAmplitudes[tempBufferCounter] = call MeasureWave.getMaxAmplitude() >> 1;
 		freqs[tempBufferCounter] = call MeasureWave.getPeriod();
  		phases[tempBufferCounter] = call MeasureWave.getPhase();*/
+ 		
+ 		call Process.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+		phaseRefs[tempBufferCounter] = call Process.getStartPoint();
+ 		minAmplitudes[tempBufferCounter] = call Process.getMinAmplitude() >> 1;
+ 		maxAmplitudes[tempBufferCounter] = call Process.getMaxAmplitude() >> 1;
+		//freqs[tempBufferCounter] = call Process.getPeriod();
+ 		//phases[tempBufferCounter] = call Process.getPhase();
 	}
 
 

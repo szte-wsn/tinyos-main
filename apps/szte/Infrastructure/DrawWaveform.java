@@ -53,7 +53,7 @@ class PlotFunctionPanel extends JPanel{
 	static final int yScaleFactor = 20;
 	static final int xScaleFactor = 3;
 	static final int maxRssiValue = 30;
-	static final int bufferLength = 512;
+	static final int bufferLength = 500;
 	static final int startTreshold = 5;
 	
 	public PlotFunctionPanel(int width,int heigth){
@@ -191,13 +191,13 @@ class PlotFunctionPanel extends JPanel{
 public class DrawWaveform {
 
 	static int dataCounter = 0;
-	static byte data[] = new byte[512];
-	static int x[] = new int[512];
+	static byte data[] = new byte[500];
+	static int x[] = new int[500];
 	static JFrame frame;
 	static PlotFunctionPanel panel;
 	static final int numberOfDataPerMessage = 60;
 	static final int firstDataIndex = 8;
-	static final int bufferLength = 512;
+	static final int bufferLength = 500;
 	static final int maxRssiValue = 30;
 	static final int amRadioMsg = 7;
 	static final int amIdIndex = 7;
