@@ -93,7 +93,7 @@ class PlotFunctionPanel extends JPanel{
 		g2d.drawOval(absminind*xScaleFactor-2,heigth-absmin-2,4,4);
 		g2d.drawOval(absmaxind*xScaleFactor-2,heigth-absmax-2,4,4);
 		//calculate a threshold value
-		mintresh=absmin+((absmax-absmin)>>2);
+		mintresh=absmin+((absmax-absmin)>>1);
 		//System.out.println("mintresh " + mintresh);
 		//draw a line at the mintresh
 		g2d.drawLine(0,heigth-mintresh,width,heigth-mintresh);
@@ -104,7 +104,7 @@ class PlotFunctionPanel extends JPanel{
 				state = 1;
 				minstart[minstartind++] = i;
 			}
-			if(state == 1 && data[i]>mintresh){
+			if(state == 1 && data[i]>=mintresh){
 				state = 0;
 				minend[minendind++] = i-1;
 			}
@@ -119,7 +119,7 @@ class PlotFunctionPanel extends JPanel{
 		else if(minendind>=2)
 		  period_end = 2;
 		int firstPlace,secondPlace;
-		for(int i=0; i<period_end-1; i++) {
+		for(int i=0; i<period_end; i++) {
       firstPlace = (minstart[i]+minend[i])>>1;
       secondPlace = (minstart[i+1]+minend[i+1])>>1;
       period += secondPlace - firstPlace;

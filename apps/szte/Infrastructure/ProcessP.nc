@@ -104,7 +104,7 @@ implementation{
 			else if(period < 0)
 			  measurement.period = 0;
 			else
-			  measurement.period = measurement.period & 0x00FF;
+			  measurement.period = period & 0x00FF;
 			if(measurement.firstMin > 0x00FF)
 			  measurement.firstMin = 0x00FF;
 			else 
