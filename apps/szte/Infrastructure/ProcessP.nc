@@ -27,6 +27,11 @@ implementation{
 	measurement_t measurement;
 	
 	void init() {
+	  uint16_t i=0;
+	  for(i=0; i<128; i++) 
+	    measurement.temp[i] = 0;
+	  measurement.start = 0;
+	  measurement.tempcnt = 0;
 	  measurement.mintresh = 0;
 	  measurement.absmin = 250;
 	  measurement.absminind = 0;
@@ -36,10 +41,16 @@ implementation{
 	  measurement.minendind = 0;
 	  measurement.state = 0;
 	  measurement.firstMin = 0;
+	  for(i=0; i<20; i++) {
+	    measurement.minstart[i] = 0;
+	    measurement.minend[i] = 0;
+	  }
+	  measurement.period = 0;
+	  measurement.phase = 0;
 	}
 	
 	void filtering() {
-	  uint8_t i = 0;
+	  uint16_t i = 0;
 	  for(i=measurement.start;i<measurement.len-4;i+=4){
 			measurement.temp[measurement.tempcnt++] = (measurement.data[i]+measurement.data[i+1]+measurement.data[i+2]+measurement.data[i+3])>>2;
 			if(measurement.tempcnt >= 128)
@@ -55,7 +66,7 @@ implementation{
 	}
 	
 	void getStartPoint() {
-	  int i = 0;
+	  uint16_t i = 0;
 	  for(i=10; i<measurement.len-1; i++) {
 	    if(measurement.data[i]>measurement.startTreshold){
 	      measurement.start = i;
@@ -66,7 +77,7 @@ implementation{
 	}
 	
 	void getAmplitude() {
-	  uint8_t i = 0;
+	  uint16_t i = 0;
 	  for(i=10; i<measurement.tempcnt>>1; i++){
 			if(measurement.temp[i]<measurement.absmin){
 				measurement.absmin = measurement.temp[i];
