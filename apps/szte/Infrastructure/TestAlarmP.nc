@@ -31,13 +31,13 @@ module TestAlarmP{
 	uses interface Leds;
 	uses interface Alarm<T62khz, uint32_t> as Alarm;
 	uses interface RadioContinuousWave;
-	uses interface AMSend;
-	uses interface AMPacket;
-	uses interface Packet;
 	uses interface TimeSyncAMSend<TRadio, uint32_t> as TimeSyncAMSend;
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
+	#ifdef SEND_WAVEFORM	
+	uses interface AMSend;
+	#endif
 }
 implementation{
 
@@ -50,7 +50,7 @@ implementation{
   enum {
 		MEAS_SLOT = 10000, //measure slot
 		SYNC_SLOT = 10000, //sync slot
-		DEBUG_SLOT = 30000, //between super frames
+		DEBUG_SLOT = 10000, //between super frames
 	};
 
 	typedef nx_struct sync_message_t{
@@ -94,8 +94,8 @@ implementation{
 	uint8_t sendedMessageCounter = 0;
 	uint8_t failedSendCounter = 0;
 	task void sendWaveform();
-	#endif
 	task void debugProcess();
+	#endif
 	task void sendSync();
 	task void processData();
 	
@@ -160,18 +160,19 @@ implementation{
 			post sendSync();
 		}else if(settings[activeMeasure]==DEB || settings[activeMeasure]==NDEB){
 			firetime += DEBUG_SLOT;
-			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);		
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
+			#ifdef SEND_WAVEFORM
 			if(settings[activeMeasure]==DEB){
 				post debugProcess();
-			}else{
-				#ifdef SEND_WAVEFORM
-				sendedBytesCounter = 0;
-				sendedMessageCounter = 0;
-				sendedMeasureCounter = 0;
-				#endif
 			}
+			#endif
 		}
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+		#ifdef SEND_WAVEFORM
+		if(activeMeasure == 1){
+			sendedMeasureCounter = 0;
+		}
+		#endif
 	}
 	/*
 		Sends sync message.
@@ -199,14 +200,6 @@ implementation{
 		if( processBuffer != measureBuffer ){
 			post processData();
 		}
-	}
-
-
-	event void AMSend.sendDone(message_t* bufPtr, error_t error){
-		#ifdef SEND_WAVEFORM
-		sendedBytesCounter += WAVE_MESSAGE_LENGTH;
-		post sendWaveform();
-		#endif
 	}
 
 	/*
@@ -242,15 +235,17 @@ implementation{
 	event void TimeSyncAMSend.sendDone(message_t* msg, error_t error){
 
 	}
-	/*
-		What to do between super frames.
-	*/
-	task void debugProcess(){
-		#ifdef SEND_WAVEFORM
-		post sendWaveform();
-		#endif
-	}
+
 	#ifdef SEND_WAVEFORM
+	/*
+	 * What to do between super frames.
+	 */
+	task void debugProcess(){
+		sendedBytesCounter = 0;
+		sendedMessageCounter = 0;
+		post sendWaveform();
+	}
+	
 	task void sendWaveform(){
 		if(sendedBytesCounter < BUFFER_LEN){
 			uint8_t i;
@@ -278,6 +273,11 @@ implementation{
 			sendedMessageCounter = 0;
 			sendedMeasureCounter = (sendedMeasureCounter+1)%NUMBER_OF_RX;
 		}
+	}
+	
+	event void AMSend.sendDone(message_t* bufPtr, error_t error){
+		sendedBytesCounter += WAVE_MESSAGE_LENGTH;
+		post sendWaveform();
 	}
 	#endif
 

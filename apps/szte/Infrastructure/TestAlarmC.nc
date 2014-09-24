@@ -11,12 +11,8 @@ implementation{
 	components new Alarm62khz32C();
 	App.Alarm -> Alarm62khz32C;
 	
-	components ActiveMessageC, new AMSenderC(AM_RADIOMSG);	
+	components ActiveMessageC;	
 	App.SplitControl->ActiveMessageC;
-	App.Packet -> ActiveMessageC;
-	
-	App.AMSend -> AMSenderC;
-	App.AMPacket -> AMSenderC;
 
 	components TimeSyncMessageC;
 	App.TimeSyncAMSend -> TimeSyncMessageC.TimeSyncAMSendRadio[AM_SYNCMSG];
@@ -27,11 +23,11 @@ implementation{
 	App.RadioContinuousWave -> RfxlinkAMC;
 
 	components ProcessP;
-	App.MeasureWave -> ProcessP;
-	#ifdef DEBUG_MEASUREWAVE
-	components DiagMsgC;
-	MeasureWaveC.DiagMsg -> DiagMsgC;
-	#endif
+	App.MeasureWave -> ProcessP;	
 	
+	#ifdef SEND_WAVEFORM
+	components new AMSenderC(AM_RADIOMSG);
+	App.AMSend -> AMSenderC;
+	#endif
 }
 
