@@ -26,10 +26,8 @@ implementation{
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
 
-	components MeasureWaveC;
-	App.MeasureWave -> MeasureWaveC;
 	components ProcessP;
-	App.Process -> ProcessP;
+	App.MeasureWave -> ProcessP;
 	#ifdef DEBUG_MEASUREWAVE
 	components DiagMsgC;
 	MeasureWaveC.DiagMsg -> DiagMsgC;

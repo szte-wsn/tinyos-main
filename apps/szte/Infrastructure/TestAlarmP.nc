@@ -54,15 +54,16 @@ module TestAlarmP{
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
-	uses interface MeasureWave as Process;
 }
 implementation{
 
 	enum {
 		CHANNEL = 11,
-		MODE = 0,
 		TRIM1 = 0,
 		TRIM2 = 2,
+  };
+  
+  enum {
 		TX1 = 0, //sendWave 1
 		TX2 = 1, //sendWave 1
 		RX = 2, //sampleRSSI
@@ -71,6 +72,9 @@ implementation{
 		DEBUG = 5,
 		NO_TXRX = 6,
 		NO_DEBUG = 7,
+  };
+  
+  enum {
 		MEAS_SLOT = 10000, //measure slot
 		SYNC_SLOT = 10000, //sync slot
 		DEBUG_SLOT = 30000, //between super frames
@@ -96,16 +100,21 @@ implementation{
 	typedef struct schedule_t{
 		uint8_t work;
 	}schedule_t;
+  
 
 	norace schedule_t settings[NUMBER_OF_SLOTS];
 	norace bool waitToStart=TRUE;
-	message_t packet;
+	message_t debugPacket;
+  message_t syncPacket[2];
+  uint8_t currentSyncPacket=0;
+  sync_message_t* currentSyncPayload;
+  
 	norace uint8_t activeMeasure=0;
 	norace uint32_t firetime;
 	norace uint32_t startOfFrame;
 	norace uint8_t buffer[NUMBER_OF_RX][BUFFER_LEN];
-	norace uint8_t bufferCounter = 0;
-	norace uint8_t tempBufferCounter=0;
+	norace uint8_t measureBuffer = 0;
+	norace uint8_t processBuffer=0;
 	norace uint8_t phases[NUMBER_OF_RX];
 	norace uint16_t freqs[NUMBER_OF_RX];
 	norace uint8_t minAmplitudes[NUMBER_OF_RX];
@@ -133,16 +142,13 @@ implementation{
 	
 	event void SplitControl.startDone(error_t error){
 		if(TOS_NODE_ID <= NUMBER_OF_INFRAST_NODES){
+			currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 			call Alarm.startAt(0,(firetime+((uint32_t)TOS_NODE_ID<<16)));
 			firetime = 0; //! 
 		}
 	}
 
 	event void SplitControl.stopDone(error_t error){}
-	
-	inline static uint8_t* getBuffer(uint8_t *buf){
-		return (uint8_t*)(buf);
-	}
 
 	void startAlarm(uint8_t nextMeas, uint32_t start,uint32_t fire){
 		if(settings[nextMeas].work==TX1){
@@ -155,13 +161,6 @@ implementation{
 				call Alarm.startAt(start,fire);
 		}
 	}
-
-
-
-
-
-
-
 
 	async event void Alarm.fired(){
 		if(waitToStart){
@@ -185,9 +184,8 @@ implementation{
 			call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
 		}else if(settings[activeMeasure].work==RX){ //receiver
 			uint16_t time = 0;
-			call RadioContinuousWave.sampleRssi(CHANNEL, getBuffer(buffer[bufferCounter]), BUFFER_LEN, &time);
-			tempBufferCounter = bufferCounter;
-			bufferCounter = (bufferCounter+1)%NUMBER_OF_RX;
+			call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
+			measureBuffer = (measureBuffer+1)%NUMBER_OF_RX;
 			post processData();
 		}else if(settings[activeMeasure].work==SEND_SYNC){//sends SYNC in this frame
 			post sendSync();
@@ -210,30 +208,28 @@ implementation{
 		Sends sync message.
 	*/
 	task void sendSync(){
-		uint8_t i;
-		sync_message_t* msg = (sync_message_t*)call TimeSyncAMSend.getPayload(&packet,sizeof(sync_message_t));
-		msg->frame = activeMeasure; //activeMeasure is incremented before this task, so it indicates the next slot
+		currentSyncPayload->frame = activeMeasure; //activeMeasure is incremented before this task, so it indicates the next slot
 		
-		for(i=0;i<NUMBER_OF_RX;i++){
-			msg->phaseRef[i] = phaseRefs[i];
-			msg->freq[i] = freqs[i];
-			msg->phase[i] = phases[i];
-			msg->minmax[i] = (minAmplitudes[i] & 0x0F) | ((maxAmplitudes[i] & 0x0F)<<4);
-		}
 		startOfFrame = startOfFrame+firetime;
 		firetime = SYNC_SLOT;
 		startAlarm(activeMeasure,startOfFrame,firetime);
-		call TimeSyncAMSend.send(0xFFFF, &packet, sizeof(sync_message_t), startOfFrame);
-		return;
+    call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		currentSyncPacket = (currentSyncPacket+1)%2;
+		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
+		memset(currentSyncPayload, 0, sizeof(sync_message_t));
 	}
 
 	task void processData(){
-		call Process.changeData(getBuffer(buffer[tempBufferCounter]), BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
-		phaseRefs[tempBufferCounter] = call Process.getPhaseRef();
- 		minAmplitudes[tempBufferCounter] = call Process.getMinAmplitude() >> 1;
- 		maxAmplitudes[tempBufferCounter] = call Process.getMaxAmplitude() >> 1;
-		freqs[tempBufferCounter] = call Process.getPeriod();
- 		phases[tempBufferCounter] = call Process.getPhase();
+		call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+		currentSyncPayload->phaseRef[processBuffer] = call MeasureWave.getPhaseRef();
+		currentSyncPayload->minmax[processBuffer] = call MeasureWave.getMaxAmplitude()<<4;//upper nibblet, without LSB
+		currentSyncPayload->minmax[processBuffer] |= call MeasureWave.getMinAmplitude()>>1;//lower nibblet, without LSB
+		currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
+		currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
+		processBuffer = (processBuffer+1)%NUMBER_OF_RX;
+		if( processBuffer != measureBuffer ){
+			post processData();
+		}
 	}
 
 
@@ -258,11 +254,13 @@ implementation{
 					activeMeasure = msg->frame;
 					call Alarm.startAt(startOfFrame,firetime);
 					waitToStart = FALSE;
+					measureBuffer = 0;
 					for(i=0;i<activeMeasure;i++){
 						if(settings[i].work==RX){
-							bufferCounter++;
+							measureBuffer++;
 						}
 					}
+					processBuffer = measureBuffer-1;
 				}
 			}
 		}
@@ -286,15 +284,15 @@ implementation{
 	#ifdef SEND_WAVEFORM
 	task void sendWaveform(){
 		if(sendedBytesCounter < BUFFER_LEN){
-			uint8_t i,nop;
-			wave_message_t* msg = (wave_message_t*)call AMSend.getPayload(&packet,sizeof(wave_message_t));
+			uint8_t i;
+			wave_message_t* msg = (wave_message_t*)call AMSend.getPayload(&debugPacket,sizeof(wave_message_t));
 			msg->whichWaveform = sendedMeasureCounter;
 			msg->whichPartOfTheWaveform = sendedMessageCounter;
 			for(i=0;i<WAVE_MESSAGE_LENGTH;i++){
 				if(sendedBytesCounter+i < BUFFER_LEN)
 					msg->data[i] = buffer[sendedMeasureCounter][sendedBytesCounter+i];
 			}
-			if(call AMSend.send(0xFFFF, &packet, sizeof(wave_message_t)) == SUCCESS){
+			if(call AMSend.send(0xFFFF, &debugPacket, sizeof(wave_message_t)) == SUCCESS){
 				sendedMessageCounter++;
 			}else{
 				failedSendCounter++;
