@@ -48,8 +48,8 @@ implementation{
   };
   
   enum {
-		MEAS_SLOT = 10000, //measure slot
-		SYNC_SLOT = 10000, //sync slot
+		MEAS_SLOT = 75, //measure slot
+		SYNC_SLOT = 150, //sync slot
 		DEBUG_SLOT = 10000, //between super frames
 	};
 
@@ -60,6 +60,17 @@ implementation{
 		nx_uint8_t phase[NUMBER_OF_RX];
 		nx_uint8_t minmax[NUMBER_OF_RX];
 	} sync_message_t;
+	
+	enum {
+		PROCESS_IDLE=0,
+		PROCESS_CHANGEBUFFER=1,
+		PROCESS_PHASEREF=2,
+		PROCESS_MIN=3,
+		PROCESS_MAX=4,
+		PROCESS_FREQ=5,
+		PROCESS_PHASE=6,
+		PROCESS_DONE=7,
+	};
 
 	#ifdef SEND_WAVEFORM
 	typedef nx_struct wave_message_t{
@@ -78,9 +89,10 @@ implementation{
 	norace uint8_t settings[NUMBER_OF_SLOTS];
 	norace bool waitToStart=TRUE;
 	message_t debugPacket;
-  message_t syncPacket[2];
-  uint8_t currentSyncPacket=0;
-  sync_message_t* currentSyncPayload;
+	message_t syncPacket[2];
+	uint8_t currentSyncPacket=0;
+	sync_message_t* currentSyncPayload;
+	norace uint8_t processBufferState=PROCESS_IDLE;//only the change PROCESS_IDLE->PROCESS_CHANGEBUFFER is legal in atomic context
   
 	norace uint8_t activeMeasure=0;
 	norace uint32_t firetime;
@@ -154,8 +166,12 @@ implementation{
 		}else if(settings[activeMeasure]==RX){ //receiver
 			uint16_t time = 0;
 			call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
-			measureBuffer = (measureBuffer+1)%NUMBER_OF_RX;
-			post processData();
+			if(processBufferState == PROCESS_IDLE){
+				processBufferState++;
+				processBuffer = measureBuffer;
+				post processData();
+			}
+			measureBuffer = (measureBuffer + 1) % NUMBER_OF_RX;
 		}else if(settings[activeMeasure]==SSYN){//sends SYNC in this frame
 			post sendSync();
 		}else if(settings[activeMeasure]==DEB || settings[activeMeasure]==NDEB){
@@ -168,11 +184,11 @@ implementation{
 			#endif
 		}
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
-		#ifdef SEND_WAVEFORM
 		if(activeMeasure == 1){
+			#ifdef SEND_WAVEFORM
 			sendedMeasureCounter = 0;
+			#endif
 		}
-		#endif
 	}
 	/*
 		Sends sync message.
@@ -183,6 +199,7 @@ implementation{
 		startOfFrame = startOfFrame+firetime;
 		firetime = SYNC_SLOT;
 		startAlarm(activeMeasure,startOfFrame,firetime);
+		processBufferState=PROCESS_IDLE;
     call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
 		currentSyncPacket = (currentSyncPacket+1)%2;
 		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
@@ -190,16 +207,39 @@ implementation{
 	}
 
 	task void processData(){
-		call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
-		currentSyncPayload->phaseRef[processBuffer] = call MeasureWave.getPhaseRef();
-		currentSyncPayload->minmax[processBuffer] = call MeasureWave.getMaxAmplitude()<<4;//upper nibblet, without LSB
-		currentSyncPayload->minmax[processBuffer] |= call MeasureWave.getMinAmplitude()>>1;//lower nibblet, without LSB
-		currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
-		currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
-		processBuffer = (processBuffer+1)%NUMBER_OF_RX;
-		if( processBuffer != measureBuffer ){
-			post processData();
+		switch(processBufferState){
+			case PROCESS_IDLE://we probably run out of calculation time
+				return;
+				break;
+			case PROCESS_CHANGEBUFFER:
+				call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+				break;
+			case PROCESS_PHASEREF:
+				currentSyncPayload->phaseRef[processBuffer] = call MeasureWave.getPhaseRef();
+				break;
+			case PROCESS_MIN:
+				currentSyncPayload->minmax[processBuffer] = call MeasureWave.getMinAmplitude()>>1;
+				break;
+			case PROCESS_MAX:
+				currentSyncPayload->minmax[processBuffer] |= (call MeasureWave.getMaxAmplitude()<<3)&0xf0;
+				break;
+			case PROCESS_FREQ:
+				currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
+				break;
+			case PROCESS_PHASE:
+				currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
+				break;
 		}
+		if( ++processBufferState == PROCESS_DONE ){
+			processBuffer = (processBuffer+1)%NUMBER_OF_RX;
+			if( processBuffer == measureBuffer ){
+				processBufferState = PROCESS_IDLE;
+				return;
+			} else {
+				processBufferState = PROCESS_CHANGEBUFFER;
+			}
+		}
+		post processData();
 	}
 
 	/*
