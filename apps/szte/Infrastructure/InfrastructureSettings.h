@@ -10,6 +10,10 @@ enum {
 	DEB = 5,
 	NTRX = 6,
 	NDEB = 7,
+	W1 = 8,
+	W10 = 9,
+	W100 = 10,
+	W1K = 11,
 };
 
 #define NUMBER_OF_INFRAST_NODES 4

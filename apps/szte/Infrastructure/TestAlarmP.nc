@@ -51,6 +51,10 @@ implementation{
 		MEAS_SLOT = 75, //measure slot
 		SYNC_SLOT = 150, //sync slot
 		DEBUG_SLOT = 10000, //between super frames
+		WAIT_SLOT_1 = 62,
+		WAIT_SLOT_10 = 625,
+		WAIT_SLOT_100 = 6250,
+		WAIT_SLOT_1000 = 62500U,
 	};
 
 	typedef nx_struct sync_message_t{
@@ -182,6 +186,18 @@ implementation{
 				post debugProcess();
 			}
 			#endif
+		}else if(settings[activeMeasure]==W1){
+			firetime += WAIT_SLOT_1;
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
+		}else if(settings[activeMeasure]==W10){
+			firetime += WAIT_SLOT_10;
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
+		}else if(settings[activeMeasure]==W100){
+			firetime += WAIT_SLOT_100;
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
+		}else if(settings[activeMeasure]==W1K){
+			firetime += WAIT_SLOT_1000;
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
 		if(activeMeasure == 1){
