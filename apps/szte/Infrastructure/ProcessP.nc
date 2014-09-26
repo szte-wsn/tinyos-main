@@ -168,12 +168,18 @@ implementation{
 	
 	command uint16_t MeasureWave.getPeriod() {
 	  getPeriod();
-	  return measurement.period;
+		if( measurement.period == 0 )
+			return 1;
+		else
+			return measurement.period;
 	}
 	
 	command uint8_t MeasureWave.getPhase() {
 	  getPhase();
-	  return measurement.phase;
+		if( measurement.period == 0 )
+			return 1;
+		else
+			return measurement.phase;
 	}
 	
 }
