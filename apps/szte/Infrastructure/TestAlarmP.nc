@@ -17,10 +17,6 @@
 #define TX2_THRESHOLD 0
 #define RX_THRESHOLD 0
 
-#define AMPLITUDE_THRESHOLD 2
-#define LEADTIME 10
-#define START_OFFSET 16
-
 #ifdef SEND_WAVEFORM
 #define WAVE_MESSAGE_LENGTH 80
 #endif
@@ -69,11 +65,12 @@ implementation{
 		PROCESS_IDLE=0,
 		PROCESS_CHANGEBUFFER=1,
 		PROCESS_PHASEREF=2,
-		PROCESS_MIN=3,
-		PROCESS_MAX=4,
-		PROCESS_FREQ=5,
-		PROCESS_PHASE=6,
-		PROCESS_DONE=7,
+		PROCESS_FILTER=3,
+		PROCESS_MIN=4,
+		PROCESS_MAX=5,
+		PROCESS_FREQ=6,
+		PROCESS_PHASE=7,
+		PROCESS_DONE=8,
 	};
 
 	#ifdef SEND_WAVEFORM
@@ -228,10 +225,13 @@ implementation{
 				return;
 				break;
 			case PROCESS_CHANGEBUFFER:
-				call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN, AMPLITUDE_THRESHOLD, LEADTIME);
+				call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
 				break;
 			case PROCESS_PHASEREF:
 				currentSyncPayload->phaseRef[processBuffer] = call MeasureWave.getPhaseRef();
+				break;
+			case PROCESS_FILTER:
+				call MeasureWave.filter();
 				break;
 			case PROCESS_MIN:
 				currentSyncPayload->minmax[processBuffer] = call MeasureWave.getMinAmplitude()>>1;
