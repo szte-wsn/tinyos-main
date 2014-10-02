@@ -22,8 +22,8 @@ implementation{
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
 
-	components ProcessP;
-	App.MeasureWave -> ProcessP;	
+	components MeasureWaveC;
+	App.MeasureWave -> MeasureWaveC;	
 	
 	#ifdef SEND_WAVEFORM
 	components new AMSenderC(AM_RADIOMSG);

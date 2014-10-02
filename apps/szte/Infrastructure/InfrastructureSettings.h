@@ -24,10 +24,10 @@ enum {
 		#define NUMBER_OF_RX 6
 		const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
 			//  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15
-			{SSYN,  TX1,  TX1,   RX, RSYN,  TX1,  TX1,   RX, RSYN,  TX1,  TX1,   RX, RSYN,   RX,   RX,   RX},
-			{RSYN,   RX,   RX,   RX, SSYN,  TX2,   RX,  TX1, RSYN,  TX2,   RX,  TX1, RSYN,  TX1,  TX1,   RX},
-			{RSYN,  TX2,   RX,  TX1, RSYN,   RX,   RX,   RX, SSYN,   RX,  TX2,  TX2, RSYN,  TX2,   RX,  TX1},
-			{RSYN,   RX,  TX2,  TX2, RSYN,   RX,  TX2,  TX2, RSYN,   RX,   RX,   RX, SSYN,   RX,  TX2,  TX2}
+			{RSYN,  TX1,  TX1,  TX1, SSYN,  TX1,  TX1,   RX, RSYN,   RX,  TX1,   RX, RSYN,   RX,   RX,   RX},
+			{RSYN,   RX,   RX,   RX, RSYN,  TX2,  TX2,  TX1, SSYN,  TX1,   RX,  TX1, RSYN,   RX,  TX1,   RX},
+			{RSYN,  TX2,   RX,   RX, RSYN,   RX,   RX,   RX, RSYN,  TX2,  TX2,  TX2, SSYN,  TX1,   RX,  TX1},
+			{SSYN,   RX,  TX2,  TX2, RSYN,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX, RSYN,  TX2,  TX2,  TX2}
 		};
 	#else
 		#define NUMBER_OF_SLOTS 52
