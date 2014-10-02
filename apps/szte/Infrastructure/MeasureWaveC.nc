@@ -5,10 +5,7 @@ implementation{
 	components MeasureWaveP;
 	MeasureWave = MeasureWaveP;
 	
-	components BartlettC as FilterC;
-	MeasureWaveP.Filter -> FilterC;
-	
-	#ifdef DEBUG_MEASUREWAVE
+	#if defined(DEBUG_MEASUREWAVE) || defined(DEBUG_FILTER)
 	components DiagMsgC;
 	MeasureWaveP.DiagMsg -> DiagMsgC;
 	#endif

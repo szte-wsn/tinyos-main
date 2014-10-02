@@ -1,20 +1,21 @@
 module MeasureWaveP{
 	provides interface MeasureWave;
-	uses interface Filter<uint8_t>;
 	
 	uses interface DiagMsg;
 }
 implementation{
 	//consts to configure the calculation algorithm
 	enum{
-		DROPFIRST=10,//the first DROPFIRST measure will be dropped before phaseref search
+		DROPFIRST=0,//the first DROPFIRST measure will be dropped before phaseref search
 		DROPSECOND=40,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
-		DROPEND=10,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
+		DROPEND=0,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
 		THRESHOLD=2,//phaseref will be the first point after DROPFIRST, where the measurement is above THRESHOLD
-		FILTERWINDOW=7,//lenth of the filter window
+		FILTERWINDOW=5,//lenth of the filter window
 		MINPOINTS=8,//how many minimum point will be searched for period calculation (it might found less)
 		MINTRESH_RATIO=3,
 	};
+	
+	#define TEMP_BUFFER_LEN 500
 	
 	enum{
 		START = 0,
@@ -23,10 +24,12 @@ implementation{
 		MINMAXFOUND = 3,
 		PERIODFOUND = 4,
 		PHASEFOUND = 5,
-		NODATA = 17,
-		NOMINMAX = 18,
-		NOPERIOD = 19,
-		NOPHASE = 20,
+		
+		ERRORSTART = 16,
+		NOPHASE = 17,
+		NOPERIOD = 18,
+		NOMINMAX = 19,
+		NODATA = 20,
 	};
 	
 	//input data
@@ -44,9 +47,38 @@ implementation{
 	uint16_t firstMin;
 	uint16_t calcStart;
 	uint16_t calcEnd;
+	uint16_t calcLen;
 	uint8_t state;
+	uint8_t temp[TEMP_BUFFER_LEN];
 
 	
+	void debugData(uint8_t lead, uint8_t *debugdata, uint16_t debuglen){
+		#ifdef DEBUG_FILTER
+		uint16_t offset=0;
+		if (call DiagMsg.record()){
+			call DiagMsg.str("---------");
+			call DiagMsg.uint8(lead);
+			call DiagMsg.uint16(debuglen);
+			call DiagMsg.send();
+		}
+		while(offset<debuglen){
+			if (call DiagMsg.record()){
+				call DiagMsg.hex16(offset);
+				if(offset+8<debuglen)
+					call DiagMsg.hex8s((&debugdata[offset]),8);
+				else
+					call DiagMsg.hex8s((&debugdata[offset]),debuglen-offset);
+				offset+=8;
+				if(offset+8<debuglen)
+					call DiagMsg.hex8s((&debugdata[offset]),8);
+				else if(offset<debuglen)
+					call DiagMsg.hex8s((&debugdata[offset]),debuglen-offset);
+				call DiagMsg.send();
+			}
+			offset+=8;
+		}
+		#endif
+	}
 	
 	void debugPrint(){
 		#ifdef DEBUG_MEASUREWAVE
@@ -68,29 +100,14 @@ implementation{
 		#endif
 	}
 	
-	void debugData(){
-		#ifdef DEBUG_MEASUREWAVE
-		uint16_t offset=0;
-		while(offset<len){
-			if (call DiagMsg.record()){
-				call DiagMsg.hex16(offset);
-				call DiagMsg.chr('|');
-				call DiagMsg.hex8s((&data[offset]),8);
-				call DiagMsg.hex8s((&data[offset+8]),8);
-				call DiagMsg.send();
-			}
-			offset+=16;
-		}
-		#endif
-	}
-	
 	void getPhaseRef(){
 		phaseRef = DROPFIRST;
-		calcEnd = len-DROPEND;
+		calcEnd = len-DROPEND+1;
 		while( data[phaseRef] < THRESHOLD && phaseRef < calcEnd ){
 			phaseRef++;
 		}
 		calcStart = phaseRef+DROPSECOND;
+		calcLen = calcEnd - calcStart;
 		if(calcStart < calcEnd)
 			state = REFFOUND;
 		else
@@ -98,12 +115,55 @@ implementation{
 	}
 	
 	void filter(){
-		debugData();
-		call Filter.filter( &(data[calcStart]), &(data[calcStart]), calcEnd-calcStart, FILTERWINDOW);
-		debugData();
-		state = FILTERED;
+		enum{
+			halfwindow = (FILTERWINDOW>>1)+1,
+		};
+		uint8_t *input=&(data[calcStart]);
+		uint16_t i;
+		uint8_t tempvalue;
+		
+		debugData(0, input, calcLen);
+		//first stage input->temp
+		tempvalue = 0;
+		for(i=0;i<halfwindow;i++){
+			tempvalue += input[i];
+		}
+		temp[0] = tempvalue;
+		calcLen-=halfwindow-1;
+		for(i=0; i<calcLen; i++){
+			tempvalue += input[i+halfwindow];
+			tempvalue -= input[i];
+			temp[i+1] = tempvalue;
+		}
+		debugData(1, temp, calcLen);
+		//second stage, temp->input min/max search
+		tempvalue = 0;
+		minAmplitude = 255;
+		maxAmplitude = 0;
+		for(i=0;i<halfwindow;i++){
+			tempvalue += temp[i];
+		}
+		calcLen-=halfwindow-1;
+		input[0]=tempvalue;
+		for(i=0; i<calcLen; i++){
+			tempvalue += temp[i+halfwindow];
+			tempvalue -= temp[i];
+			input[i+1] = tempvalue;
+			if( tempvalue < minAmplitude )
+				minAmplitude = tempvalue;
+			if( tempvalue > maxAmplitude )
+				maxAmplitude = tempvalue;
+		}
+		debugData(2, input, calcLen);
+		
+		calcEnd = calcStart+calcLen;
+		if(minAmplitude < maxAmplitude)
+			state = MINMAXFOUND;
+		else
+			state = NOMINMAX;
 	}
 	
+	//this function is inactive! it's done in the filter()
 	void getMinMax(){
 		uint16_t i;
 		minAmplitude = 255;
@@ -187,7 +247,10 @@ implementation{
 	
 	command uint8_t MeasureWave.getPhaseRef(){
 		calculate(REFFOUND);
-		return phaseRef;
+		if( state >=NODATA )
+			return 1;
+		else
+			return phaseRef;
 	}
 	
 	command void MeasureWave.filter(){
@@ -196,21 +259,33 @@ implementation{
 	
 	command uint8_t MeasureWave.getMinAmplitude(){
 		calculate(MINMAXFOUND);
-		return minAmplitude;
+		if( state >= NOMINMAX )
+			return 1;
+		else
+			return minAmplitude;
 	}
 	
 	command uint8_t MeasureWave.getMaxAmplitude(){
 		calculate(MINMAXFOUND);
-		return maxAmplitude;
+		if( state >= NOMINMAX )
+			return 1;
+		else
+			return maxAmplitude;
 	}
 	
 	command uint16_t MeasureWave.getPeriod(){
 		calculate(PERIODFOUND);
-		return period;
+		if( state >= NOPERIOD )
+			return 1;
+		else
+			return period;
 	}
 	
 	command uint8_t MeasureWave.getPhase(){
 		calculate(PHASEFOUND);
-		return phase;
+		if( state >= NOPHASE )
+			return 1;
+		else
+			return phase;
 	}
 }
