@@ -71,18 +71,18 @@ class PlotFunctionPanel extends JPanel{
 	static final int maxRssiValue = 25;
 	static final int bufferLength = 500;
 	static final int startTreshold = 5;
-	static final int numberOfInfrastMotes = 4;
-	static final int numberOfRx = 6;
-	static final int numberOfReceiverInSlot = 2;
-	static final int numberOfSlots = 12;
+	static final int numberOfInfrastMotes = 13;
+	static final int numberOfRx = 1;
+	static final int numberOfReceiverInSlot = 11;
+	static final int numberOfSlots = 1;
 	
 	public PlotFunctionPanel(int width,int heigth){
 		this.width = width;
 		this.heigth = heigth;
 		data = new int[numberOfInfrastMotes][numberOfRx][bufferLength];
-		motes = new int[numberOfSlots][2];
-		slots = new int[numberOfSlots][2];
 		if(numberOfInfrastMotes == 4){
+			motes = new int[numberOfSlots][2];
+			slots = new int[numberOfSlots][2];
 			motes[0]=new int[] {2,4};
 			motes[1]=new int[] {2,3};
 			motes[2]=new int[] {1,2};
@@ -107,6 +107,12 @@ class PlotFunctionPanel extends JPanel{
 			slots[9]=new int[] {3,5};
 			slots[10]=new int[] {4,5};
 			slots[11]=new int[] {5,5};
+		}
+		if(numberOfInfrastMotes == 13){
+			motes = new int[numberOfSlots][11];
+			slots = new int[numberOfSlots][11];
+			motes[0]=new int[] {3,4,5,6,7,8,9,10,11,12,13};
+			slots[0]=new int[] {0,0,0,0,0,0,0,0,0,0,0};
 		}
 		whichMote = 0;
 		setPreferredSize(new Dimension(width, heigth));
@@ -404,12 +410,43 @@ public class DrawWaveform extends JFrame{
 	static final int yScaleFactor = 10;
 	static final int xScaleFactor = 2;	
 	static final int nodeIdIndex = 4;
-	static final int numberOfInfrastMotes = 4;
-	static final int numberOfSlots = 12;
-	static final int numberOfRx = 6;
+	static final int numberOfInfrastMotes = 13;
+	static final int numberOfSlots = 1;
+	static final int numberOfRx = 1;
+	static final int numberOfReceivers = 11;
+	static final int firstReceiverNodeID = 3;
 	public static DrawWaveform dw;
 	public static int waveCnt = 0;
 	public static int submenuTemp = 0;
+	
+	public static int superframeCounter;
+	public static File directory;
+	public static String fineName;
+	public static Writer writer;
+	
+	public void writeToFile(String filename,int whichMote, int whichWaveform){
+		try {
+			File file = new File(directory.getAbsolutePath()+"/"+filename);
+			writer = new BufferedWriter(new FileWriter(file));
+			for(int i=0;i<bufferLength;i++){
+				writer.write(panel.data[whichMote-1][whichWaveform][i]/yScaleFactor+"\n");	
+			}
+		} catch (IOException ex) {
+		  System.out.println(ex);
+		} finally {
+			try {
+		   		writer.close();} 
+		   	catch (Exception ex) {	
+		  		System.out.println(ex);
+		   	}
+		}
+	}
+	
+	public void writeWaveforms(int superframe){
+		for(int i=firstReceiverNodeID;i<firstReceiverNodeID+numberOfReceivers;i++){
+			writeToFile(superframe+"_"+i,i,0);
+		}
+	}
 
 	public void initUI(){
         JMenuBar menubar = new JMenuBar();
@@ -420,7 +457,7 @@ public class DrawWaveform extends JFrame{
         JMenu mote = new JMenu("Motes:");
 		JMenuItem motes[] = new JMenuItem[numberOfInfrastMotes];
 		for(int i=0;i<numberOfInfrastMotes;i++){
-			motes[i] = new JMenuItem(new SomeAction(i+". mote",i,panel,false));
+			motes[i] = new JMenuItem(new SomeAction((i+1)+". mote",i,panel,false));
 			mote.add(motes[i]);
 		}
 
@@ -454,7 +491,7 @@ public class DrawWaveform extends JFrame{
 			int whichPart = (int)(packet[whichPartOfTheWaveformIndex] & 0xFF);
 			int startDataCounter = numberOfDataPerMessage*whichPart;
 			dataCounter = 0;
-			System.out.println("whichMote: "+whichMote+"; whichWaveform: "+whichWaveform+"; whichPart: "+whichPart);
+			System.out.println("whichMote: "+(whichMote+1)+"; whichWaveform: "+whichWaveform+"; whichPart: "+whichPart);
 			for(int i=firstDataIndex;i<firstDataIndex+numberOfDataPerMessage && i<len+8;i++){
 				panel.data[whichMote][whichWaveform][startDataCounter+dataCounter] = yScaleFactor*(int)(packet[i] & 0xFF);
 				dataCounter++;
@@ -462,10 +499,14 @@ public class DrawWaveform extends JFrame{
 					break;
 				}
 			}
-			if(/*whichPart == bufferLength/numberOfDataPerMessage && */whichWaveform == numberOfRx-1){
+			if(whichPart == bufferLength/numberOfDataPerMessage && whichWaveform == numberOfRx-1){
 				dw.getContentPane().add(panel);
 				dw.pack();
 				dw.setVisible(true);
+				if(whichMote == numberOfInfrastMotes-1){
+					writeWaveforms(superframeCounter);
+					superframeCounter++;
+				}
 			}
 		}
 	}
@@ -474,11 +515,11 @@ public class DrawWaveform extends JFrame{
 		dw = new DrawWaveform(); 
         String source = null;
         PacketSource reader;
-        if (args.length == 2 && args[0].equals("-comm")) {
+        if (args.length == 3 && args[0].equals("-comm")) {
           source = args[1];
         }
 		else if (args.length > 0) {
-	    	System.err.println("usage: java DrawWaveform [-comm PACKETSOURCE]");
+	    	System.err.println("usage: java DrawWaveform [-comm PACKETSOURCE] Directory for specified position");
 	   		System.err.println("       (default packet source from MOTECOM environment variable)");
 	    	System.exit(2);
 		}
@@ -492,7 +533,11 @@ public class DrawWaveform extends JFrame{
 	    	System.err.println("Invalid packet source (check your MOTECOM environment variable)");
 	    	System.exit(2);
 		}
-
+		superframeCounter = 0;
+		directory = new File(args[2]+"/");
+     	directory.mkdirs();
+     	if (null != directory) 
+     		directory.mkdirs();
 		panel = new PlotFunctionPanel(xScaleFactor*bufferLength, yScaleFactor*maxRssiValue);
 		dw.initUI();
 		dw.setVisible(true);
