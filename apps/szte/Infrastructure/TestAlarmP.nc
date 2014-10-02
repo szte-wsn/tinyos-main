@@ -44,7 +44,7 @@ implementation{
   };
   
   enum {
-		MEAS_SLOT = 75, //measure slot
+		MEAS_SLOT = 80, //measure slot
 		SYNC_SLOT = 150, //sync slot
 		DEBUG_SLOT = 10000, //between super frames
 		WAIT_SLOT_1 = 62,
