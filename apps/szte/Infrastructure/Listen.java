@@ -50,10 +50,10 @@ class PlotFunctionPanel extends JPanel{
 
 	int width,heigth;
 	public int[] data;
-	static final int yScaleFactor = 6;
+	static final int yScaleFactor = 2;
 	static final int xScaleFactor = 2;
-	static final int maxRssiValue = 30;
-	static final int bufferLength = 512;
+	static final int maxRssiValue = 255;
+	static final int bufferLength = 500;
 	
 	public PlotFunctionPanel(int width,int heigth){
 		this.width = width;
@@ -84,18 +84,17 @@ class PlotFunctionPanel extends JPanel{
 public class Listen {
 
 	static int dataCounter = 0;
-	static byte data[] = new byte[512];
-	static int x[] = new int[512];
 	static JFrame frame;
 	static PlotFunctionPanel panel;
-	static final int numberOfDataPerMessage = 60;
-	static final int firstDataIndex = 8;
-	static final int bufferLength = 512;
-	static final int maxRssiValue = 30;
+	static final int numberOfDataPerMessage = 80;
+	static final int firstDataIndex = 10;
+	static final int bufferLength = 500;
+	static final int maxRssiValue = 255;
 	static final int amRadioMsg = 7;
 	static final int amIdIndex = 7;
-	static final int yScaleFactor = 6;
-	static final int XscaleFactor = 2;
+	static final int yScaleFactor = 2;
+	static final int XscaleFactor = 2;	
+	static byte data[] = new byte[bufferLength];
 
 	public static void printByte(PrintStream p, int b) {
 	String bs = Integer.toHexString(b & 0xff).toUpperCase();
@@ -105,8 +104,10 @@ public class Listen {
     }
 
 	public static void printPacketTimeStamp(PrintStream p, byte[] packet){
+		int len = (int)(packet[5] & 0xFF);
+		System.out.println(dataCounter);
 		if(packet[amIdIndex] == amRadioMsg){
-			for(int i=firstDataIndex;i<firstDataIndex+numberOfDataPerMessage;i++){
+			for(int i=firstDataIndex;i<firstDataIndex+numberOfDataPerMessage && i<len+8;i++){
 				panel.data[dataCounter] = yScaleFactor*(int)(packet[i] & 0xFF);
 				dataCounter++;
 				if(dataCounter == bufferLength){
