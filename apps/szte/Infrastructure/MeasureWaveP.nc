@@ -6,9 +6,9 @@ module MeasureWaveP{
 implementation{
 	//consts to configure the calculation algorithm
 	enum{
-		DROPFIRST=0,//the first DROPFIRST measure will be dropped before phaseref search
+		DROPFIRST=10,//the first DROPFIRST measure will be dropped before phaseref search
 		DROPSECOND=40,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
-		DROPEND=0,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
+		DROPEND=10,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
 		THRESHOLD=2,//phaseref will be the first point after DROPFIRST, where the measurement is above THRESHOLD
 		FILTERWINDOW=5,//lenth of the filter window
 		MINPOINTS=8,//how many minimum point will be searched for period calculation (it might found less)
@@ -130,7 +130,7 @@ implementation{
 		}
 		temp[0] = tempvalue;
 		calcLen-=halfwindow-1;
-		for(i=0; i<calcLen; i++){
+		for(i=0; i<calcLen-1; i++){
 			tempvalue += input[i+halfwindow];
 			tempvalue -= input[i];
 			temp[i+1] = tempvalue;
@@ -138,20 +138,20 @@ implementation{
 		debugData(1, temp, calcLen);
 		//second stage, temp->input min/max search
 		tempvalue = 0;
-		minAmplitude = 255;
-		maxAmplitude = 0;
 		for(i=0;i<halfwindow;i++){
 			tempvalue += temp[i];
 		}
 		calcLen-=halfwindow-1;
 		input[0]=tempvalue;
-		for(i=0; i<calcLen; i++){
+		minAmplitude = tempvalue;
+		maxAmplitude = tempvalue;
+		for(i=0; i<calcLen-1; i++){
 			tempvalue += temp[i+halfwindow];
 			tempvalue -= temp[i];
 			input[i+1] = tempvalue;
-			if( tempvalue < minAmplitude )
+			if( tempvalue < minAmplitude ){
 				minAmplitude = tempvalue;
-			if( tempvalue > maxAmplitude )
+			}if( tempvalue > maxAmplitude )
 				maxAmplitude = tempvalue;
 		}
 		debugData(2, input, calcLen);
@@ -198,6 +198,17 @@ implementation{
 				} else {
 					lastMin = (minStart+i)>>1;
 				}
+				#ifdef DEBUG_MEASUREWAVE
+				if(call DiagMsg.record()){
+					call DiagMsg.chr('M');
+					call DiagMsg.uint8(minsFound);
+					call DiagMsg.uint16(minStart);
+					call DiagMsg.uint16(i);
+					call DiagMsg.uint16(firstMin);
+					call DiagMsg.uint16(lastMin);
+					call DiagMsg.send();
+				}
+				#endif
 			}
 			i++;
 		}
