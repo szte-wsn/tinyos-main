@@ -172,7 +172,7 @@ class Node {
   public String toString() {
     if(freq == 0)
       return "id: " + id + " invalid data! Frequency = 0\n";
-    return "id: " + id + "\tdataStart: " + dataStart + "\tmin: " + min + "\tmax: " + max + "\tfreq: " + freq + "   \tphase: " + phase;
+    return String.format("id %2d dataStart: %3d min: %3d max: %3d period: %5d phase: %3d", id, dataStart, min, max, freq, phase);
   }
 }
 
