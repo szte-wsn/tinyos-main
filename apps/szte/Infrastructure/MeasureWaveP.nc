@@ -101,11 +101,15 @@ implementation{
 	}
 	
 	void getPhaseRef(){
-		phaseRef = DROPFIRST;
-		calcEnd = len-DROPEND+1;
-		while( data[phaseRef] < THRESHOLD && phaseRef < calcEnd ){
+		uint8_t old;
+	  phaseRef = DROPFIRST;
+		calcEnd = len-DROPEND;
+		old = data[calcEnd];
+		data[calcEnd] = THRESHOLD;
+		while( data[phaseRef] < THRESHOLD ){
 			phaseRef++;
 		}
+		data[calcEnd] = old;
 		calcStart = phaseRef+DROPSECOND;
 		calcLen = calcEnd - calcStart;
 		if(calcStart < calcEnd)
@@ -156,6 +160,12 @@ implementation{
 		}
 		debugData(2, input, calcLen);
 		
+    //HACK just for debug
+		for(i=calcLen;i<len;i++){
+			data[i]=minAmplitude+(maxAmplitude-minAmplitude)/MINTRESH_RATIO;
+		}
+		//end of HACK
+		
 		calcEnd = calcStart+calcLen;
 		if(minAmplitude < maxAmplitude)
 			state = MINMAXFOUND;
@@ -195,8 +205,14 @@ implementation{
 				searchRising = FALSE;
 				if( ++minsFound == 1 ){
 					firstMin = (minStart+i)>>1;
+          //HACK just for debug
+					data[firstMin]=255;
+          //end of HACK
 				} else {
 					lastMin = (minStart+i)>>1;
+          //HACK just for debug
+					data[lastMin]=255;
+          //end of HACK
 				}
 				#ifdef DEBUG_MEASUREWAVE
 				if(call DiagMsg.record()){
