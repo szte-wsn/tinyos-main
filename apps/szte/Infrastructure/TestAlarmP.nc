@@ -40,7 +40,7 @@ implementation{
 	enum {
 		CHANNEL = 11,
 		TRIM1 = 0,
-		TRIM2 = 2,
+		TRIM2 = 7,
   };
   
   enum {
@@ -58,7 +58,8 @@ implementation{
 		nx_uint8_t phaseRef[NUMBER_OF_RX];
 		nx_uint16_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
-		nx_uint8_t minmax[NUMBER_OF_RX];
+		nx_uint8_t min[NUMBER_OF_RX];
+		nx_uint8_t max[NUMBER_OF_RX];
 	} sync_message_t;
 	
 	enum {
@@ -234,10 +235,10 @@ implementation{
 				call MeasureWave.filter();
 				break;
 			case PROCESS_MIN:
-				currentSyncPayload->minmax[processBuffer] = call MeasureWave.getMinAmplitude()>>1;
+				currentSyncPayload->min[processBuffer] = call MeasureWave.getMinAmplitude();
 				break;
 			case PROCESS_MAX:
-				currentSyncPayload->minmax[processBuffer] |= (call MeasureWave.getMaxAmplitude()<<3)&0xf0;
+				currentSyncPayload->max[processBuffer] = call MeasureWave.getMaxAmplitude();
 				break;
 			case PROCESS_FREQ:
 				currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
