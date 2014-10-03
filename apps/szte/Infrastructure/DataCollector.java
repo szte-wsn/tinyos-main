@@ -392,11 +392,11 @@ class DataCollector extends JFrame {
 	}
 
   public void printPacketTimeStamp(PrintStream p, byte[] packet) {
-    short[] freq = new short[NUMBER_OF_RX];
-    byte[] phase = new byte[NUMBER_OF_RX];
-    byte[] min = new byte[NUMBER_OF_RX];
-    byte[] max = new byte[NUMBER_OF_RX];
-    byte[] dataStart = new byte[NUMBER_OF_RX];
+    int[] freq = new int[NUMBER_OF_RX];
+    short[] phase = new short[NUMBER_OF_RX];
+    short[] min = new short[NUMBER_OF_RX];
+    short[] max = new short[NUMBER_OF_RX];
+    short[] dataStart = new short[NUMBER_OF_RX];
     int frame_index = 0;
     if(terminal_write_option == 0) {
 		  p.print("AM type: "+(int)(packet[0] & 0xFF)+ "\n");
@@ -435,7 +435,7 @@ class DataCollector extends JFrame {
         int b1 = packet[i] & 0xFF;
         if(terminal_write_option == 0) 
           p.print(tmp + ".dataStart: " + b1 + "\n");
-        dataStart[tmp++] = (byte)b1;
+        dataStart[tmp++] = (short)b1;
       }
       tmp = 0;
 		  for(int i=9+(NUMBER_OF_RX); i<9+(NUMBER_OF_RX*3); i+=2) {    
@@ -445,24 +445,28 @@ class DataCollector extends JFrame {
         b1 = (b1 | b2) & 0x0000FFFF;
         if(terminal_write_option == 0) 
           p.print(tmp + ".freq: " + b1 + "\n");
-        freq[tmp++] = (short)b1;
+        freq[tmp++] = b1;
       }
       tmp = 0;
       for(int i=9+(NUMBER_OF_RX*3); i<9+(NUMBER_OF_RX*4); i++) {
         int b1 = packet[i] & 0xFF;
         if(terminal_write_option == 0) 
           p.print(tmp + ".phase: " + b1 + "\n");
-        phase[tmp++] = (byte)b1;
+        phase[tmp++] = (short)b1;
       }
       tmp = 0;
       for(int i=9+(NUMBER_OF_RX*4); i<9+(NUMBER_OF_RX*5); i++) {
-        int b1 = packet[i] & 0x0F;
-        int b2 = packet[i] & 0xF0;
-        b2 >>= 3;
+        int b1 = packet[i] & 0xFF;
         if(terminal_write_option == 0) 
-          p.print(tmp + ".min: " + b1 + " max: " + b2 + "\n");
-        min[tmp] = (byte)b1;
-        max[tmp++] = (byte)b2;
+          p.print(tmp + ".min: " + b1 + "\n");
+        min[tmp++] = (short)b1;
+      }
+      tmp = 0;
+      for(int i=9+(NUMBER_OF_RX*5); i<9+(NUMBER_OF_RX*6); i++) {
+        int b1 = packet[i] & 0xFF;
+        if(terminal_write_option == 0) 
+          p.print(tmp + ".max: " + b1 + "\n");
+        max[tmp++] = (short)b1;
       }
       if(terminal_write_option == 0) 
 		    p.print(" \n");
@@ -481,7 +485,7 @@ class DataCollector extends JFrame {
   }
   
   //Upload frame with measures    frame numbers: 1,5,9,13
-  public void Upload(int frame_mes, short[] freq, byte[] phase, byte[] min, byte[] max, byte[] dataStart) {
+  public void Upload(int frame_mes, int[] freq, short[] phase, short[] min, short[] max, short[] dataStart) {
     int frame = 0;    //frame counter
     if(frame_mes == -1) {
       frame_mes = 0;
