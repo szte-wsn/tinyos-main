@@ -74,11 +74,13 @@ class Receiver:
       
       for i in range(len(rxCounter[self.drawId-NODEIDSHIFT])):
         self.subplots.append(self.fig.add_subplot(plotrows,plotcolumns,i+1))
-        #self.subplots[i].set_title("title") # slot Nr would be better
+        self.subplots[i].set_title(rxCounter[self.drawId][i]) # slot Nr would be better
+        #this takes too much space
         #self.subplots[i].set_xlabel('time [sample]')
         #self.subplots[i].set_ylabel('RSSI')
     else:
       self.subplots.append(self.fig.add_subplot(1,1,1))
+      self.subplots[0].set_title("#"+str(self.drawId)+" TX: "+str(slots[self.drawId][0])+"/"+str(slots[self.drawId][1]))
     
     self.plotDirty=False
     self.ani=animation.FuncAnimation(self.fig, self.plotAnim, interval=UPDATE_INTERVAL)
@@ -89,10 +91,7 @@ class Receiver:
     if self.plotDirty:
       self.plotDirty=False
       for i in range(len(self.subplots)):
-        #TODO this clears the title and everything - there must be some nicer clear function
-        self.subplots[i].clear()
-        if self.moteMode:
-          self.subplots[i].set_title(rxCounter[self.drawId][i])
+        self.subplots[i].lines=[]
   
   def plotAnim(self, i):
     if self.moteMode:
@@ -106,25 +105,20 @@ class Receiver:
         if self.waves[i].received == Wave.WAVE_PARTS and rxCounter[self.waves[i].nodeid-NODEIDSHIFT][self.waves[i].waveform] == self.drawId:
           self.waves[i].received+=1
           self.clearPlots()
-          self.subplots[0].plot(range(Wave.REAL_WAVELENGTH),self.waves[i].data[0:Wave.REAL_WAVELENGTH])
+          self.subplots[0].plot(range(Wave.REAL_WAVELENGTH),self.waves[i].data[0:Wave.REAL_WAVELENGTH], label=str(self.waves[i].nodeid))
+          self.subplots[0].legend()
 
   def receive(self, src, msg):
     if msg.get_amType() == WaveForm.AM_TYPE:
       if msg.get_whichPartOfTheWaveform() == 0: #start message
         newWaveInstance = Wave(msg.getAddr(), msg.get_whichWaveform())
         newWaveInstance.addValues(msg.get_data())
-        #for i in range(len(self.waves)):
-          #if self.waves[i].nodeid == msg.getAddr() and self.waves[i].waveform == msg.get_whichWaveform():
-            #self.waves.pop(i)
-            #break #there should be only one element in the list whith the same nodeid and waveform
         self.waves.append(newWaveInstance)
       else:
         for i in range(len(self.waves)):
           if self.waves[i].nodeid == msg.getAddr() and self.waves[i].waveform == msg.get_whichWaveform():
             if self.waves[i].received == msg.get_whichPartOfTheWaveform():
               self.waves[i].addValues(msg.get_data())
-            #else:
-              #self.waves.pop(i)
             break #there should be only one element in the list whith the same nodeid and waveform
     elif msg.get_amType() == SyncMsg.AM_TYPE and msg.get_originalAm() == SYNCAMTYPE and msg.get_frame()-1 == CLEARSLOT: #sync sends the next frame's number
       self.plotDirty=True
