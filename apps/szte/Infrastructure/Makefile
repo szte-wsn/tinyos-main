@@ -14,23 +14,31 @@ CFLAGS += -DNO_COLLISION_LAYER
 #should be at least: 6+NUMBER_OF_RX*5
 CFLAGS += -DTOSH_DATA_LENGTH=100
 
+CFLAGS += -DSEND_WAVEFORM
+CFLAGS += -DWFSEND_STARTINDEX=0
+
 # CFLAGS += -DDIAGMSG_SERIAL_START
 # CFLAGS += -DDIAGMSG_RECORDED_MSGS=80
-# CFLAGS += -DSEND_WAVEFORM
 # CFLAGS += -DDEBUG_MEASUREWAVE
 # CFLAGS += -DDEBUG_FILTER
 
-TOSMAKE_PRE_EXE_DEPS = DataCollector.class ProcessWave.class DrawWaveform.class
-TOSMAKE_CLEAN_EXTRA = *.class
+TOSMAKE_PRE_EXE_DEPS = DataCollector.class ProcessWave.class DrawWaveform.class WaveForm.py SyncMsg.py
+TOSMAKE_CLEAN_EXTRA = *.class *.pyc $(TOSMAKE_PRE_EXE_DEPS) __pycache__
 
 DataCollector.class: DataCollector.java
-	javac DataCollector.java
+	javac $?
 
 ProcessWave.class: ProcessWave.java
-	javac ProcessWave.java
+	javac $?
 
 DrawWaveform.class: DrawWaveform.java
-	javac DrawWaveform.java
+	javac $?
+
+WaveForm.py:
+	nescc-mig python $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -python-classname=WaveForm wave_message_t -o $@
+
+SyncMsg.py: 
+	nescc-mig python $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -python-classname=SyncMsg real_sync_message_t -o $@
 
 
 TINYOS_ROOT_DIR?=../../..

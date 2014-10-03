@@ -26,7 +26,7 @@ implementation{
 	App.MeasureWave -> MeasureWaveC;	
 	
 	#ifdef SEND_WAVEFORM
-	components new AMSenderC(AM_RADIOMSG);
+  components new AMSenderC(AM_WAVE_MESSAGE_T);
 	App.AMSend -> AMSenderC;
 	#endif
 }

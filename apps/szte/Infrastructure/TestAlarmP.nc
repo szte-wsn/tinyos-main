@@ -6,8 +6,8 @@
 
 */
 
-#include "TestAlarm.h"
 #include "InfrastructureSettings.h"
+#include "TestAlarm.h"
 #include "RadioConfig.h"
 
 #define SENDING_TIME 64
@@ -16,10 +16,6 @@
 #define TX1_THRESHOLD 0
 #define TX2_THRESHOLD 0
 #define RX_THRESHOLD 0
-
-#ifdef SEND_WAVEFORM
-#define WAVE_MESSAGE_LENGTH 80
-#endif
 
 module TestAlarmP{
 	uses interface Boot;
@@ -74,15 +70,6 @@ implementation{
 		PROCESS_DONE=8,
 	};
 
-	#ifdef SEND_WAVEFORM
-	typedef nx_struct wave_message_t{
-		nx_uint8_t whichWaveform;
-		nx_uint8_t whichPartOfTheWaveform;
-		nx_uint8_t data[WAVE_MESSAGE_LENGTH+4];
-	} wave_message_t;
-	#endif
-
-
 	typedef struct schedule_t{
 		uint8_t work;
 	}schedule_t;
@@ -104,7 +91,7 @@ implementation{
 	norace uint8_t processBuffer=0;
 	#ifdef SEND_WAVEFORM
 	uint16_t sendedBytesCounter=0;
-	uint8_t sendedMeasureCounter = 0;
+	uint8_t sendedMeasureCounter = WFSEND_STARTINDEX;
 	uint8_t sendedMessageCounter = 0;
 	uint8_t failedSendCounter = 0;
 	task void sendWaveform();
@@ -198,9 +185,9 @@ implementation{
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
-		if(activeMeasure == 1){
+		if(activeMeasure == 0){
 			#ifdef SEND_WAVEFORM
-			sendedMeasureCounter = 0;
+			sendedMeasureCounter = WFSEND_STARTINDEX;
 			#endif
 		}
 	}
