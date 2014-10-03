@@ -31,16 +31,18 @@ class PlotFunctionPanel extends JPanel {
   public int whichSlot;
   int startX;
   int startY;
+  int MAX = 500;    //last MAX measure plotted
   int frame_number;
   public int whichMote;
 	public boolean pairs;
 	static final int bufferLength = 500;
+	Node[] nodes1;
+	Node[] nodes2;
 	
 	public PlotFunctionPanel(int width,int heigth, int numberOfRx, int frame_number){
 		this.width = width;
 		this.heigth = heigth;
 		this.frame_number = frame_number;
-		posX = 0;
 		//data = new int[node_number][][bufferLength];
 		//whichMote = 0;
 		setPreferredSize(new Dimension(width, heigth));
@@ -53,24 +55,34 @@ class PlotFunctionPanel extends JPanel {
 		g2d.setFont(font);
 		g2d.setColor(Color.BLACK);
 		System.out.println("\n\n\n slots.getAllNode().size(): " + DataCollector.slots.get(0).getAllNode().size() + " slots.size(): " + DataCollector.slots.size() + " frame_number: " + frame_number + "\n\n\n");
-		int MAX = 500;
+		int start = DataCollector.slots.size()-MAX*frame_number<0 ? 0 : DataCollector.slots.size()-MAX*frame_number;
 		posX = 0;
 	  if(pairs) {
-      for(int i=DataCollector.slots.size()-MAX; i<DataCollector.slots.size()-2*frame_number; i++){
-        for(int j = 0; j<2; j++) {
-	        Iterator<Node> n1 = DataCollector.slots.get(i).getAllNode().iterator();
-	        Iterator<Node> n2 = DataCollector.slots.get(i+frame_number).getAllNode().iterator();
+      posX = 0;
+      startX = 100;
+      startY = 100;
+      for(int i=start; i<DataCollector.slots.size()-2*frame_number; i++){
+        //for(int j = 0; j<2; j++) {
+          int k = 0;
+          nodes1 = new Node[DataCollector.slots.get(i).NodesNumber()];
+          nodes2 = new Node[DataCollector.slots.get(i+frame_number).NodesNumber()];
+	        Iterator<Node> it1 = DataCollector.slots.get(i).getAllNode().iterator();
+	        Iterator<Node> it2 = DataCollector.slots.get(i+frame_number).getAllNode().iterator();
+	        while(it1.hasNext()) { 
+//(Math.abs(n.getPhase() - nodes.get(0).getPhase())%nodes.get(0).getFreq())	        
+	          nodes1[k] = it1.next();
+	          nodes2[k++] = it2.next();
+	        }
 	        
-	        int data1 = n1.next().getDataStart();
-	        int data2 = n2.next().getDataStart();
-	        startX = 100;
-	        startY = 100+j*100;
+	        for(int j=1; j<nodes1.length; j++) {
+	          startY += (j-1)*100;
 	        //Slot item = slots.get(data_writer_cnt);
 	        //item.getNodedataStart(i);
 	        //g2d.drawLine(startX+k,startY-DataCollector.slots.get(j).getNodedataStart(i),startX+(k+1),startY-DataCollector.slots.get(j+frame_number).getNodedataStart(i));
-	        //g2d.drawLine(startX+posX,startY-data1,startX+posX+1,startY-data2);
-	        //g2d.drawString("KK " + (startX+posX) + " " + (startY-data1) + " " + (startX+posX+1) + " " + (startY-data2) + " " + whichSlot + " " + i + " " + (DataCollector.slots.size()-2*frame_number) + " " + frame_number + " " + posX,startX+100,startY+100);
-	      }
+	          g2d.drawLine(startX+posX,startY+(Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()),startX+posX+1,startY+(Math.abs(nodes2[j].getPhase() - nodes2[0].getPhase())%nodes2[0].getFreq()));
+	          //startY += +(Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()) + (Math.abs(nodes2[j].getPhase() - nodes2[0].getPhase())%nodes2[0].getFreq());
+	        g2d.drawString("KK " + (startX+posX) + " " + (startY) + " " + (startX+posX+1) + " " + (startY) + " " + whichSlot + " " + i + " " + (DataCollector.slots.size()-2*frame_number) + " " + frame_number + " " + posX,startX+100,startY+100);
+	        }
 	      posX++;
 	      /*if(posX<MAX)
 	        posX++;
@@ -265,6 +277,10 @@ class Slot {
 
   public int getNodedataStart(int id) {
     return nodes.get(nodes.indexOf(id)).getDataStart();
+  }
+  
+  public int NodesNumber() {
+    return nodes.size();
   }
 }  
 
@@ -616,7 +632,7 @@ class DataCollector extends JFrame {
             out.write("TX: "+item.getTrans()+"\nRX:\n"+item.getAllNodeString());
             out_sf.write("TX: "+item.getTrans()+"\n"+item.getAllNodeString() + "\n\n");
             if(terminal_write_option == 1) 
-              System.out.println("TX:\n"+item.getTrans()+"\nRX:\n"+item.getAllNodeString() + "\n");
+              System.out.println((i%motesettings[0].length) + ". slot\n" + "TX: "+item.getTrans()+"\n"+item.getAllNodeString() + "\n");
             out.close();
 				    fw.close();
 				    data_writer_cnt++;
@@ -628,11 +644,11 @@ class DataCollector extends JFrame {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    if(terminal_write_option == 1000) 
+    if(terminal_write_option == 1) 
       System.out.println("--------------------------------------------");
     //if(paintCounter == 200) {
     //  System.out.println("PaintCounter = 100");
-    /*  paintCounter = 0;
+      /*paintCounter = 0;
       app.getContentPane().add(panel);
 		  app.pack();
 		  app.setVisible(true);*/
