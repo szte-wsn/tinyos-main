@@ -682,9 +682,11 @@ class DataCollector extends JFrame {
       reader.open(PrintStreamMessenger.err);
       for (;;) {
         byte[] packet = reader.readPacket();
-        app.printPacketTimeStamp(System.out, packet);
-        //System.out.println();
-        System.out.flush();
+        if(packet[0] == 6) {
+          app.printPacketTimeStamp(System.out, packet);
+          //System.out.println();
+          System.out.flush();
+        }
       }
     }
     catch (IOException e) {
