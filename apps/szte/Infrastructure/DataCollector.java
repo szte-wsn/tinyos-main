@@ -26,30 +26,131 @@ import javax.swing.AbstractAction;
 class PlotFunctionPanel extends JPanel { 
   
   int width,heigth;
-  int posX;
-  public int[][] data;  //first dim: mote index, second dim: rel phases
+  //int posX;
+  //public int[][] data;  //first dim: mote index, second dim: rel phases
   public int whichSlot;
   int startX;
   int startY;
-  int MAX = 500;    //last MAX measure plotted
-  int frame_number;
-  public int whichMote;
-	public boolean pairs;
-	static final int bufferLength = 500;
+	int xScale;
+	int yScale;
+  int MAX = 200;    //last n measure plotted
+  int frameNumber;
+  //public int whichMote;
+	//public boolean pairs;
+	//static final int bufferLength = 500;
 	Node[] nodes1;
 	Node[] nodes2;
-	int xScale = 3;
-	int yScale = 3;
+
 	
-	public PlotFunctionPanel(int width,int heigth, int numberOfRx, int frame_number){
+	public PlotFunctionPanel(int width, int height, int xScale, int yScale, int frameNumber){
 		this.width = width;
-		this.heigth = heigth;
-		this.frame_number = frame_number;
+		this.heigth = height;
+		this.xScale = xScale;
+		this.yScale = yScale;
+		this.setBounds(0, 0, width, height);
+		//this.setSize(width, height);
+		this.setLayout(null);
+		this.setBackground(Color.WHITE);
+		this.frameNumber = frameNumber;
 		//data = new int[node_number][][bufferLength];
 		//whichMote = 0;
-		setPreferredSize(new Dimension(width, heigth));
+		this.setPreferredSize(new Dimension(width, heigth));
   }
   
+  public void paintComponent(Graphics g){
+    Font font = new Font("font",3,20);
+		super.paintComponent(g); 
+    Graphics2D g2d = (Graphics2D) g.create();
+		g2d.setFont(font);
+		g2d.setColor(Color.BLACK);
+	  //Sign 0 point
+		//g2d.drawString("0",2,(int)(this.getSize().getHeight()/2));
+    //draw horizontal lines
+    g2d.setStroke(new BasicStroke(1));
+  	for(int i=0;i<this.getSize().getHeight();i+=yScale){
+  		g2d.drawLine(0,i,this.getWidth(),i);
+		}
+		//draw vertical lines
+  	for(int i=0;i<this.getSize().getWidth();i+=xScale){
+  		g2d.drawLine(i,0,i,this.getHeight());
+		}
+    g2d.setStroke(new BasicStroke(3));
+  	g2d.drawLine((int)this.getLocation().getX(), (int)this.getHeight()/2, this.getWidth(), (int)this.getHeight()/2);
+    g2d.setStroke(new BasicStroke(4));
+
+    int dataStart = DataCollector.slots.size()-MAX*frameNumber-whichSlot<=0 ? whichSlot : DataCollector.slots.size()-MAX*frameNumber;
+    int dataEnd = DataCollector.slots.size()-2*frameNumber;
+  	int startX = (int) this.getLocation().getX();
+  	int startY = (this.getHeight()/2);
+  	int posX = 0;
+  	//System.out.println("----------------- " + dataStart + " " + dataEnd);
+  	/*Node[][] o = new Node[frameNumber][2];
+    if(DataCollector.slots.size() >= 12) {
+    	for(int i=0; i<frameNumber; i++) {
+    	 // nodes1 = new Node[DataCollector.slots.get(i).NodesNumber()];
+    	  Iterator<Node> it1 = DataCollector.slots.get(i).getAllNode().iterator();
+    	  int l = 0;
+    	  while(it1.hasNext()) {
+    	    o[i][l] = it1.next();
+    	    l++;
+    	  }     
+    	}
+    	for(int i=0; i<frameNumber; i++) {
+    	  System.out.print(i + ".ID: ");
+    	  for(int j=0; j<2; j++) {
+  	      System.out.print(o[i][j].getID() + " ");
+	      }
+	      System.out.println(" ");
+      }
+  	}*/
+  	
+  	for(int i=dataStart; i<dataEnd; i+=frameNumber) {
+  	  int k = 0;
+  	  nodes1 = new Node[DataCollector.slots.get(i).NodesNumber()];
+      nodes2 = new Node[DataCollector.slots.get(i).NodesNumber()];
+      Iterator<Node> it1 = DataCollector.slots.get(i).getAllNode().iterator();
+      Iterator<Node> it2 = DataCollector.slots.get(i+frameNumber).getAllNode().iterator();
+      nodes1[k] = it1.next();
+      //while(it1.hasNext()) { 
+        //(Math.abs(n.getPhase() - nodes.get(0).getPhase())%nodes.get(0).getFreq())	        
+        nodes2[k++] = it1.next();//it2.next();
+      //} 
+      nodes1[k] = it2.next();
+      nodes2[k++] = it2.next();
+      if(posX == 0) {
+        g2d.drawString("Slot: " + (whichSlot+1),(int) this.getLocation().getX()+5, ((int) this.getLocation().getY()+30));
+        g2d.drawString("RX: " + (nodes1[0].getID()) + ", " + (nodes2[0].getID()), (int) this.getLocation().getX()+5, ((int) this.getLocation().getY()+50)); 
+      }    
+      //for(int j=1; j<nodes1.length; j++) {
+	    //startY += (j-1)*100;
+	    if(nodes1[0].getFreq() !=0 && nodes1[1].getFreq() != 0) { //maybe divide by zero in start      
+        int relPhase = (Math.abs(nodes2[0].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq());
+        int relPhase_next = (Math.abs(nodes2[1].getPhase() - nodes1[1].getPhase())%nodes1[1].getFreq());
+        //System.out.println("frameNumber: " + frameNumber + " i: " + i + " nodes1[0]: " + nodes1[0].getID() + " nodes2[0]: " + nodes2[0].getID() + " nodes1[1]: " + nodes1[1].getID() + " nodes2[1]: " + nodes2[1].getID() + " relPhase: " + relPhase + " relPhase_next: " + relPhase_next + " whichSlot: " + whichSlot);
+      	//Bad phase value
+        if(Math.abs(relPhase-relPhase_next) <= 1) {
+        	g2d.setColor(Color.RED);
+        	//g2d.fillRect(startX+i*xScale, startY+(Math.abs(Chart.nodes2[i]-Chart.nodes1[i])),xScale, yScale);       
+        } 
+        //Bad frequency value 
+        if(Math.abs(nodes1[1].getFreq() - nodes1[0].getFreq()) > 3) {
+        	g2d.setColor(Color.GREEN);
+        	g2d.drawOval(startX+k*xScale,startY+relPhase,4,4);
+        } 
+        //Good value
+        if(Math.abs(relPhase-relPhase_next) > 1 &&  Math.abs(nodes1[1].getFreq() - nodes1[0].getFreq()) <= 3)
+        	g2d.setColor(Color.BLACK);  
+        //Draw relative phase points
+        g2d.drawLine(startX+posX*xScale,startY+relPhase,startX+(posX+1)*xScale,startY+relPhase_next);
+        posX++;
+      }
+    	//g2d.drawLine(startX+i*xScale,startY+(Math.abs(Chart.nodes2[i]-Chart.nodes1[i])),startX+(i+1)*xScale,startY+(Math.abs(Chart.nodes2[i+1] - Chart.nodes1[i+1])));
+    }  
+    
+     	
+	}
+}
+ /* 
   public void paintComponent(Graphics g){
     Font font = new Font("font",3,20);
 		super.paintComponent(g); 
@@ -90,36 +191,31 @@ class PlotFunctionPanel extends JPanel {
 	      /*if(posX<MAX)
 	        posX++;
 	      else
-	        posX = 0;*/
+	        posX = 0;
 	    } 
 	  }
 	  //g2d.drawString("Ready: ",startX-10, startY-10);
 	  //g2d.drawString("Slots.size(): " +  " DataCollector.slots.get(0).getAllNode().size(): " + " : " + pairs,startX+20,startY+20);
 		repaint();
 	}
-}
+}*/
 
 class SomeAction extends AbstractAction {  
-	int control;
+	int whichSlot;
 	PlotFunctionPanel panel;
-	boolean pairs;
-  public SomeAction(String text, int temp, PlotFunctionPanel pnl, boolean pair )  
+  public SomeAction(String text, int whichSlot, PlotFunctionPanel pnl)  
   {  
-    super( text );  
-	  control = temp;
+    super(text);  
+	  this.whichSlot = whichSlot;
 	  panel = pnl;
-	  pairs = pair;
   }  
     
   public void actionPerformed( ActionEvent e )  
   {  
-    if(pairs){
-		  panel.pairs = true;
-		  panel.whichSlot = control;
-	  }else{
-		  panel.pairs = false;
-		  panel.whichMote = control;
-	  }
+    //this.panel.setBackground(Color.YELLOW);
+	  //Dimension d = panel.getSize();
+	  //this.panel.setSize(d.width/2, d.height/2);
+		panel.whichSlot = this.whichSlot;		
   }
 } 
 
@@ -319,10 +415,10 @@ class DataCollector extends JFrame {
   
   public static final byte[][] motesettings = {
 			//  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19
-			{RSYN,  TX1,  TX1,  TX1,  W10, SSYN,  TX1,  TX1,   RX,  W10, RSYN,   RX,  TX1,   RX,  W10, RSYN,   RX,   RX,   RX,  W10},
-			{RSYN,   RX,   RX,   RX,  W10, RSYN,  TX2,  TX2,  TX1,  W10, SSYN,  TX1,   RX,  TX1,  W10, RSYN,   RX,  TX1,   RX,  W10},
-			{RSYN,  TX2,   RX,   RX,  W10, RSYN,   RX,   RX,   RX,  W10, RSYN,  TX2,  TX2,  TX2,  W10, SSYN,  TX1,   RX,  TX1,  W10},
-			{SSYN,   RX,  TX2,  TX2,  W10, RSYN,   RX,   RX,  TX2,  W10, RSYN,   RX,   RX,   RX,  W10, RSYN,  TX2,  TX2,  TX2,  W10}
+			{RSYN,  TX1,  TX1,  TX1,  W100, SSYN,  TX1,  TX1,   RX,  W100, RSYN,   RX,  TX1,   RX,  W100, RSYN,   RX,   RX,   RX,  W100},
+			{RSYN,   RX,   RX,   RX,  W100, RSYN,  TX2,  TX2,  TX1,  W100, SSYN,  TX1,   RX,  TX1,  W100, RSYN,   RX,  TX1,   RX,  W100},
+			{RSYN,  TX2,   RX,   RX,  W100, RSYN,   RX,   RX,   RX,  W100, RSYN,  TX2,  TX2,  TX2,  W100, SSYN,  TX1,   RX,  TX1,  W100},
+			{SSYN,   RX,  TX2,  TX2,  W100, RSYN,   RX,   RX,  TX2,  W100, RSYN,   RX,   RX,   RX,  W100, RSYN,  TX2,  TX2,  TX2,  W100}
   };
   
 
@@ -337,7 +433,7 @@ class DataCollector extends JFrame {
         JMenuBar menubar = new JMenuBar();
 
         JMenu file = new JMenu("Options");
-        file.setMnemonic(KeyEvent.VK_F);
+        //file.setMnemonic(KeyEvent.VK_F);
 
         /*JMenu mote = new JMenu("Motes:");
 		    JMenuItem motes[] = new JMenuItem[motesettings.length];
@@ -347,12 +443,10 @@ class DataCollector extends JFrame {
 		    }*/
 
         JMenu pairs = new JMenu("Slots");
-		    JMenuItem submenus[] = new JMenuItem[DataCollector.motesettings[0].length];
-		    int i=1;
-		    while(i!=NUMBER_OF_FRAMES) {
-			    submenus[i] = new JMenuItem(new SomeAction(i+". slot",i-1,panel,true));
+		    JMenuItem submenus[] = new JMenuItem[NUMBER_OF_FRAMES];
+		    for(int i=0; i<NUMBER_OF_FRAMES; i++) { 
+			    submenus[i] = new JMenuItem(new SomeAction((i+1)+". slot",i,panel));
 			    pairs.add(submenus[i]);
-			    i++;
 		    }
 
         file.add(pairs);
@@ -368,6 +462,7 @@ class DataCollector extends JFrame {
         setSize(frame_window_length, frame_window_height);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setBounds(0,0,frame_window_length, frame_window_height);
 	}
   
 
@@ -433,6 +528,8 @@ class DataCollector extends JFrame {
 		a2 = packet[4] & 0xFF;
 		a1<<=8;
 		a1 = (a1 | a2) & 0x0000FFFF;
+		//p.print("Link source address:");
+		//p.print(a1 + "\n");
     if(terminal_write_option == 0) 
 	    p.print(a1 + "\n");
     //node_index = Arrays.binarySearch(SEQ, a1);
@@ -446,6 +543,7 @@ class DataCollector extends JFrame {
 	    p.print("Data:\n");
     }
     frame_index = packet[8] & 0xFF;
+    //p.print("frame_index: " + frame_index + "\n");
     if(terminal_write_option == 0) 
       p.print("frame_index: " + frame_index + "\n");
     int tmp = 0;
@@ -645,8 +743,10 @@ class DataCollector extends JFrame {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    if(terminal_write_option == 1) 
-      System.out.println("--------------------------------------------");
+    //if(terminal_write_option == 1) 
+     // System.out.println("--------------------------------------------");
+    //System.out.println("Repaint");
+    panel.repaint();
     //if(paintCounter == 200) {
     //  System.out.println("PaintCounter = 100");
       //paintCounter = 0;
@@ -692,15 +792,24 @@ class DataCollector extends JFrame {
     }
     
 	  app = new DataCollector(reader); 	
-	  //panel = new PlotFunctionPanel(frame_window_length, frame_window_height, NUMBER_OF_RX, NUMBER_OF_FRAMES);
-		//app.initUI();
-		//app.setVisible(true);
+	  panel = new PlotFunctionPanel(frame_window_length, frame_window_height, 5, 5, NUMBER_OF_FRAMES);
+		app.initUI();
+		app.getContentPane().add(panel);
+		app.pack();
+		app.setVisible(true);
+		int i = 0;
+		int j = 0;
     try {
       reader.open(PrintStreamMessenger.err);
       for (;;) {
         byte[] packet = reader.readPacket();
         if(packet[7] == (byte)0x3d) {
           app.printPacketTimeStamp(System.out, packet);
+          //j++;
+          //if(j-50 == 0) { 
+					  //panel.repaint();
+					  //j = 0;
+					//}
           //System.out.println();
           System.out.flush();
         }
