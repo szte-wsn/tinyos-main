@@ -38,6 +38,8 @@ class PlotFunctionPanel extends JPanel {
 	static final int bufferLength = 500;
 	Node[] nodes1;
 	Node[] nodes2;
+	int xScale = 3;
+	int yScale = 3;
 	
 	public PlotFunctionPanel(int width,int heigth, int numberOfRx, int frame_number){
 		this.width = width;
@@ -60,7 +62,7 @@ class PlotFunctionPanel extends JPanel {
 	  if(pairs) {
       posX = 0;
       startX = 100;
-      startY = 100;
+      startY = 400;
       for(int i=start; i<DataCollector.slots.size()-2*frame_number; i++){
         //for(int j = 0; j<2; j++) {
           int k = 0;
@@ -79,9 +81,10 @@ class PlotFunctionPanel extends JPanel {
 	        //Slot item = slots.get(data_writer_cnt);
 	        //item.getNodedataStart(i);
 	        //g2d.drawLine(startX+k,startY-DataCollector.slots.get(j).getNodedataStart(i),startX+(k+1),startY-DataCollector.slots.get(j+frame_number).getNodedataStart(i));
-	          g2d.drawLine(startX+posX,startY+(Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()),startX+posX+1,startY+(Math.abs(nodes2[j].getPhase() - nodes2[0].getPhase())%nodes2[0].getFreq()));
+	          g2d.drawLine(startX+posX*xScale,startY-(Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()),startX+(posX+1)*xScale,startY-(Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()) - (Math.abs(nodes2[j].getPhase() - nodes2[0].getPhase())%nodes2[0].getFreq()));
 	          //startY += +(Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()) + (Math.abs(nodes2[j].getPhase() - nodes2[0].getPhase())%nodes2[0].getFreq());
-	        g2d.drawString("KK " + (startX+posX) + " " + (startY) + " " + (startX+posX+1) + " " + (startY) + " " + whichSlot + " " + i + " " + (DataCollector.slots.size()-2*frame_number) + " " + frame_number + " " + posX,startX+100,startY+100);
+	        //g2d.drawString("KK " + (startX+posX) + " " + (startY) + " " + (startX+posX+1) + " " + (startY) + " " + whichSlot + " " + i + " " + (DataCollector.slots.size()-2*frame_number) + " " + frame_number + " " + posX,startX+100,startY+100);
+	          startY -= (Math.abs(nodes1[j].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq()) - (Math.abs(nodes2[j].getPhase() - nodes2[0].getPhase())%nodes2[0].getFreq());
 	        }
 	      posX++;
 	      /*if(posX<MAX)
@@ -445,59 +448,57 @@ class DataCollector extends JFrame {
     frame_index = packet[8] & 0xFF;
     if(terminal_write_option == 0) 
       p.print("frame_index: " + frame_index + "\n");
-    if(motesettings[0][frame_index+1] != NDEB || motesettings[0][frame_index+1] != DEB) {
-      int tmp = 0;
-      for(int i=9; i<9+(NUMBER_OF_RX); i++) {
-        int b1 = packet[i] & 0xFF;
-        if(terminal_write_option == 0) 
-          p.print(tmp + ".dataStart: " + b1 + "\n");
-        dataStart[tmp++] = (short)b1;
-      }
-      tmp = 0;
-		  for(int i=9+(NUMBER_OF_RX); i<9+(NUMBER_OF_RX*3); i+=2) {    
-		    int b1 = packet[i] & 0xFF;
-        int b2 = packet[i+1] & 0xFF;
-        b1 <<= 8;
-        b1 = (b1 | b2) & 0x0000FFFF;
-        if(terminal_write_option == 0) 
-          p.print(tmp + ".freq: " + b1 + "\n");
-        freq[tmp++] = b1;
-      }
-      tmp = 0;
-      for(int i=9+(NUMBER_OF_RX*3); i<9+(NUMBER_OF_RX*4); i++) {
-        int b1 = packet[i] & 0xFF;
-        if(terminal_write_option == 0) 
-          p.print(tmp + ".phase: " + b1 + "\n");
-        phase[tmp++] = (short)b1;
-      }
-      tmp = 0;
-      for(int i=9+(NUMBER_OF_RX*4); i<9+(NUMBER_OF_RX*5); i++) {
-        int b1 = packet[i] & 0xFF;
-        if(terminal_write_option == 0) 
-          p.print(tmp + ".min: " + b1 + "\n");
-        min[tmp++] = (short)b1;
-      }
-      tmp = 0;
-      for(int i=9+(NUMBER_OF_RX*5); i<9+(NUMBER_OF_RX*6); i++) {
-        int b1 = packet[i] & 0xFF;
-        if(terminal_write_option == 0) 
-          p.print(tmp + ".max: " + b1 + "\n");
-        max[tmp++] = (short)b1;
-      }
+    int tmp = 0;
+    for(int i=9; i<9+(NUMBER_OF_RX); i++) {
+      int b1 = packet[i] & 0xFF;
       if(terminal_write_option == 0) 
-		    p.print(" \n");
-		  //long b1 = packet[8+len-4] & 0xFF;
-		  //long b2 = packet[8+len-3] & 0xFF;
-		  //b2 <<= 8;
-		  //long b3 = packet[8+len-2] & 0xFF;
-		  //b3 <<= 16;
-		  //long b4 = packet[8+len-1] & 0xFF;
-		  //b4 <<= 24;
-      //p.print("b1: " + b1 + " b2: " + b2+ " b3: " + b3 + " b4: " + b4 + "\n");
-		  //b1 = (((b1 | b2) | b3) | b4) & 0x00000000FFFFFFFF; 
-		  //p.print("Timestamp: "+b1+" \n");
-      Upload(frame_index-1, freq, phase, min, max, dataStart);
-	  }
+        p.print(tmp + ".dataStart: " + b1 + "\n");
+      dataStart[tmp++] = (short)b1;
+    }
+    tmp = 0;
+	  for(int i=9+(NUMBER_OF_RX); i<9+(NUMBER_OF_RX*3); i+=2) {    
+	    int b1 = packet[i] & 0xFF;
+      int b2 = packet[i+1] & 0xFF;
+      b1 <<= 8;
+      b1 = (b1 | b2) & 0x0000FFFF;
+      if(terminal_write_option == 0) 
+        p.print(tmp + ".freq: " + b1 + "\n");
+      freq[tmp++] = b1;
+    }
+    tmp = 0;
+    for(int i=9+(NUMBER_OF_RX*3); i<9+(NUMBER_OF_RX*4); i++) {
+      int b1 = packet[i] & 0xFF;
+      if(terminal_write_option == 0) 
+        p.print(tmp + ".phase: " + b1 + "\n");
+      phase[tmp++] = (short)b1;
+    }
+    tmp = 0;
+    for(int i=9+(NUMBER_OF_RX*4); i<9+(NUMBER_OF_RX*5); i++) {
+      int b1 = packet[i] & 0xFF;
+      if(terminal_write_option == 0) 
+        p.print(tmp + ".min: " + b1 + "\n");
+      min[tmp++] = (short)b1;
+    }
+    tmp = 0;
+    for(int i=9+(NUMBER_OF_RX*5); i<9+(NUMBER_OF_RX*6); i++) {
+      int b1 = packet[i] & 0xFF;
+      if(terminal_write_option == 0) 
+        p.print(tmp + ".max: " + b1 + "\n");
+      max[tmp++] = (short)b1;
+    }
+    if(terminal_write_option == 0) 
+	    p.print(" \n");
+	  //long b1 = packet[8+len-4] & 0xFF;
+	  //long b2 = packet[8+len-3] & 0xFF;
+	  //b2 <<= 8;
+	  //long b3 = packet[8+len-2] & 0xFF;
+	  //b3 <<= 16;
+	  //long b4 = packet[8+len-1] & 0xFF;
+	  //b4 <<= 24;
+    //p.print("b1: " + b1 + " b2: " + b2+ " b3: " + b3 + " b4: " + b4 + "\n");
+	  //b1 = (((b1 | b2) | b3) | b4) & 0x00000000FFFFFFFF; 
+	  //p.print("Timestamp: "+b1+" \n");
+    Upload(frame_index-1, freq, phase, min, max, dataStart);
   }
   
   //Upload frame with measures    frame numbers: 1,5,9,13
@@ -648,10 +649,10 @@ class DataCollector extends JFrame {
       System.out.println("--------------------------------------------");
     //if(paintCounter == 200) {
     //  System.out.println("PaintCounter = 100");
-      /*paintCounter = 0;
-      app.getContentPane().add(panel);
-		  app.pack();
-		  app.setVisible(true);*/
+      //paintCounter = 0;
+      //app.getContentPane().add(panel);
+		  //app.pack();
+		  //app.setVisible(true);
 		//}
   }
 
@@ -691,9 +692,9 @@ class DataCollector extends JFrame {
     }
     
 	  app = new DataCollector(reader); 	
-	  /*panel = new PlotFunctionPanel(frame_window_length, frame_window_height, NUMBER_OF_RX, NUMBER_OF_FRAMES);
-		app.initUI();
-		app.setVisible(true);*/
+	  //panel = new PlotFunctionPanel(frame_window_length, frame_window_height, NUMBER_OF_RX, NUMBER_OF_FRAMES);
+		//app.initUI();
+		//app.setVisible(true);
     try {
       reader.open(PrintStreamMessenger.err);
       for (;;) {
