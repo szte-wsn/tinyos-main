@@ -11,7 +11,7 @@
 #include "RadioConfig.h"
 
 #define SENDING_TIME 64
-#define BUFFER_LEN 500
+#define BUFFER_LEN 480
 
 #define TX1_THRESHOLD 0
 #define TX2_THRESHOLD 0
@@ -97,6 +97,7 @@ implementation{
 	task void debugProcess();
 	#endif
 	task void sendSync();
+	task void sendDummySync();
 	task void processData();
 	
 	event void Boot.booted(){
@@ -160,8 +161,10 @@ implementation{
 				post processData();
 			}
 			measureBuffer = (measureBuffer + 1) % NUMBER_OF_RX;
-    }else if(settings[activeMeasure]==SSYN || settings[activeMeasure]==DSYN){//sends SYNC in this frame
+    }else if(settings[activeMeasure]==SSYN){//sends SYNC in this frame
 			post sendSync();
+		} else if(settings[activeMeasure]==DSYN){
+			post sendDummySync();
 		}else if(settings[activeMeasure]==DEB || settings[activeMeasure]==NDEB){
 			firetime += DEBUG_SLOT;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
@@ -201,6 +204,13 @@ implementation{
 		currentSyncPacket = (currentSyncPacket+1)%2;
 		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 		memset(currentSyncPayload, 0, sizeof(sync_message_t));
+	}
+	
+	task void sendDummySync(){
+		startOfFrame = startOfFrame+firetime;
+		firetime = SYNC_SLOT;
+		startAlarm(activeMeasure,startOfFrame,firetime);
+		call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
 	}
 
 	task void processData(){

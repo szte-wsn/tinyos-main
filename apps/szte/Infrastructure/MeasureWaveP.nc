@@ -8,14 +8,14 @@ implementation{
 	enum{
 		DROPFIRST=10,//the first DROPFIRST measure will be dropped before phaseref search
 		DROPSECOND=40,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
-		DROPEND=10,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
+		DROPEND=2,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
 		THRESHOLD=2,//phaseref will be the first point after DROPFIRST, where the measurement is above THRESHOLD
 		FILTERWINDOW=5,//lenth of the filter window
-		MINPOINTS=8,//how many minimum point will be searched for period calculation (it might found less)
+		MINPOINTS=4,//how many minimum point will be searched for period calculation (it might found less)
 		MINTRESH_RATIO=3,
 	};
 	
-	#define TEMP_BUFFER_LEN 500
+	#define TEMP_BUFFER_LEN 480
 	
 	enum{
 		START = 0,
@@ -75,7 +75,11 @@ implementation{
 					call DiagMsg.hex8s((&debugdata[offset]),debuglen-offset);
 				call DiagMsg.send();
 			}
-			offset+=8;
+// 			offset+=16;
+			if(offset < 16 )
+				offset=(debuglen/16)*15;
+			else
+				offset+=8;
 		}
 		#endif
 	}
@@ -161,9 +165,9 @@ implementation{
 		debugData(2, input, calcLen);
 		
     //HACK just for debug
-		for(i=calcLen;i<len;i++){
-			data[i]=minAmplitude+(maxAmplitude-minAmplitude)/MINTRESH_RATIO;
-		}
+// 		for(i=calcLen;i<len;i++){
+// 			data[i]=minAmplitude+(maxAmplitude-minAmplitude)/MINTRESH_RATIO;
+// 		}
 		//end of HACK
 		
 		calcEnd = calcStart+calcLen;
@@ -205,14 +209,14 @@ implementation{
 				searchRising = FALSE;
 				if( ++minsFound == 1 ){
 					firstMin = (minStart+i)>>1;
-          //HACK just for debug
+					//HACK just for debug
 					data[firstMin]=255;
-          //end of HACK
+					//end of HACK
 				} else {
 					lastMin = (minStart+i)>>1;
-          //HACK just for debug
+					//HACK just for debug
 					data[lastMin]=255;
-          //end of HACK
+					//end of HACK
 				}
 				#ifdef DEBUG_MEASUREWAVE
 				if(call DiagMsg.record()){

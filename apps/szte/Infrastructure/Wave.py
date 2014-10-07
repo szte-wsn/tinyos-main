@@ -14,10 +14,10 @@ UPDATE_INTERVAL=100
 
 #extracted settings from InfrastructureSettings.h
 SETTINGS="\
-      {RSYN,  TX1,  TX1,  TX1,  W10, SSYN,  TX1,  TX1,   RX,  W10, RSYN,   RX,  TX1,   RX,  W10, RSYN,   RX,   RX,   RX,  W10},\
-      {RSYN,   RX,   RX,   RX,  W10, RSYN,  TX2,  TX2,  TX1,  W10, SSYN,  TX1,   RX,  TX1,  W10, RSYN,   RX,  TX1,   RX,  W10},\
-      {RSYN,  TX2,   RX,   RX,  W10, RSYN,   RX,   RX,   RX,  W10, RSYN,  TX2,  TX2,  TX2,  W10, SSYN,  TX1,   RX,  TX1,  W10},\
-      {SSYN,   RX,  TX2,  TX2,  W10, RSYN,   RX,   RX,  TX2,  W10, RSYN,   RX,   RX,   RX,  W10, RSYN,  TX2,  TX2,  TX2,  W10}\
+			{SSYN,  TX1,   RX,   RX,  W10, RSYN,  TX1,   RX,   RX,  W10, RSYN,  TX1,   RX,   RX,  W10, RSYN,  TX1,  TX1,  TX1,  W10},\
+			{RSYN,  TX2,  TX1,  TX1,  W10, SSYN,   RX,  TX1,   RX,  W10, RSYN,   RX,  TX1,   RX,  W10, RSYN,  TX2,   RX,   RX,  W10},\
+			{RSYN,   RX,  TX2,   RX,  W10, RSYN,  TX2 , TX2 , TX1,  W10, SSYN,   RX,   RX,  TX1,  W10, RSYN,   RX,  TX2,   RX,  W10},\
+			{RSYN,   RX,   RX,  TX2,  W10, RSYN,   RX,   RX,  TX2,  W10, RSYN,  TX2,  TX2,  TX2,  W10, SSYN,   RX,   RX,  TX2,  W10}\
 "
 #must be a sync slot
 CLEARSLOT=0
@@ -33,8 +33,8 @@ slots=[]
 rxCounter=[]
 
 class Wave:
-  WAVE_PARTS=7
-  REAL_WAVELENGTH=500
+  WAVE_PARTS=6
+  REAL_WAVELENGTH=480
   
   def __init__(self, nodeid, waveform):
     self.data=[]
@@ -74,7 +74,7 @@ class Receiver:
       
       for i in range(len(rxCounter[self.drawId-NODEIDSHIFT])):
         self.subplots.append(self.fig.add_subplot(plotrows,plotcolumns,i+1))
-        self.subplots[i].set_title(rxCounter[self.drawId][i]) # slot Nr would be better
+        self.subplots[i].set_title(rxCounter[self.drawId-NODEIDSHIFT][i]) # slot Nr would be better
         #this takes too much space
         #self.subplots[i].set_xlabel('time [sample]')
         #self.subplots[i].set_ylabel('RSSI')
@@ -120,10 +120,12 @@ class Receiver:
             if self.waves[i].received == msg.get_whichPartOfTheWaveform():
               self.waves[i].addValues(msg.get_data())
             break #there should be only one element in the list whith the same nodeid and waveform
-    elif msg.get_amType() == SyncMsg.AM_TYPE and msg.get_originalAm() == SYNCAMTYPE and msg.get_frame()-1 == CLEARSLOT: #sync sends the next frame's number
-      self.plotDirty=True
-      print(len(self.waves))
-      self.waves=[]
+    elif msg.get_originalAm() == SYNCAMTYPE and msg.get_frame()-1 == CLEARSLOT: #sync sends the next frame's number
+        self.plotDirty=True
+        print(len(self.waves))
+        self.waves=[]
+    if msg.get_amType() == SyncMsg.AM_TYPE and msg.get_frame()-1 < 17 and msg.get_frame()-1 > 0:
+      print(msg)
 
 def main():
   if '-h' in sys.argv or len(sys.argv) < 2:
