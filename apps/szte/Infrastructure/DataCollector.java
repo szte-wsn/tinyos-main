@@ -124,18 +124,22 @@ class PlotFunctionPanel extends JPanel {
       //for(int j=1; j<nodes1.length; j++) {
 	    //startY += (j-1)*100;
 	    if(nodes1[0].getFreq() !=0 && nodes1[1].getFreq() != 0) { //maybe divide by zero in start      
-        int relPhase = (Math.abs(nodes2[0].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq());
-        int relPhase_next = (Math.abs(nodes2[1].getPhase() - nodes1[1].getPhase())%nodes1[1].getFreq());
+        int relPhase = (nodes2[0].getPhase() - nodes1[0].getPhase())%nodes1[0].getFreq();
+        int relPhase_next = (nodes2[1].getPhase() - nodes1[1].getPhase())%nodes1[1].getFreq();
+        if(relPhase < 0) 
+          relPhase+=nodes1[0].getFreq();
+        if(relPhase_next < 0)
+          relPhase_next+=nodes1[1].getFreq();
         //System.out.println("frameNumber: " + frameNumber + " i: " + i + " nodes1[0]: " + nodes1[0].getID() + " nodes2[0]: " + nodes2[0].getID() + " nodes1[1]: " + nodes1[1].getID() + " nodes2[1]: " + nodes2[1].getID() + " relPhase: " + relPhase + " relPhase_next: " + relPhase_next + " whichSlot: " + whichSlot);
       	//Bad phase value
         if(Math.abs(relPhase-relPhase_next) <= 1) {
-        	g2d.setColor(Color.RED);
+        	//g2d.setColor(Color.RED);
         	//g2d.fillRect(startX+i*xScale, startY+(Math.abs(Chart.nodes2[i]-Chart.nodes1[i])),xScale, yScale);       
         } 
         //Bad frequency value 
         if(Math.abs(nodes1[1].getFreq() - nodes1[0].getFreq()) > 3) {
         	g2d.setColor(Color.GREEN);
-        	g2d.drawOval(startX+k*xScale,startY+relPhase,4,4);
+        	g2d.drawOval(startX+posX*xScale,startY+relPhase,4,4);
         } 
         //Good value
         if(Math.abs(relPhase-relPhase_next) > 1 &&  Math.abs(nodes1[1].getFreq() - nodes1[0].getFreq()) <= 3)
@@ -403,6 +407,7 @@ class DataCollector extends JFrame {
   public static final int W10 = 9;
   public static final int W100 = 10;
   public static final int W1k = 11;
+  public static final int DSYN = 12;
 //  public static int NUMBER_OF_INFRAST_NODES = 0;
   public static int NUMBER_OF_FRAMES = 0;
 //  public static int NUMBER_OF_SLOT_IN_FRAME = 0;
@@ -414,11 +419,11 @@ class DataCollector extends JFrame {
   public static int[] node_slot_cnt; //the last slot index for each note
   
   public static final byte[][] motesettings = {
-			//  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19
-			{RSYN,  TX1,  TX1,  TX1,  W100, SSYN,  TX1,  TX1,   RX,  W100, RSYN,   RX,  TX1,   RX,  W100, RSYN,   RX,   RX,   RX,  W100},
-			{RSYN,   RX,   RX,   RX,  W100, RSYN,  TX2,  TX2,  TX1,  W100, SSYN,  TX1,   RX,  TX1,  W100, RSYN,   RX,  TX1,   RX,  W100},
-			{RSYN,  TX2,   RX,   RX,  W100, RSYN,   RX,   RX,   RX,  W100, RSYN,  TX2,  TX2,  TX2,  W100, SSYN,  TX1,   RX,  TX1,  W100},
-			{SSYN,   RX,  TX2,  TX2,  W100, RSYN,   RX,   RX,  TX2,  W100, RSYN,   RX,   RX,   RX,  W100, RSYN,  TX2,  TX2,  TX2,  W100}
+			//  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24    25    26    27    28    29    30    31    32    33    34    35    36    37    38    39    40    41    42    43    44    45    46    47    48    49    50    51    52    53    54    55
+			{DSYN,  TX1,  TX1,   RX, W100, RSYN,  TX1,  TX1,   RX, W100, RSYN,  TX1,  TX1,   RX, W100, RSYN,   RX,   RX,   RX, W100, SSYN,  DEB,  DEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB},
+			{RSYN,   RX,   RX,   RX, W100, SSYN,  TX2,   RX,  TX1, W100, RSYN,  TX2,   RX,  TX1, W100, RSYN,  TX1,  TX1,   RX, W100, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB},
+			{RSYN,  TX2,   RX,  TX1, W100, RSYN,   RX,   RX,   RX, W100, SSYN,   RX,  TX2,  TX2, W100, RSYN,  TX2,   RX,  TX1, W100, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB},
+			{RSYN,   RX,  TX2,  TX2, W100, RSYN,   RX,  TX2,  TX2, W100, RSYN,   RX,   RX,   RX, W100, SSYN,   RX,  TX2,  TX2, W100, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, RSYN, NDEB, NDEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB, DSYN,  DEB,  DEB}
   };
   
 
@@ -743,8 +748,8 @@ class DataCollector extends JFrame {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    //if(terminal_write_option == 1) 
-     // System.out.println("--------------------------------------------");
+    if(terminal_write_option == 1) 
+      System.out.println("--------------------------------------------");
     //System.out.println("Repaint");
     panel.repaint();
     //if(paintCounter == 200) {
@@ -762,7 +767,7 @@ class DataCollector extends JFrame {
     PacketSource reader;
     terminal_write_option = 0;
     if(args.length == 0 || args[0].equals("-comm")){
-      System.err.println("usage: java BaseStationApp [--moteMes or --SF] [-comm <source>]");
+      System.err.println("usage: java BaseStationApp [--moteMes or --SF] [--chart]] [-comm <source>]");
       System.exit(1);
 	  } else if(args.length == 1) {
 	    if(args[0].equals("--SF"))
@@ -792,19 +797,33 @@ class DataCollector extends JFrame {
     }
     
 	  app = new DataCollector(reader); 	
-	  panel = new PlotFunctionPanel(frame_window_length, frame_window_height, 5, 5, NUMBER_OF_FRAMES);
+	  panel = new PlotFunctionPanel(frame_window_length, frame_window_height, 20, 20, NUMBER_OF_FRAMES);
 		app.initUI();
 		app.getContentPane().add(panel);
 		app.pack();
-		app.setVisible(true);
-		int i = 0;
-		int j = 0;
+		//app.setVisible(true);
+		//int i = 0;
+		//int j = 0;
     try {
       reader.open(PrintStreamMessenger.err);
       for (;;) {
         byte[] packet = reader.readPacket();
         if(packet[7] == (byte)0x3d) {
-          app.printPacketTimeStamp(System.out, packet);
+          int frame_index = (packet[8] & 0xFF) - 1;
+          //System.out.println("Frame_index: " + frame_index);
+          int node_id = -1;
+          for(int i=0; i<motesettings.length; i++) {
+            if(motesettings[i][frame_index] == DSYN) {
+              //System.out.println("Node FOUND:" + i);
+              node_id = i;
+              break;
+            }
+          }
+          //System.out.println("Node id: " + node_id);
+          if(node_id == -1) {
+            //System.out.println("IN");
+            app.printPacketTimeStamp(System.out, packet);
+          }
           //j++;
           //if(j-50 == 0) { 
 					  //panel.repaint();
