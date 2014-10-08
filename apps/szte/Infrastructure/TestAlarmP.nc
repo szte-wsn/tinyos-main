@@ -207,6 +207,7 @@ implementation{
 	}
 	
 	task void sendDummySync(){
+		currentSyncPayload->frame = activeMeasure; //activeMeasure is incremented before this task, so it indicates the next slot
 		startOfFrame = startOfFrame+firetime;
 		firetime = SYNC_SLOT;
 		startAlarm(activeMeasure,startOfFrame,firetime);
