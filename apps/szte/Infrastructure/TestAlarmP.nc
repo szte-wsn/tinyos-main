@@ -274,7 +274,6 @@ implementation{
 						}
 					}
 					measureBuffer = measureBuffer%NUMBER_OF_RX;
-					processBuffer = measureBuffer-1;
 				}
 			}
 		}
