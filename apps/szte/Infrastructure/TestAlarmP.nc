@@ -154,7 +154,13 @@ implementation{
 			call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
 		}else if(settings[activeMeasure]==RX){ //receiver
 			uint16_t time = 0;
+			#ifndef DEBUG_COLLECTOR
 			call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
+			#else
+			for(time=0;time<BUFFER_LEN;time++){
+				buffer[measureBuffer][time]=activeMeasure;
+			}
+			#endif
 			if(processBufferState == PROCESS_IDLE){
 				processBufferState++;
 				processBuffer = measureBuffer;
@@ -235,7 +241,11 @@ implementation{
 				currentSyncPayload->max[processBuffer] = call MeasureWave.getMaxAmplitude();
 				break;
 			case PROCESS_FREQ:
+				#ifndef DEBUG_COLLECTOR
 				currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
+				#else
+				currentSyncPayload->freq[processBuffer] = buffer[processBuffer][0];
+				#endif
 				break;
 			case PROCESS_PHASE:
 				currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
