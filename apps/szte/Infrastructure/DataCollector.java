@@ -433,6 +433,7 @@ class DataCollector extends JFrame {
   int sf_cnt;     //sf counter
   int data_writer_cnt;
   static int terminal_write_option;  //0 - incoming data, 1 - superframe
+  static boolean chart; // view chart or not
 
   public void initUI(){
         JMenuBar menubar = new JMenuBar();
@@ -488,6 +489,7 @@ class DataCollector extends JFrame {
         if(motesettings[0][i] == RX || motesettings[0][i] == TX1 || motesettings[0][i] == TX2)
           NUMBER_OF_FRAMES++;
     }
+    //System.out.println("Number of frames:" + NUMBER_OF_FRAMES);
     /*for(int i=0; i<motesettings.length; i++) {
       for(int j=0; j<motesettings[0].length; j++) {
         if(motesettings[i][j] == SSYN) {
@@ -634,7 +636,7 @@ class DataCollector extends JFrame {
     //if(terminal_write_option == 0) 
 //      System.out.println("frame_number: " + frame + " slot_start " + slot_start + " slot_end " + slot_end + " sf_cnt " + sf_cnt +  " slot_start: " + ((frame-NUMBER_OF_FRAMES-1)*NUMBER_OF_SLOT_IN_FRAME) + " a: " + (frame-NUMBER_OF_FRAMES) + " b " + NUMBER_OF_SLOT_IN_FRAME  + "\n-------------------\n");
 //    System.out.println("frame_number: " + frame + "\n");
-    int p_cnt = 0;  //which freq,phase pair processed
+      //which freq,phase pair processed
     int slot_cnt = sf_cnt == 0 ? 0 : frame_mes+1;
     int node_id = 0;
     //System.out.println("frame_mes: " + frame_mes + " sf_cnt: " + sf_cnt + " slot_cnt: " + slot_cnt + " NUMBER_OF_SSYN: " + NUMBER_OF_SSYN);
@@ -644,6 +646,13 @@ class DataCollector extends JFrame {
         node_id = i;
         break;
       }
+    }
+    int p_cnt = 0;
+    for(int i=0; i<motesettings[node_id].length; i++) {
+      if(motesettings[node_id][i] == SSYN) 
+        break;
+      if(motesettings[node_id][i] == RX) 
+        p_cnt++;
     }
     //System.out.println("slot_cnt: " + slot_cnt + " node_id: " + node_id + " motesettings value: " + motesettings[node_id][frame_mes] + " node_slot_cnt: " + node_slot_cnt[node_id]); 
     while(frame_mes != slot_cnt) {
@@ -692,6 +701,8 @@ class DataCollector extends JFrame {
       slot_cnt++;
       if(slot_cnt >= motesettings[0].length) 
         slot_cnt = 0;
+      if(p_cnt >= NUMBER_OF_RX) 
+        p_cnt = 0;
     } //while end
     //System.out.println("\n\n");
   }
@@ -751,7 +762,8 @@ class DataCollector extends JFrame {
     if(terminal_write_option == 1) 
       System.out.println("--------------------------------------------");
     //System.out.println("Repaint");
-    panel.repaint();
+    if(chart)
+      panel.repaint();
     //if(paintCounter == 200) {
     //  System.out.println("PaintCounter = 100");
       //paintCounter = 0;
@@ -761,30 +773,44 @@ class DataCollector extends JFrame {
 		//}
   }
 
-  public static void main(String[] args) throws Exception 
-  {
+  public static void main(String[] args) throws Exception {
     String source = null;
     PacketSource reader;
     terminal_write_option = 0;
+    chart = false; 
     if(args.length == 0 || args[0].equals("-comm")){
       System.err.println("usage: java BaseStationApp [--moteMes or --SF] [--chart]] [-comm <source>]");
       System.exit(1);
-	  } else if(args.length == 1) {
+	  } 
+	  if(args.length == 1) {
+	 /*   if(args[0].equals("--SF"))
+  	    terminal_write_option = 1;
+      else if(args[0].equals("--moteMes"))
+        terminal_write_option = 0;
+      else {*/
+        System.err.println("usage: java BaseStationApp [--moteMes or --SF] [-comm <source>]");
+        System.exit(1);
+      //}
+    }
+	  if(args.length >= 2) {
 	    if(args[0].equals("--SF"))
   	    terminal_write_option = 1;
       else if(args[0].equals("--moteMes"))
         terminal_write_option = 0;
-        else {
-          System.err.println("usage: java BaseStationApp [--moteMes or --SF] [-comm <source>]");
-          System.exit(1);
-        }
-	  } else if(args.length >= 2 && args[1].equals("-comm")) {
-	    if(args[0].equals("--SF"))
-  	    terminal_write_option = 1;
-	    source = args[2];
-	  } else {
-      System.err.println("usage: java BaseStationApp [--moteMes or --SF] [-comm <source>]");
-		  System.exit(1);
+      else {
+        System.err.println("usage: java BaseStationApp [--moteMes or --SF] [-comm <source>]");
+        System.exit(1);
+      }
+	    if(args[1].equals("-comm")) {
+	      chart = false;
+	      source = args[2];
+      } else if(args[1].equals("--chart") && args[2].equals("-comm")) {
+        chart = true;
+	      source = args[3];
+      } else {
+        System.err.println("usage: java BaseStationApp [--moteMes or --SF] [-comm <source>]");
+		    System.exit(1);
+		  }
 	  }
     if (source == null) {	
       reader = BuildSource.makePacketSource();
@@ -796,21 +822,28 @@ class DataCollector extends JFrame {
       System.exit(2);
     }
     
-	  app = new DataCollector(reader); 	
-	  panel = new PlotFunctionPanel(frame_window_length, frame_window_height, 20, 20, NUMBER_OF_FRAMES);
-		app.initUI();
-		app.getContentPane().add(panel);
-		app.pack();
-		//app.setVisible(true);
+	  app = new DataCollector(reader); 
+	  if(chart) {	
+	    panel = new PlotFunctionPanel(frame_window_length, frame_window_height, 20, 20, NUMBER_OF_FRAMES);
+		  app.initUI();
+		  app.getContentPane().add(panel);
+		  app.pack();
+		  app.setVisible(true);
+		}
 		//int i = 0;
 		//int j = 0;
     try {
       reader.open(PrintStreamMessenger.err);
       for (;;) {
         byte[] packet = reader.readPacket();
+        //System.out.print("AMID: " + packet[7] + " ");
         if(packet[7] == (byte)0x3d) {
           int frame_index = (packet[8] & 0xFF) - 1;
-          //System.out.println("Frame_index: " + frame_index);
+          int a1 = packet[3] & 0xFF;
+		      int a2 = packet[4] & 0xFF;
+		      a1<<=8;
+		      a1 = (a1 | a2) & 0x0000FFFF;
+          //System.out.println("Frame_index: " + frame_index + " node_id: " + a1);
           int node_id = -1;
           for(int i=0; i<motesettings.length; i++) {
             if(motesettings[i][frame_index] == DSYN) {
