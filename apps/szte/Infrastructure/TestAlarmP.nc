@@ -221,6 +221,7 @@ implementation{
 	}
 
 	task void processData(){
+    #ifndef DISABLE_PROCESSING
 		switch(processBufferState){
 			case PROCESS_IDLE://we probably run out of calculation time
 				return;
@@ -261,6 +262,7 @@ implementation{
 			}
 		}
 		post processData();
+    #endif
 	}
 
 	/*
