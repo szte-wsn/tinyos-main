@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.LinkedList;
 
 import net.tinyos.message.Message;
@@ -8,7 +9,8 @@ import net.tinyos.message.MoteIF;
 
 
 public class SuperFrameMerger implements MessageListener{
-	HashSet<SlotListener> listeners;
+	
+	Hashtable<Integer, HashSet<SlotListener>> listeners; //maps a number of SlotListeners to a slot id
 	MoteSettings ms;
 	LinkedList<ArrayList<Slot>> superFrames = new LinkedList<ArrayList<Slot>>();
 	int lastSlot;
@@ -38,24 +40,34 @@ public class SuperFrameMerger implements MessageListener{
 	public SuperFrameMerger(MoteIF moteInterface, String motesettingsPath) throws Exception{
 		this.moteInterface = moteInterface;
 		ms = new MoteSettings(motesettingsPath);
-		listeners = new HashSet<SlotListener>();
+		listeners = new Hashtable<>();
 		
 		replaceSuperFrame(true);
 		replaceSuperFrame(true);
 		lastSlot = -1;
 	}
 	
-	public void registerListener(SlotListener newListener){
+	public void registerListener(SlotListener newListener, int slotNumber){
 		if(listeners.isEmpty())
 			moteInterface.registerListener(new SyncMsg(), this);
-		listeners.add(newListener);
+		HashSet<SlotListener> listenerset = listeners.get(slotNumber);
+		if( listenerset == null )
+			listenerset = new HashSet<>();
+		listenerset.add(newListener);
+		listeners.put(slotNumber, listenerset);
 	}
 	
-	public void deregisterListener(SlotListener oldListener){
-		listeners.remove(oldListener);
-		if(listeners.isEmpty())
-			moteInterface.deregisterListener(new SyncMsg(), this);
-		
+	public void deregisterListener(SlotListener oldListener, int slotNumber){
+		HashSet<SlotListener> listenerset = listeners.get(slotNumber);
+		if( listenerset == null || !listenerset.contains(oldListener) ){
+			throw new IllegalArgumentException("Listener wasn't registered for this slot "+ slotNumber);
+		}
+		listenerset.remove(oldListener);
+		if( listenerset.isEmpty() ){
+			listeners.remove(slotNumber);
+			if(listeners.isEmpty())
+				moteInterface.deregisterListener(new SyncMsg(), this);
+		}
 	}
 	
 
@@ -66,10 +78,11 @@ public class SuperFrameMerger implements MessageListener{
 		int dataSource = msg.getSerialPacket().get_header_src();
 		if( currentSlot <= lastSlot ){
 			ArrayList<Slot> signalData = replaceSuperFrame(false);
-			for(Slot s:signalData)
-				if( s != null)
-					for(SlotListener sl:listeners)
-						sl.slotReceived(s);
+			for(int slotid:listeners.keySet()){
+				for(SlotListener listener:listeners.get(slotid)){
+					listener.slotReceived(signalData.get(slotid));
+				}
+			}
 		} 
 		ArrayList<Integer> activeSlots = ms.getSlotNumber(dataSource, MoteSettings.RX);
 		for(int i=0;i<msg.getSettingsNum();i++){

@@ -6,6 +6,7 @@ import net.tinyos.util.PrintStreamMessenger;
 public class Tester implements SlotListener {
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
+	static PhoenixSource phoenix;
 
 	public Tester(String settingsPath) {
 		try {
@@ -15,7 +16,8 @@ public class Tester implements SlotListener {
 			e.printStackTrace();
 			System.exit(1);
 		}
-		sfm.registerListener(this);
+		sfm.registerListener(this,1);
+		sfm.registerListener(this,16);
 	}
 
 	@Override
@@ -38,13 +40,13 @@ public class Tester implements SlotListener {
 		} else if (args.length != 0) {
 			usage();
 		}
-		PhoenixSource phoenix;
 
 		if (source == null) {
 			phoenix = BuildSource.makePhoenix(PrintStreamMessenger.err);
 		} else {
 			phoenix = BuildSource.makePhoenix(source, PrintStreamMessenger.err);
 		}
+		
 
 		moteInterface = new MoteIF(phoenix);
 		new Tester("settings.ini");
