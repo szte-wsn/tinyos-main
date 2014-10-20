@@ -38,11 +38,11 @@ public class MoteSettings {
 		}
 	}
 	
-	public int getNodeNumber(){
+	public int getNumberOfMotes(){
 		return settings.size();
 	}
 	
-	public int getSlotNumber(){
+	public int getNumberOfSlots(){
 		return slotNumber;
 	}
 	

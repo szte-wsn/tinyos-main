@@ -18,7 +18,7 @@ public class SuperFrameMerger implements MessageListener{
 	
 	public ArrayList<Slot> replaceSuperFrame(boolean init){
 		ArrayList<Slot> superFrameSkeleton = new ArrayList<Slot>();
-		for(int i=0;i<ms.getSlotNumber();i++){
+		for(int i=0;i<ms.getNumberOfSlots();i++){
 			if(ms.hasMeasurements(i)){
 				superFrameSkeleton.add(new Slot(
 						i,
@@ -73,33 +73,37 @@ public class SuperFrameMerger implements MessageListener{
 
 	@Override
 	public void messageReceived(int to, Message m) {
-		SyncMsg msg = (SyncMsg)m;
-		int currentSlot = msg.get_frame()-1;
-		int dataSource = msg.getSerialPacket().get_header_src();
-		if( currentSlot <= lastSlot ){
-			ArrayList<Slot> signalData = replaceSuperFrame(false);
-			for(int slotid:listeners.keySet()){
-				for(SlotListener listener:listeners.get(slotid)){
-					listener.slotReceived(signalData.get(slotid));
+		int dataSource = m.getSerialPacket().get_header_src();
+		if( m instanceof SyncMsg ){
+			SyncMsg msg = (SyncMsg)m;
+			int currentSlot = msg.get_frame()-1;
+			if( currentSlot <= lastSlot ){
+				ArrayList<Slot> signalData = replaceSuperFrame(false);
+				for(int slotid:listeners.keySet()){
+					for(SlotListener listener:listeners.get(slotid)){
+						listener.slotReceived(signalData.get(slotid));
+					}
+				}
+			} 
+			ArrayList<Integer> activeSlots = ms.getSlotNumber(dataSource, MoteSettings.RX);
+			for(int i=0;i<msg.getSettingsNum();i++){
+				int receivedslot = activeSlots.get(i);
+				SlotMeasurement meas = new SlotMeasurement(dataSource,
+						msg.getElement_phaseRef(i),
+						msg.getElement_min(i),
+						msg.getElement_max(i),
+						msg.getElement_freq(i),
+						msg.getElement_phase(i));
+				if( receivedslot < currentSlot ){
+					superFrames.getLast().get(receivedslot).addMeasurement(meas);
+				} else {
+					superFrames.getFirst().get(receivedslot).addMeasurement(meas);
 				}
 			}
-		} 
-		ArrayList<Integer> activeSlots = ms.getSlotNumber(dataSource, MoteSettings.RX);
-		for(int i=0;i<msg.getSettingsNum();i++){
-			int receivedslot = activeSlots.get(i);
-			SlotMeasurement meas = new SlotMeasurement(dataSource,
-					msg.getElement_phaseRef(i),
-					msg.getElement_min(i),
-					msg.getElement_max(i),
-					msg.getElement_freq(i),
-					msg.getElement_phase(i));
-			if( receivedslot < currentSlot ){
-				superFrames.getLast().get(receivedslot).addMeasurement(meas);
-			} else {
-				superFrames.getFirst().get(receivedslot).addMeasurement(meas);
-			}
+			lastSlot = currentSlot;
+		} else if( m instanceof WaveForm ){
+
 		}
-		lastSlot = currentSlot;
 	}
 
 }
