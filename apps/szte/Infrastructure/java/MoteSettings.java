@@ -9,6 +9,7 @@ public class MoteSettings {
 	public static final String TX1="TX1";
 	public static final String TX2="TX2";
 	public static final String RX="RX";
+	public static final String SSYN="SSYN";
 	private static final int NODEIDSHIFT=1;
 	
 	private ArrayList<String[]> settings = new ArrayList<String[]>();
@@ -44,6 +45,21 @@ public class MoteSettings {
 	
 	public int getNumberOfSlots(){
 		return slotNumber;
+	}
+	
+	public boolean isDataSync(int slotnumber, int sender){
+		try {
+			if( settings.get(sender-NODEIDSHIFT)[slotnumber].equals(SSYN) )
+				return true;
+			else
+				return false;
+		} catch( ArrayIndexOutOfBoundsException e ){
+			/* Ok, this is ugly: but this is a very common exception. Usually, the first few
+			 * slots are active, then comes the debug slots. This is the only point where the
+			 * debug slots matters, so we cheat a bit, and let the motesettings.ini to be the same 
+			 */
+			return false;
+		}
 	}
 	
 	public MoteSettings(String pathstring) throws Exception {

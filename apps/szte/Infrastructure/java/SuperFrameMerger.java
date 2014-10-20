@@ -2,6 +2,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.TreeSet;
 
 import net.tinyos.message.Message;
 import net.tinyos.message.MessageListener;
@@ -37,9 +38,9 @@ public class SuperFrameMerger implements MessageListener{
 			return superFrames.getFirst();
 	}
 	
-	public SuperFrameMerger(MoteIF moteInterface, String motesettingsPath) throws Exception{
+	public SuperFrameMerger(MoteIF moteInterface, MoteSettings moteSettings){
 		this.moteInterface = moteInterface;
-		ms = new MoteSettings(motesettingsPath);
+		ms = moteSettings;
 		listeners = new Hashtable<>();
 		
 		replaceSuperFrame(true);
@@ -48,8 +49,10 @@ public class SuperFrameMerger implements MessageListener{
 	}
 	
 	public void registerListener(SlotListener newListener, int slotNumber){
-		if(listeners.isEmpty())
+		if(listeners.isEmpty()){
 			moteInterface.registerListener(new SyncMsg(), this);
+			moteInterface.registerListener(new WaveForm(), this);
+		}
 		HashSet<SlotListener> listenerset = listeners.get(slotNumber);
 		if( listenerset == null )
 			listenerset = new HashSet<>();
@@ -65,45 +68,63 @@ public class SuperFrameMerger implements MessageListener{
 		listenerset.remove(oldListener);
 		if( listenerset.isEmpty() ){
 			listeners.remove(slotNumber);
-			if(listeners.isEmpty())
+			if(listeners.isEmpty()){
 				moteInterface.deregisterListener(new SyncMsg(), this);
+				moteInterface.deregisterListener(new WaveForm(), this);
+			}
 		}
 	}
 	
 
 	@Override
 	public void messageReceived(int to, Message m) {
-		int dataSource = m.getSerialPacket().get_header_src();
+		Integer dataSource = m.getSerialPacket().get_header_src();
 		if( m instanceof SyncMsg ){
 			SyncMsg msg = (SyncMsg)m;
 			int currentSlot = msg.get_frame()-1;
-			if( currentSlot <= lastSlot ){
-				ArrayList<Slot> signalData = replaceSuperFrame(false);
-				for(int slotid:listeners.keySet()){
-					for(SlotListener listener:listeners.get(slotid)){
-						listener.slotReceived(signalData.get(slotid));
+			if( ms.isDataSync(currentSlot, dataSource)){
+				if( currentSlot <= lastSlot ){
+					ArrayList<Slot> signalData = replaceSuperFrame(false);
+					for(int slotid:new TreeSet<>(listeners.keySet())){
+						for(SlotListener listener:listeners.get(slotid)){
+							listener.slotReceived(signalData.get(slotid));
+						}
+					}
+				} 
+				ArrayList<Integer> activeSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
+				for(int i=0;i<msg.getSettingsNum();i++){
+					int receivedslot = activeSlots.get(i);
+					if( receivedslot < currentSlot ){
+						superFrames.getLast().get(receivedslot).addMeasurement(
+								dataSource,
+								msg.getElement_phaseRef(i),
+								msg.getElement_min(i),
+								msg.getElement_max(i),
+								msg.getElement_freq(i),
+								msg.getElement_phase(i)
+								);
+					} else {
+						superFrames.getFirst().get(receivedslot).addMeasurement(
+								dataSource,
+								msg.getElement_phaseRef(i),
+								msg.getElement_min(i),
+								msg.getElement_max(i),
+								msg.getElement_freq(i),
+								msg.getElement_phase(i)
+								);
 					}
 				}
-			} 
-			ArrayList<Integer> activeSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
-			for(int i=0;i<msg.getSettingsNum();i++){
-				int receivedslot = activeSlots.get(i);
-				SlotMeasurement meas = new SlotMeasurement(dataSource,
-						msg.getElement_phaseRef(i),
-						msg.getElement_min(i),
-						msg.getElement_max(i),
-						msg.getElement_freq(i),
-						msg.getElement_phase(i));
-				if( receivedslot < currentSlot ){
-					superFrames.getLast().get(receivedslot).addMeasurement(meas);
-				} else {
-					superFrames.getFirst().get(receivedslot).addMeasurement(meas);
-				}
+				lastSlot = currentSlot;
 			}
-			lastSlot = currentSlot;
 		} else if( m instanceof WaveForm ){
 			WaveForm msg = (WaveForm)m;
-
+			ArrayList<Integer> rxSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
+			if( rxSlots.size() > msg.get_whichWaveform() ){
+				int receivedslot = rxSlots.get(msg.get_whichWaveform());//which slot
+				superFrames.getLast().get(receivedslot).addtoWaveform(dataSource, 
+						msg.get_whichPartOfTheWaveform()*WaveForm.numElements_data(), //offset
+						msg.get_data());
+			}
 		}
 	}
 

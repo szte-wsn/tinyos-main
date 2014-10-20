@@ -3,12 +3,14 @@
 
 #include "InfrastructureSettings.h"
 #define WAVE_MESSAGE_LENGTH 80
+#define BUFFER_LEN 480
 
 enum {
   AM_SYNCMSG = 6,
   AM_WAVE_MESSAGE_T = 7,
   //just for mig
   AM_REAL_SYNC_MESSAGE_T = 0x3d,
+  BUFFER_LEN_MIG = BUFFER_LEN,
 };
 
 typedef nx_struct wave_message_t{

@@ -26,8 +26,8 @@ CFLAGS += -DWFSEND_STARTINDEX=0
 # CFLAGS += -DDEBUG_FILTER
 
 
-TOSMAKE_PRE_EXE_DEPS = DataCollector.class ProcessWave.class DrawWaveform.class WaveForm.py SyncMsg.py
-TOSMAKE_CLEAN_EXTRA = *.class *.pyc $(TOSMAKE_PRE_EXE_DEPS) __pycache__
+TOSMAKE_PRE_EXE_DEPS = DataCollector.class ProcessWave.class DrawWaveform.class WaveForm.py SyncMsg.py java/WaveForm.java java/Consts.java
+TOSMAKE_CLEAN_EXTRA = *.class *.pyc $(TOSMAKE_PRE_EXE_DEPS) __pycache__ java/WaveForm.java java/Consts.java
 
 DataCollector.class: DataCollector.java
 	javac $?
@@ -40,6 +40,12 @@ DrawWaveform.class: DrawWaveform.java
 
 WaveForm.py:
 	nescc-mig python $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -python-classname=WaveForm wave_message_t -o $@
+
+java/WaveForm.java:
+	nescc-mig java $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -java-classname=WaveForm wave_message_t -o $@
+
+java/Consts.java:
+	nescc-ncg java $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -java-classname=Consts BUFFER_LEN_MIG -o $@
 
 SyncMsg.py: 
 	nescc-mig python $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -python-classname=SyncMsg real_sync_message_t -o $@

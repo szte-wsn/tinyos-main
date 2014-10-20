@@ -6,18 +6,22 @@ import net.tinyos.util.PrintStreamMessenger;
 public class Tester implements SlotListener {
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
+	MoteSettings moteSettings;
 	static PhoenixSource phoenix;
 
 	public Tester(String settingsPath) {
 		try {
-			sfm = new SuperFrameMerger(moteInterface, settingsPath);
+			moteSettings=new MoteSettings(settingsPath);
 		} catch (Exception e) {
 			System.err.println("Error: setting.ini is not readable");
 			e.printStackTrace();
 			System.exit(1);
 		}
-		sfm.registerListener(this,1);
-		sfm.registerListener(this,16);
+		sfm = new SuperFrameMerger(moteInterface, moteSettings);
+		for(int i=0; i<moteSettings.getNumberOfSlots();i++){
+			if(moteSettings.hasMeasurements(i))
+				sfm.registerListener(this,i);
+		}
 	}
 
 	@Override

@@ -11,7 +11,6 @@
 #include "RadioConfig.h"
 
 #define SENDING_TIME 64
-#define BUFFER_LEN 480
 
 #define TX1_THRESHOLD 0
 #define TX2_THRESHOLD 0
