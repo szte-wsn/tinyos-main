@@ -67,7 +67,7 @@ public class MoteSettings {
 		return ret;
 	}
 	
-	public ArrayList<Integer> getSlotNumber(int nodeid, String type){
+	public ArrayList<Integer> getSlotNumbers(int nodeid, String type){
 		ArrayList<Integer> ret = new ArrayList<Integer>();
 		for(int i=0;i<slotNumber;i++){
 			if( settings.get(nodeid-NODEIDSHIFT)[i].equals(type) )

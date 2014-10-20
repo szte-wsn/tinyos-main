@@ -85,7 +85,7 @@ public class SuperFrameMerger implements MessageListener{
 					}
 				}
 			} 
-			ArrayList<Integer> activeSlots = ms.getSlotNumber(dataSource, MoteSettings.RX);
+			ArrayList<Integer> activeSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
 			for(int i=0;i<msg.getSettingsNum();i++){
 				int receivedslot = activeSlots.get(i);
 				SlotMeasurement meas = new SlotMeasurement(dataSource,
@@ -102,6 +102,7 @@ public class SuperFrameMerger implements MessageListener{
 			}
 			lastSlot = currentSlot;
 		} else if( m instanceof WaveForm ){
+			WaveForm msg = (WaveForm)m;
 
 		}
 	}
