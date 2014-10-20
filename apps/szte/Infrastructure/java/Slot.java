@@ -23,7 +23,7 @@ class Slot {
 			line+=String.format("%5d/",rx);
 		}
 		line = line.substring(0,line.length()-1);
-		line+=String.format(" %5d",measurements.size());
+		line+=String.format(" Received measurements: %2d",measurements.size());
 		System.out.println(line);
 		for(SlotMeasurement m:measurements){
 			m.print();
