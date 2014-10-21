@@ -1,3 +1,4 @@
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,7 +17,7 @@ public class MoteSettings {
 	private int slotNumber;
 	
 	public void readSettings(Path settingsPath) throws Exception{
-		List<String> temp = Files.readAllLines(settingsPath);
+		List<String> temp = Files.readAllLines(settingsPath, StandardCharsets.UTF_8);
 		for(String line:temp){
 			line = line.replaceAll("\\s",""); //remove whitespaces
 			line = line.replace("{",""); //and unnecesseary chars
