@@ -1,4 +1,4 @@
 
 public interface plotWaveform {
-	void plot(Short[] waveform);
+	void plot(Short[] waveform, short nodeId);
 }
