@@ -37,7 +37,11 @@ class SlotMeasurement {
 	}
 
 	public Short[] getWaveForm() {
-		return (Short[]) waveForm.toArray();
+		Short[] ret = new Short[waveForm.size()];
+		for(int i=0;i<waveForm.size();i++){
+			ret[i] = waveForm.get(i);
+		}
+		return ret;
 	}
 	
 	public boolean isWaveFormComplete() {
