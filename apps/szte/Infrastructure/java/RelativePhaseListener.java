@@ -1,3 +1,3 @@
 public interface RelativePhaseListener {
-	void relativePhaseReceived(int relativePhase, int avg_period, String status);
+	void relativePhaseReceived(double relativePhase, double avg_period, int status, int slotId, int rx1, int rx2);
 }
