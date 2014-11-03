@@ -16,6 +16,8 @@
 #define TX2_THRESHOLD 0
 #define RX_THRESHOLD 0
 
+#define NO_SYNC_TOLERANCE 5
+
 module TestAlarmP{
 	uses interface Boot;
 	uses interface SplitControl;
@@ -71,6 +73,10 @@ implementation{
 		PROCESS_PHASE=7,
 		PROCESS_DONE=8,
 	};
+	
+	enum {
+		NO_SYNC = 0,
+  	};
 
 	typedef struct schedule_t{
 		uint8_t work;
@@ -96,6 +102,9 @@ implementation{
 	norace uint8_t buffer[NUMBER_OF_RX][BUFFER_LEN];
 	norace uint8_t measureBuffer = 0;
 	norace uint8_t processBuffer=0;
+	
+	norace uint8_t unsynchronized;
+	
 	#ifdef ENABLE_DEBUG_SLOTS
 	uint16_t sendedBytesCounter=0;
 	norace uint8_t sendedMeasureCounter = 0;
@@ -111,8 +120,9 @@ implementation{
 	event void Boot.booted(){
 		uint8_t i;
 		call SplitControl.start();
-		firetime = 65000UL;
+		firetime = 65000UL+((uint32_t)TOS_NODE_ID<<16);
 		startOfFrame = firetime;
+		unsynchronized = NO_SYNC;
 		for(i=0;i<NUMBER_OF_SLOTS;i++){
 			settings[i] = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
 		}
@@ -121,7 +131,7 @@ implementation{
 	event void SplitControl.startDone(error_t error){
 		if(TOS_NODE_ID <= NUMBER_OF_INFRAST_NODES){
 			currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
-			call Alarm.startAt(0,(firetime+((uint32_t)TOS_NODE_ID<<16)));
+			call Alarm.startAt(0,firetime);
 			firetime = 0; //! 
 		}
 	}
@@ -145,35 +155,46 @@ implementation{
 			waitToStart = FALSE;
 		}
 		if(settings[activeMeasure]==RSYN){//waits for SYNC in this frame
-			activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
-			startOfFrame = startOfFrame+firetime;
-			firetime = SYNC_SLOT;
-			startAlarm(activeMeasure,startOfFrame,firetime);
-			return;
+			atomic{
+				if(unsynchronized != NO_SYNC){
+					unsynchronized--;
+				}
+				activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+				startOfFrame = startOfFrame+firetime;
+				firetime = SYNC_SLOT;
+				startAlarm(activeMeasure,startOfFrame,firetime);
+				return;
+			}
 		}
 		if(settings[activeMeasure]==TX1 || settings[activeMeasure]==TX2 || settings[activeMeasure]==RX || settings[activeMeasure]==NTRX){
 			firetime += MEAS_SLOT;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
 		if(settings[activeMeasure]==TX1){ //sender
-			call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
+			if(unsynchronized != NO_SYNC){
+				call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
+			}
 		}else if(settings[activeMeasure]==TX2){
-			call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
+			if(unsynchronized != NO_SYNC){
+				call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
+			}
 		}else if(settings[activeMeasure]==RX){ //receiver
-			uint16_t time = 0;
-			#ifndef DEBUG_COLLECTOR
-			call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
-			#else
-			for(time=0;time<BUFFER_LEN;time++){
-				buffer[measureBuffer][time]=activeMeasure;
+			if(unsynchronized != NO_SYNC){
+				uint16_t time = 0;
+				#ifndef DEBUG_COLLECTOR
+				call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
+				#else
+				for(time=0;time<BUFFER_LEN;time++){
+					buffer[measureBuffer][time]=activeMeasure;
+				}
+				#endif
+				if(processBufferState == PROCESS_IDLE){
+					processBufferState++;
+					processBuffer = measureBuffer;
+					post processData();
+				}
+				measureBuffer = (measureBuffer + 1) % NUMBER_OF_RX;
 			}
-			#endif
-			if(processBufferState == PROCESS_IDLE){
-				processBufferState++;
-				processBuffer = measureBuffer;
-				post processData();
-			}
-			measureBuffer = (measureBuffer + 1) % NUMBER_OF_RX;
     }else if(settings[activeMeasure]==SSYN){//sends SYNC in this frame
 			post sendSync();
 		} else if(settings[activeMeasure]==DSYN){
@@ -182,8 +203,10 @@ implementation{
 		}else if(settings[activeMeasure]==DEB || settings[activeMeasure]==NDEB){
 			firetime += DEBUG_SLOT;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
-			if(settings[activeMeasure]==DEB){
-				post debugProcess();
+			if(unsynchronized != NO_SYNC){
+				if(settings[activeMeasure]==DEB){
+					post debugProcess();
+				}
 			}
 		#endif
 		}else if(settings[activeMeasure]==WCAL){
@@ -199,12 +222,17 @@ implementation{
 			firetime += WAIT_SLOT_100;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
+		
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
+		
 		if(activeMeasure == 0){
 			call Leds.led0Toggle();
 			#ifdef ENABLE_DEBUG_SLOTS
 			sendedMeasureCounter = 0;
 			#endif
+		}
+		if(unsynchronized == NO_SYNC){
+			call Leds.set(~NO_SYNC);
 		}
 	}
 	/*
@@ -299,10 +327,10 @@ implementation{
 	event message_t* SyncReceive.receive(message_t* bufPtr, void* payload, uint8_t len){
 		sync_message_t* msg = (sync_message_t*)payload;
 		if(call TimeSyncPacket.isValid(bufPtr)){
-			if(msg->frame == activeMeasure || waitToStart){
+			if(msg->frame == activeMeasure || waitToStart || unsynchronized==NO_SYNC){
 				startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 				firetime = SYNC_SLOT;
-				if(waitToStart){
+				if(waitToStart || unsynchronized==NO_SYNC){
 					int i;
 					activeMeasure = msg->frame;
 					call Alarm.startAt(startOfFrame,firetime);
@@ -315,6 +343,7 @@ implementation{
 					}
 					measureBuffer = measureBuffer%NUMBER_OF_RX;
 				}
+				unsynchronized = NO_SYNC_TOLERANCE;
 			}
 		}
 		return bufPtr;
