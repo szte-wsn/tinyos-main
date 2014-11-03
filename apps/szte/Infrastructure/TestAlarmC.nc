@@ -25,9 +25,14 @@ implementation{
 	components MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;	
 	
-	#ifdef SEND_WAVEFORM
+	#ifdef ENABLE_DEBUG_SLOTS
   components new AMSenderC(AM_WAVE_MESSAGE_T);
 	App.AMSend -> AMSenderC;
+	#endif
+	
+	#if defined(TEST_CALCULATION_TIMING)
+	components DiagMsgC;
+	App.DiagMsg -> DiagMsgC;
 	#endif
 }
 

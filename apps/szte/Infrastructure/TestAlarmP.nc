@@ -26,8 +26,11 @@ module TestAlarmP{
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
-	#ifdef SEND_WAVEFORM	
+	#ifdef ENABLE_DEBUG_SLOTS	
 	uses interface AMSend;
+	#endif
+	#if defined(TEST_CALCULATION_TIMING)
+	uses interface DiagMsg;
 	#endif
 }
 implementation{
@@ -45,6 +48,7 @@ implementation{
 		WAIT_SLOT_1 = 62,
 		WAIT_SLOT_10 = 625,
 		WAIT_SLOT_100 = 6250,
+		WAIT_SLOT_CAL = 93,
 	};
 
 	typedef nx_struct sync_message_t{
@@ -71,6 +75,11 @@ implementation{
 	typedef struct schedule_t{
 		uint8_t work;
 	}schedule_t;
+	
+	#ifdef TEST_CALCULATION_TIMING
+	uint32_t sentpacket = 0;
+	uint32_t droppacket = 0;
+	#endif
   
 
 	norace uint8_t settings[NUMBER_OF_SLOTS];
@@ -87,9 +96,9 @@ implementation{
 	norace uint8_t buffer[NUMBER_OF_RX][BUFFER_LEN];
 	norace uint8_t measureBuffer = 0;
 	norace uint8_t processBuffer=0;
-	#ifdef SEND_WAVEFORM
+	#ifdef ENABLE_DEBUG_SLOTS
 	uint16_t sendedBytesCounter=0;
-	uint8_t sendedMeasureCounter = WFSEND_STARTINDEX;
+	norace uint8_t sendedMeasureCounter = 0;
 	uint8_t sendedMessageCounter = 0;
 	uint8_t failedSendCounter = 0;
 	task void sendWaveform();
@@ -135,7 +144,6 @@ implementation{
 		if(waitToStart){
 			waitToStart = FALSE;
 		}
-		call Leds.set(activeMeasure);
 		if(settings[activeMeasure]==RSYN){//waits for SYNC in this frame
 			activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
 			startOfFrame = startOfFrame+firetime;
@@ -170,14 +178,17 @@ implementation{
 			post sendSync();
 		} else if(settings[activeMeasure]==DSYN){
 			post sendDummySync();
+		#ifdef ENABLE_DEBUG_SLOTS
 		}else if(settings[activeMeasure]==DEB || settings[activeMeasure]==NDEB){
 			firetime += DEBUG_SLOT;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
-			#ifdef SEND_WAVEFORM
 			if(settings[activeMeasure]==DEB){
 				post debugProcess();
 			}
-			#endif
+		#endif
+		}else if(settings[activeMeasure]==WCAL){
+			firetime += WAIT_SLOT_CAL;
+			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}else if(settings[activeMeasure]==W1){
 			firetime += WAIT_SLOT_1;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
@@ -190,8 +201,9 @@ implementation{
 		}
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
 		if(activeMeasure == 0){
-			#ifdef SEND_WAVEFORM
-			sendedMeasureCounter = WFSEND_STARTINDEX;
+			call Leds.led0Toggle();
+			#ifdef ENABLE_DEBUG_SLOTS
+			sendedMeasureCounter = 0;
 			#endif
 		}
 	}
@@ -199,6 +211,9 @@ implementation{
 		Sends sync message.
 	*/
 	task void sendSync(){
+		#ifdef TEST_CALCULATION_TIMING
+		int8_t temp=NUMBER_OF_RX-1;
+		#endif
 		currentSyncPayload->frame = activeMeasure; //activeMeasure is incremented before this task, so it indicates the next slot
 		
 		startOfFrame = startOfFrame+firetime;
@@ -206,6 +221,20 @@ implementation{
 		startAlarm(activeMeasure,startOfFrame,firetime);
 		processBufferState=PROCESS_IDLE;
     call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		if( currentSyncPayload->phaseRef[NUMBER_OF_RX-1] == 0 )
+			call Leds.led3Toggle();
+		#ifdef TEST_CALCULATION_TIMING
+		sentpacket+=NUMBER_OF_RX;
+		while( temp>=0 && currentSyncPayload->phaseRef[temp] == 0 ){
+			droppacket++;
+			temp--;
+		}
+		if(call DiagMsg.record()){
+			call DiagMsg.uint32(sentpacket);
+			call DiagMsg.uint32(droppacket);
+			call DiagMsg.send();
+		}
+		#endif
 		currentSyncPacket = (currentSyncPacket+1)%2;
 		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 		memset(currentSyncPayload, 0, sizeof(sync_message_t));
@@ -298,7 +327,7 @@ implementation{
 
 	}
 
-	#ifdef SEND_WAVEFORM
+	#ifdef ENABLE_DEBUG_SLOTS
 	/*
 	 * What to do between super frames.
 	 */
