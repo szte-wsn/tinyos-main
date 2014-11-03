@@ -112,15 +112,12 @@ implementation{
 	}
 	
 	void getPhaseRef(){
-		uint8_t old;
 	  phaseRef = DROPFIRST;
-		calcEnd = len-DROPEND;
-		old = data[calcEnd];
+		calcEnd = len-DROPEND-1;
 		data[calcEnd] = THRESHOLD;
 		while( data[phaseRef] < THRESHOLD ){
 			phaseRef++;
 		}
-		data[calcEnd] = old;
 		calcStart = phaseRef+DROPSECOND;
 		calcLen = calcEnd - calcStart;
 		if(calcStart < calcEnd)
@@ -138,6 +135,11 @@ implementation{
 		uint8_t tempvalue;
 		
 		debugData(0, input, calcLen);
+		if( calcLen < FILTERWINDOW ){
+			state = NOMINMAX;
+			return;
+		}
+		
 		//first stage input->temp
 		tempvalue = 0;
 		for(i=0;i<halfwindow;i++){
