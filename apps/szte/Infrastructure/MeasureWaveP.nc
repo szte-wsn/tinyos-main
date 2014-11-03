@@ -2,9 +2,16 @@ module MeasureWaveP{
 	provides interface MeasureWave;
 	
 	uses interface DiagMsg;
+#ifdef MEASUREWAVE_PROFILER
+	uses interface LocalTime<TMicro>;
+#endif
 }
 implementation{
 	//consts to configure the calculation algorithm
+	#ifdef MEASUREWAVE_PROFILER
+	uint32_t starttime;
+	uint32_t temptime;
+	#endif
 	enum{
 		DROPFIRST=10,//the first DROPFIRST measure will be dropped before phaseref search
 		DROPSECOND=40,//the filter/period/phase algorithm will search with phaseRef+DROPSECOND startpoint
@@ -249,6 +256,11 @@ implementation{
 	
 	void calculate(uint8_t targetState){
 		while( state < targetState ){
+			#ifdef MEASUREWAVE_PROFILER
+			uint32_t temptimelocal;
+// 			atomic{
+			temptimelocal = call LocalTime.get();
+			#endif
 			switch(state){
 				case START:{
 					getPhaseRef();
@@ -266,6 +278,47 @@ implementation{
 					getPhase();
 				}break;
 			}
+			#ifdef MEASUREWAVE_PROFILER
+			temptimelocal = call LocalTime.get() - temptimelocal;
+// 		  }
+			if( call DiagMsg.record() ){
+				switch(state){
+					case REFFOUND:
+						call DiagMsg.chr('R');
+						break;
+					case FILTERED:
+						call DiagMsg.chr('F');
+						break;
+					case MINMAXFOUND:
+						call DiagMsg.chr('M');
+						break;
+					case PERIODFOUND:
+						call DiagMsg.chr('P');
+						break;
+					case PHASEFOUND:
+						call DiagMsg.chr('H');
+						break;
+					case NODATA:
+						call DiagMsg.chr('r');
+						break;
+					case NOMINMAX:
+						call DiagMsg.chr('m');
+						break;
+					case NOPERIOD:
+						call DiagMsg.chr('p');
+						break;
+					case NOPHASE:
+						call DiagMsg.chr('h');
+						break;
+				}
+				call DiagMsg.uint8(state);
+				call DiagMsg.uint32(call LocalTime.get() - starttime);
+				call DiagMsg.uint32(temptimelocal);
+				call DiagMsg.uint32(call LocalTime.get() - temptime);
+				call DiagMsg.send();
+			}
+			temptime = call LocalTime.get();
+			#endif
 			debugPrint();
 		}
 	}
@@ -274,6 +327,9 @@ implementation{
 		data = newData;
 		len = newLen;
 		state = START;
+		#ifdef MEASUREWAVE_PROFILER
+		starttime = call LocalTime.get();
+		#endif
 	}
 	
 	command uint8_t MeasureWave.getPhaseRef(){
