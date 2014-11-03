@@ -12,19 +12,19 @@ public class RelativePhaseCalculator implements SlotListener {
 	private ArrayList<Integer> registeredSlots;		
 	private MoteSettings ms;
 	private SuperFrameMerger sfm;	
-	private RelativePhaseListener rpsl;
+	private ArrayList<RelativePhaseListener> listeners;
 	private int rx1, rx2;
 	private int tx1, tx2;
 	
 
-	public RelativePhaseCalculator(MoteSettings ms, SuperFrameMerger sfm, int rx1, int rx2, int tx1, int tx2, RelativePhaseListener rpsl) {
+	public RelativePhaseCalculator(MoteSettings ms, SuperFrameMerger sfm, int rx1, int rx2, int tx1, int tx2) {
 		this.ms = ms;
 		this.sfm = sfm;
 		this.rx1 = rx1;
 		this.rx2 = rx2;
 		this.tx1 = tx1;
 		this.tx2 = tx2;
-		this.rpsl = rpsl;
+		listeners = new ArrayList<RelativePhaseListener>();
 		registeredSlots = new ArrayList<Integer>();
 		registerSlots();		
 	}
@@ -42,6 +42,14 @@ public class RelativePhaseCalculator implements SlotListener {
 				sfm.registerListener(this,slot);
 			}
 		}
+	}
+	
+	public void registerListener(RelativePhaseListener newListener){
+		listeners.add(newListener);
+	}
+	
+	public void deregisterListener(RelativePhaseListener oldListener){
+		listeners.remove(oldListener);
 	}
 	
 	//deregistered from all slots
@@ -84,7 +92,8 @@ public class RelativePhaseCalculator implements SlotListener {
 				status = STATUS_PHASE_ZERO;
 		}		
 
-		rpsl.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
+		for(RelativePhaseListener listener : listeners)
+			listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
 	}
 	
 }

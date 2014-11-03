@@ -1,4 +1,11 @@
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.GradientPaint;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.Paint;
+import java.awt.Shape;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -14,6 +21,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
@@ -33,26 +41,71 @@ class AppFrame extends ApplicationFrame {
 		this.setContentPane(panel);
 		panel.add(chart);
 	}
+	
+	//connect all chart renderer to period's chart
+	public void setAllChartRenderer() {	
+		ChartPanel refCp = null;
+		for(Component cp : panel.getComponents()) {	//find the period chart
+			if(((ChartPanel)cp).getChart().getTitle().getText().equals("Period")) {
+				refCp = (ChartPanel) cp;
+				break;
+			}
+		}
+		if(refCp != null)  {
+			for(Component cp : panel.getComponents()) {	//add all chart renderer to period's chart renderer
+				((ChartPanel)cp).getChart().getXYPlot().setRenderer(new RendererSelect((XYSeriesCollection) refCp.getChart().getXYPlot().getDataset()).getTransparencyRenderer());
+			}
+		}
+	}
 }
 
-class FileRecord {
+class RendererSelect {
 	
-	String path;
+	XYSeriesCollection dataSet;
 	
-	public FileRecord(String path){
-		this.path = path;
-		File dir = new File(path);
-		dir.mkdirs();
+	public RendererSelect(XYSeriesCollection dataSet) {
+		this.dataSet = dataSet;
 	}
 	
-	public void writeToFile(double relativePhase, double avgPeriod, int status, String fileName) {
-		try {
-			BufferedWriter out = new BufferedWriter(new FileWriter(path + fileName + ".txt", true));	
-			out.write(String.format("Relative phase: %10.7f Avarage period: %10.5f Status: %2d Time: %5tc\n", relativePhase, avgPeriod, status, new Date()));
-			out.close();
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
+	public XYLineAndShapeRenderer getNormalRenderer() {
+		XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
+		return renderer; 
+	}
+	
+	public XYLineAndShapeRenderer getTransparencyRenderer() {
+		XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(){
+	        @Override
+	        public Paint getItemPaint(int row, int col) {
+	            Paint cpaint = getItemColor(row, col);
+	            if (cpaint == null) {
+	                cpaint = super.getItemPaint(row, col);
+	            }
+	            return cpaint;
+	        }
+
+		    public Color getItemColor(int row, int col) {
+		        double y = dataSet.getYValue(row, col);	//row - series id, col - col-th element of the series
+		        double y2 = 1;
+		        if(col > 0)
+		        	y2 = dataSet.getYValue(row, col-1);
+		        if(y == 0 || y2 == 0) 
+		        	return new Color(0,0,255,0);
+		    	else 
+		        	return (Color) getSeriesPaint(row);
+		    }
+	
+		    @Override
+		    protected void drawFirstPassShape(Graphics2D g2, int pass, int series,
+				int item, Shape shape) {
+		    	g2.setStroke(new BasicStroke(2));
+				Color c1 = getItemColor(series, item);
+				Color c2 = getItemColor(series, item - 1);
+				GradientPaint linePaint = new GradientPaint(0, 0, c1, 0, 0, c2);
+				g2.setPaint(linePaint);
+				g2.draw(shape);
+		    }
+		};
+		return renderer;
 	}
 }
 
@@ -62,23 +115,27 @@ class Chart {
 	static final double PI = Math.PI;
 	static final double PI2 = 2*Math.PI;
 	
+	ChartPanel chartPanel;
+	JFreeChart chart;
 	XYSeriesCollection dataSet; 
 	ArrayList<String> series;	//store the curves dataset index. String = "slotId:rx1,rx2"
+	RendererSelect renderer;
 
-	public Chart(String chartTitle, AppFrame appframe) {
+	public Chart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
 		series = new ArrayList<String>();
 		dataSet = new XYSeriesCollection();
-        JFreeChart chart = createChart(chartTitle);
-        ChartPanel chartPanel = new ChartPanel(chart); 
+		renderer = new RendererSelect(dataSet);
+        JFreeChart chart = createChart(chartTitle, xAxis, yAxis);
+        chartPanel = new ChartPanel(chart); 
         chartPanel.setPreferredSize(new java.awt.Dimension(500, 270));
         appframe.addChartPanel(chartPanel);
 	}
 	
-    private JFreeChart createChart(String chartTitle) {
-    	JFreeChart chart = ChartFactory.createXYLineChart(
+    private JFreeChart createChart(String chartTitle, String xAxis, String yAxis) {
+    	chart = ChartFactory.createXYLineChart(
 			chartTitle,
-			"Sample",
-			"Radian",
+			xAxis,
+			yAxis,
 			dataSet,
 			PlotOrientation.VERTICAL,
 			true, true, false);  
@@ -90,6 +147,7 @@ class Chart {
 		domainAxis.setVerticalTickLabels(true);
 		return chart;       
     }
+
     
 	public void Register(String seriesId, double relativePhase) {		//create new curve in chart
 		XYSeries xys = new XYSeries(seriesId);
@@ -98,23 +156,24 @@ class Chart {
 			xys.add(0,relativePhase);
 		}		
 		else
-			xys.add(dataSet.getDomainUpperBound(false)-1, relativePhase);
+			xys.add(dataSet.getDomainUpperBound(false), relativePhase);	
 		series.add(seriesId);
 	}
 	
-    public void refreshChart(double relativePhase, String seriesId) {
+    public void refreshChart(double relativePhase, String seriesId, double avgPeriod) {
     	XYSeries xys = dataSet.getSeries(series.indexOf(seriesId));
     	xys.add(xys.getMaxX()+1, relativePhase);
     }
+  
 }
 
 class UnwrapChart extends Chart {
 	
-	public UnwrapChart(String chartTitle, AppFrame appframe) {
-		super(chartTitle,appframe);
+	public UnwrapChart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
+		super(chartTitle,appframe, xAxis, yAxis);
 	}
 	
-	public void refreshChart(double relativePhase, String seriesId) {
+	public void refreshChart(double relativePhase, String seriesId, double avgPeriod) {
 		XYSeries xys = dataSet.getSeries(series.indexOf(seriesId));
 		double prev = xys.getDataItem(xys.getItemCount()-1).getYValue();
 		if( prev - relativePhase > PI)
@@ -132,15 +191,13 @@ class DrawThread extends Thread {
 	Chart drwRelativePhase;
 	Chart drwPeriod;
 	UnwrapChart drwUnwrapPhase;
-	FileRecord fr;
 	ArrayList<String> slots;	//String = "slotid,rx1,rx2"
-	
 	public DrawThread(String appTitle, String chartTitle) {
 		appFrame = new AppFrame(appTitle);
-		drwRelativePhase = new Chart("Relative Phase",appFrame);
-		drwPeriod = new Chart("Period",appFrame);
-		drwUnwrapPhase = new UnwrapChart("Unwrap Phase",appFrame);
-		fr = new FileRecord("relativePhases/");
+		drwRelativePhase = new Chart("Relative Phase",appFrame, "Sample", "Radian");
+		drwPeriod = new Chart("Period",appFrame,"Sample", "Sample");
+		drwUnwrapPhase = new UnwrapChart("Unwrap Phase",appFrame, "Sample", "Radian");
+		appFrame.setAllChartRenderer();
 		slots = new ArrayList<String>();
 	}
 	
@@ -157,11 +214,10 @@ class DrawThread extends Thread {
 			drwPeriod.Register(seriesId, relativePhase);
 			drwUnwrapPhase.Register(seriesId, relativePhase);
 		} else {
-			drwRelativePhase.refreshChart(relativePhase, seriesId);
-			drwPeriod.refreshChart(avgPeriod, seriesId);
-			drwUnwrapPhase.refreshChart(relativePhase, seriesId);
+			drwRelativePhase.refreshChart(relativePhase, seriesId, avgPeriod);
+			drwPeriod.refreshChart(avgPeriod, seriesId, avgPeriod);
+			drwUnwrapPhase.refreshChart(relativePhase, seriesId,avgPeriod);
 		}
-		fr.writeToFile(relativePhase, avgPeriod, status, seriesId);
 	}
 }
 
@@ -174,9 +230,12 @@ public class DrawRelativePhase implements RelativePhaseListener{
 		drw.start();
 	}
 
-	public void relativePhaseReceived(double relativePhase, double avgPeriod, int status, int slotId, int rx1, int rx2) {
-		System.out.println("RelPhase: " + relativePhase + " avgPeriod: " + avgPeriod + " " + " status: " + status + " slotId: " + slotId);
-		String str = slotId + ":" + rx1 + "," + rx2;
-		drw.newDataComing(relativePhase, avgPeriod, status, str);
+	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, final int status, int slotId, int rx1, int rx2) {
+		final String str = slotId + ":" + rx1 + "," + rx2;
+		new Thread() {
+			public void run() {
+				drw.newDataComing(relativePhase, avgPeriod, status, str);
+			}
+		}.start();	
 	}
 }
