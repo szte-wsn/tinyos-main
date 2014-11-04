@@ -249,7 +249,7 @@ implementation{
 		startAlarm(activeMeasure,startOfFrame,firetime);
 		processBufferState=PROCESS_IDLE;
     call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
-		if( currentSyncPayload->phaseRef[NUMBER_OF_RX-1] == 0 )
+		if( currentSyncPayload->phase[NUMBER_OF_RX-1] == 255 )
 			call Leds.led3Toggle();
 		#ifdef TEST_CALCULATION_TIMING
 		sentpacket+=NUMBER_OF_RX;
@@ -266,6 +266,7 @@ implementation{
 		currentSyncPacket = (currentSyncPacket+1)%2;
 		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 		memset(currentSyncPayload, 0, sizeof(sync_message_t));
+		memset(currentSyncPayload->phase, 255, NUMBER_OF_RX);
 	}
 	
 	task void sendDummySync(){
