@@ -373,7 +373,7 @@ implementation{
 	command uint8_t MeasureWave.getPhase(){
 		calculate(PHASEFOUND);
 		if( state >= NOPHASE )
-			return 1;
+			return period;
 		else
 			return phase;
 	}
