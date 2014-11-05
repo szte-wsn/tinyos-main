@@ -6,18 +6,15 @@ import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Paint;
 import java.awt.Shape;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 
 import javax.swing.JPanel;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberTickUnit;
+import org.jfree.chart.axis.TickUnitSource;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
@@ -53,7 +50,7 @@ class AppFrame extends ApplicationFrame {
 		}
 		if(refCp != null)  {
 			for(Component cp : panel.getComponents()) {	//add all chart renderer to period's chart renderer
-				((ChartPanel)cp).getChart().getXYPlot().setRenderer(new RendererSelect((XYSeriesCollection) refCp.getChart().getXYPlot().getDataset()).getTransparencyRenderer());
+				((ChartPanel)cp).getChart().getXYPlot().setRenderer(new RendererSelect((XYSeriesCollection) refCp.getChart().getXYPlot().getDataset()).getTransparencyRenderer());				
 			}
 		}
 	}
@@ -94,7 +91,7 @@ class RendererSelect {
 		        	return (Color) getSeriesPaint(row);
 		    }
 	
-		    @Override
+			@Override
 		    protected void drawFirstPassShape(Graphics2D g2, int pass, int series,
 				int item, Shape shape) {
 		    	g2.setStroke(new BasicStroke(2));
@@ -102,6 +99,7 @@ class RendererSelect {
 				Color c2 = getItemColor(series, item - 1);
 				GradientPaint linePaint = new GradientPaint(0, 0, c1, 0, 0, c2);
 				g2.setPaint(linePaint);
+				this.setShapesVisible(false);
 				g2.draw(shape);
 		    }
 		};
@@ -115,11 +113,11 @@ class Chart {
 	static final double PI = Math.PI;
 	static final double PI2 = 2*Math.PI;
 	
-	ChartPanel chartPanel;
-	JFreeChart chart;
-	XYSeriesCollection dataSet; 
-	ArrayList<String> series;	//store the curves dataset index. String = "slotId:rx1,rx2"
-	RendererSelect renderer;
+	private ChartPanel chartPanel;
+	public JFreeChart chart;
+	public XYSeriesCollection dataSet; 
+	public ArrayList<String> series;	//store the curves dataset index. String = "slotId:rx1,rx2"
+	public RendererSelect renderer;
 
 	public Chart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
 		series = new ArrayList<String>();
@@ -149,20 +147,20 @@ class Chart {
     }
 
     
-	public void Register(String seriesId, double relativePhase) {		//create new curve in chart
+	public void Register(String seriesId, double data) {		//create new curve in chart
 		XYSeries xys = new XYSeries(seriesId);
 		dataSet.addSeries(xys);
 		if(dataSet.getDomainUpperBound(false) != dataSet.getDomainUpperBound(false)) {	//check if(dataSet.getDomainUpperBound(false) == NaN)
-			xys.add(0,relativePhase);
+			xys.add(0,data);
 		}		
 		else
-			xys.add(dataSet.getDomainUpperBound(false), relativePhase);	
+			xys.add(dataSet.getDomainUpperBound(false), data);	
 		series.add(seriesId);
 	}
 	
-    public void refreshChart(double relativePhase, String seriesId, double avgPeriod) {
+    public void refreshChart(double data, String seriesId) {
     	XYSeries xys = dataSet.getSeries(series.indexOf(seriesId));
-    	xys.add(xys.getMaxX()+1, relativePhase);
+   		xys.add(xys.getMaxX()+1, data);
     }
   
 }
@@ -197,6 +195,7 @@ class DrawThread extends Thread {
 		drwRelativePhase = new Chart("Relative Phase",appFrame, "Sample", "Radian");
 		drwPeriod = new Chart("Period",appFrame,"Sample", "Sample");
 		drwUnwrapPhase = new UnwrapChart("Unwrap Phase",appFrame, "Sample", "Radian");
+		drwRelativePhase.chart.getXYPlot().getRangeAxis().setRange(0.00,2*Math.PI);
 		appFrame.setAllChartRenderer();
 		slots = new ArrayList<String>();
 	}
@@ -207,16 +206,20 @@ class DrawThread extends Thread {
 		appFrame.setVisible(true);
 	}
 	
-	public void newDataComing(double relativePhase, double avgPeriod, int status, String seriesId) {
+	public void newDataComing(final double relativePhase, final double avgPeriod, int status, final String seriesId) {
 		if(!slots.contains(seriesId)) {	//if not exists in the chart
 			slots.add(seriesId);
 			drwRelativePhase.Register(seriesId, relativePhase);
-			drwPeriod.Register(seriesId, relativePhase);
+			drwPeriod.Register(seriesId, avgPeriod);
 			drwUnwrapPhase.Register(seriesId, relativePhase);
 		} else {
-			drwRelativePhase.refreshChart(relativePhase, seriesId, avgPeriod);
-			drwPeriod.refreshChart(avgPeriod, seriesId, avgPeriod);
-			drwUnwrapPhase.refreshChart(relativePhase, seriesId,avgPeriod);
+			new Thread() {
+				public void run() {
+					drwRelativePhase.refreshChart(relativePhase, seriesId);
+					drwPeriod.refreshChart(avgPeriod, seriesId);
+					drwUnwrapPhase.refreshChart(relativePhase, seriesId,avgPeriod);
+				}
+			}.start();
 		}
 	}
 }
@@ -232,10 +235,6 @@ public class DrawRelativePhase implements RelativePhaseListener{
 
 	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, final int status, int slotId, int rx1, int rx2) {
 		final String str = slotId + ":" + rx1 + "," + rx2;
-		new Thread() {
-			public void run() {
-				drw.newDataComing(relativePhase, avgPeriod, status, str);
-			}
-		}.start();	
+		drw.newDataComing(relativePhase, avgPeriod, status, str);
 	}
 }
