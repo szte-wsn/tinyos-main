@@ -28,8 +28,9 @@ implementation {
 
 	enum {
 		INPUT_LENGTH = 480,
+		FIND_TX_LEVEL = 3,
 		FIND_TX_START = 1,	// first byte is usually non-zero
-		FIND_TX_END = 50,	// tx must start within 50 samples
+		FIND_TX_END = 80,	// tx must start within 80 samples
 		FILTER_START = 120,
 		FILTER_TRIPLETS = (INPUT_LENGTH - FILTER_START - 2) / 3,
 		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
@@ -49,13 +50,13 @@ implementation {
 		*pos2 = 1;
 
 		--pos1;
-		while (*(++pos1) == 0)
+		while (*(++pos1) <= FIND_TX_LEVEL)
 			;
 
 		*pos2 = overwritten;
 
 		if (pos1 != input && pos1 != pos2) {
-			while (*(--pos2) != 0)
+			while (*(--pos2) > FIND_TX_LEVEL)
 				;
 
 			if (pos2 + 1 == pos1) {
@@ -306,17 +307,17 @@ implementation {
 	command void MeasureWave.changeData(uint8_t *newData, uint16_t newLen) {
 #ifdef MEASUREWAVE_PROFILER
 		uint32_t starttime;
-		atomic {
+// 		atomic {
 			starttime = call LocalTime.get();
 #endif
 		phase=period=filter3_max=filter3_min=tx_start=255;
 		process(newData);
 #ifdef MEASUREWAVE_PROFILER
 			starttime = call LocalTime.get() - starttime;
-		}
+// 		}
 		if( call DiagMsg.record() ) {
 			call DiagMsg.uint32(starttime);
-			call DiagMsg.uint8(error);
+			call DiagMsg.uint8(err);
 			call DiagMsg.uint8(period);
 			call DiagMsg.uint8(phase);
 			call DiagMsg.send();
