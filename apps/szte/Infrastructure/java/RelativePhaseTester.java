@@ -5,14 +5,14 @@ import net.tinyos.util.PrintStreamMessenger;
 
 public class RelativePhaseTester implements SlotListener {
 	
-
+	public static final boolean SAVE_TO_FILE = true;
 	public static final String RELATIVEPHASEPATH = "relativePhases/";
 	public static final String IMAGEPATH = "images/";
 
-	int reference = 2;
-	int[] others = {4};
+	int reference = 4;
+	int[] others = {3,5,6};
 	int tx1 = 1;
-	int tx2 = 3;
+	int tx2 = 2;
 		
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
@@ -36,13 +36,22 @@ public class RelativePhaseTester implements SlotListener {
 			if(moteSettings.hasMeasurements(i))
 				sfm.registerListener(this,i);
 		}    	
+		
+		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
+		
+		if(SAVE_TO_FILE) {
+			rpfw = new RelativePhaseFileWriter(RELATIVEPHASEPATH);
+			rpm = new RelativePhaseMap(IMAGEPATH);
+		}
 
     	for(int node:others){
     		RelativePhaseCalculator rpc = new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2);
-    		rpc.registerListener(new DrawRelativePhase("Draw RelativePhase", "Relative Phase"));
-    		rpc.registerListener(new RelativePhaseFileWriter(RELATIVEPHASEPATH));
-    		rpc.registerListener(new RelativePhaseMap(IMAGEPATH));
-    	}
+    		rpc.registerListener(drp);
+    		if(SAVE_TO_FILE) {
+	    		rpc.registerListener(rpfw);
+	    		rpc.registerListener(rpm);
+    		}
+		}
 	}
 
 	@Override
@@ -72,10 +81,7 @@ public class RelativePhaseTester implements SlotListener {
 			phoenix = BuildSource.makePhoenix(source, PrintStreamMessenger.err);
 		}
 		
-
 		moteInterface = new MoteIF(phoenix);
 		new RelativePhaseTester("settings.ini");
-
 	}
-
 }

@@ -42,7 +42,6 @@ class PictureSave {
         
         for(Entry<String, ArrayList<Double>> entry : phase.entrySet()) {
         	String key = entry.getKey();
-//        	System.out.println("key: " + key);
         	ArrayList<Double> node = entry.getValue();
         	for(Double relPhase : node) {
         		double colorScale = relPhase/PI2;
@@ -88,7 +87,7 @@ class PictureSave {
 
 class DataCollect {
 	
-	public static final int MAXSAMPLE = 10;	//the max value of the time domain (y axis)
+	public static final int MAXSAMPLE = 20;	//the max value of the time domain (y axis)
 
 	PictureSave ps;
 	LinkedHashMap<String, ArrayList<Double>> phaseMap;
@@ -106,7 +105,6 @@ class DataCollect {
 			phaseMap.put(str, new ArrayList<Double>());
 			periodMap.put(str, new ArrayList<Double>());
 		}
-//		System.out.println("Begin elements.get(str): " + phaseMap.get(str).size() + " str: " + str);
 		if(phaseMap.get(str).size() >= MAXSAMPLE) {
 			ps.saveDataToPicture(phaseMap, periodMap);
 			for(Entry<String, ArrayList<Double>> entry : phaseMap.entrySet())
@@ -116,7 +114,6 @@ class DataCollect {
 		} 
 		phaseMap.get(str).add(relativePhase);
 		periodMap.get(str).add(period);
-//		System.out.println("End elements.get(str): " + phaseMap.get(str).size() + " str: " + str);
 	}
 	
 }
@@ -134,25 +131,6 @@ public class RelativePhaseMap implements RelativePhaseListener{
 
 	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, int status, int slotId, int rx1, int rx2) {
 		final String str = slotId + ":" + rx1 + "," + rx2;
-//		new Thread() {
-//			public void run() {
-				dc.addElement(relativePhase, avgPeriod, str);
-//			}
-//		}.start();	
+		dc.addElement(relativePhase, avgPeriod, str);	
 	}
-	
-	/*public static void main(String[] args) {
-		RelativePhaseMap rpm = new RelativePhaseMap("images/");
-		for(int i=0; i<13; i++) {
-			for(int j=0; j<10; j++) {
-		//		new Thread() {
-		//			public void run() {
-						dc.addElement(0.5, 50.0, i + "");
-		//			}
-		//		}.start();	
-			}
-		}
-				
-		
-	}*/
 }
