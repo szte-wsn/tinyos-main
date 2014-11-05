@@ -1,3 +1,5 @@
+import java.util.StringTokenizer;
+
 import net.tinyos.message.MoteIF;
 import net.tinyos.packet.BuildSource;
 import net.tinyos.packet.PhoenixSource;
@@ -5,14 +7,14 @@ import net.tinyos.util.PrintStreamMessenger;
 
 public class RelativePhaseTester implements SlotListener {
 	
-	public static final boolean SAVE_TO_FILE = true;
 	public static final String RELATIVEPHASEPATH = "relativePhases/";
 	public static final String IMAGEPATH = "images/";
-
-	int reference = 4;
-	int[] others = {3,5,6};
-	int tx1 = 1;
-	int tx2 = 2;
+	
+	static int reference;
+	static int[] others;
+	static int tx1;
+	static int tx2;
+	static boolean saveToFile;
 		
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
@@ -39,7 +41,7 @@ public class RelativePhaseTester implements SlotListener {
 		
 		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
 		
-		if(SAVE_TO_FILE) {
+		if(saveToFile) {
 			rpfw = new RelativePhaseFileWriter(RELATIVEPHASEPATH);
 			rpm = new RelativePhaseMap(IMAGEPATH);
 		}
@@ -47,7 +49,7 @@ public class RelativePhaseTester implements SlotListener {
     	for(int node:others){
     		RelativePhaseCalculator rpc = new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2);
     		rpc.registerListener(drp);
-    		if(SAVE_TO_FILE) {
+    		if(saveToFile) {
 	    		rpc.registerListener(rpfw);
 	    		rpc.registerListener(rpm);
     		}
@@ -60,13 +62,24 @@ public class RelativePhaseTester implements SlotListener {
 	}
 
 	public static void usage() {
-		System.err.println("Usage: Tester [-comm <source>]");
+		System.err.println("Usage: RelativePhaseTester [-comm <source>] saveToFile(true or false) tx1 tx2 referenceNode rx1,rx2,rx3,...");
 		System.exit(1);
+	}
+	
+	private static void initalize(String[] args) {
+		saveToFile = (args[2].equals("true"));
+		tx1 = Integer.parseInt(args[3]);
+		tx2 = Integer.parseInt(args[4]);
+		reference = Integer.parseInt(args[5]);
+		StringTokenizer st = new StringTokenizer(args[6],",");
+		others = new int[st.countTokens()];
+		for(int i=0; st.hasMoreElements(); i++) 
+			others[i] = (Integer.parseInt((String) st.nextElement()));
 	}
 
 	public static void main(String[] args) {
 		String source = null;
-		if (args.length == 2) {
+		if (args.length == 7) {
 			if (!args[0].equals("-comm")) {
 				usage();
 			}
@@ -80,7 +93,7 @@ public class RelativePhaseTester implements SlotListener {
 		} else {
 			phoenix = BuildSource.makePhoenix(source, PrintStreamMessenger.err);
 		}
-		
+		initalize(args);
 		moteInterface = new MoteIF(phoenix);
 		new RelativePhaseTester("settings.ini");
 	}
