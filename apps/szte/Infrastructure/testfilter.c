@@ -20,12 +20,14 @@
 
 	enum {
 		INPUT_LENGTH = 480,
+		FIND_TX_LEVEL = 3,
 		FIND_TX_START = 1,	// first byte is usually non-zero
-		FIND_TX_END = 50,	// tx must start within 50 samples
+		FIND_TX_END = 80,	// tx must start befor
 		FILTER_START = 120,
 		FILTER_TRIPLETS = (INPUT_LENGTH - FILTER_START - 2) / 3,
 		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
-		ZERO_CROSSINGS = 4
+		ZERO_CROSSINGS = 3,
+		APPROX_WINDOW = 4
 	};
 
 	// finds the start of the real transmission (where it becomes non-zero)
@@ -41,13 +43,13 @@
 		*pos2 = 1;
 
 		--pos1;
-		while (*(++pos1) == 0)
+		while (*(++pos1) <= FIND_TX_LEVEL)
 			;
 
 		*pos2 = overwritten;
 
 		if (pos1 != input && pos1 != pos2) {
-			while (*(--pos2) != 0)
+			while (*(--pos2) > FIND_TX_LEVEL)
 				;
 
 			if (pos2 + 1 == pos1) {
@@ -170,12 +172,76 @@
 	}
 
 	inline bool approx(uint8_t a, uint8_t b) {
-		return a <= b + 3 && b <= a + 3;
+		return a <= b + APPROX_WINDOW && b <= a + APPROX_WINDOW;
 	}
 
 	uint8_t period;
 	uint16_t phase;
-	void find_period_and_phase() {
+
+	void find_period3() {
+		uint8_t a, b, n, m;
+		uint16_t t;
+
+		// period = 0;
+		err = ERR_LARGE_PERIOD;
+
+		t = zero_crossings[1] - zero_crossings[0];
+		if (t > 255)
+			return;
+		a = t;
+
+		t = zero_crossings[2] - zero_crossings[1];
+		if (t > 255)
+			return;
+		b = t;
+
+		err = ERR_PERIOD_MISMATCH;
+
+		if (approx(a, b)) {
+			n = 1 + 1;
+			m = 1 + 2;
+		}
+		else if (approx(a >> 1, b)) {
+			n = 2 + 1;
+			m = 2 + 3;
+		}
+		else if (approx(a, b >> 1)) {
+			n = 1 + 2;
+			m = 1 + 3;
+		}
+//		else if (approx(a/3, b)) {
+//			n = 3 + 1;
+//			m = 3 + 4;
+//		}
+//		else if (approx(a, b/3)) {
+//			n = 1 + 3;
+//			m = 1 + 4;
+//		}
+		else
+			return;
+
+		t = zero_crossings[2] - zero_crossings[0] + 1;
+
+		if (n == 2)
+			period = t >> 1;
+		else if (n == 3)
+			period = t / 3;
+		else
+			period = t >> 2;
+
+		if (period == 0) {
+			err = ERR_ZERO_PERIOD;
+			return;
+		}
+
+		err = ERR_NONE;
+
+		t = zero_crossings[0] + zero_crossings[1] + zero_crossings[2];
+		t -= period * m;
+		phase = (t + 1) / 3;
+	}
+
+	void find_period4() {
 		uint8_t a, b, c, n, m;
 		uint16_t t;
 
@@ -284,7 +350,10 @@
 		if (err != ERR_NONE)
 			return;
 
-		find_period_and_phase();
+		if (ZERO_CROSSINGS == 3)
+			find_period3();
+		else
+			find_period4();
 		if (err != ERR_NONE)
 			return;
 
@@ -401,6 +470,11 @@ void test_zero_crossings() {
 
 void test_process(int argc, char **argv) {
 	int i, j;
+	int hist[10];
+
+	for (i = 0; i < 10; i++)
+		hist[i] = 0;
+
 	for (i = 1; i < argc; i++) {
 		const char *filename = argv[i];
 
@@ -426,7 +500,21 @@ void test_process(int argc, char **argv) {
 		// print_samples(samples, INPUT_LENGTH);
 
 		free(filename_dup);
+
+		if (err == 0)
+			;
+		else if (101 <= err && err <= 108)
+			err = err - 100;
+		else
+			err = 109;
+
+		hist[err] += 1;
 	}
+
+	printf("error codes:");
+	for (i = 0; i < 10; i++)
+		printf(" %d", hist[i]);
+	printf("\n");
 }
 
 void main(int argc, char **argv) {
