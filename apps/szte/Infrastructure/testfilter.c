@@ -1,34 +1,37 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <byteswap.h>
+#include <libgen.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 // finds the start of the real transmission (where it becomes non-zero)
-// we update the byte input[length] and restore it
+// returns 0 if the start could not be found
+// we modify the byte input[length] and restore it
 
-uint8_t find_start_last_zero, find_start_first_data;
-void find_start(uint8_t *input, uint8_t length) {
-	uint8_t *start = input;
+uint8_t find_tx_start(uint8_t *input, uint8_t length) {
+	uint8_t *pos1 = input, *pos2 = input + length;
 	uint8_t overwritten;
 
-	overwritten = start[length];
-	start[length] = 1;
+	overwritten = *pos2;
+	*pos2 = 1;
 
-	--input;
-	while (*(++input) == 0)
+	--pos1;
+	while (*(++pos1) == 0)
 		;
 
-	start[length] = overwritten;
-	find_start_first_data = input - start;
+	*pos2 = overwritten;
 
-	if (find_start_first_data >= length || find_start_first_data == 0) {
-		find_start_last_zero = find_start_first_data;
-	}
-	else {
-		input = start + length;
-		while (*(--input) != 0)
+	if (pos1 != input && pos1 != pos2) {
+		while (*(--pos2) != 0)
 			;
 
-		find_start_last_zero = input - start;
+		if (pos2 + 1 == pos1)
+			return pos1 - input;
 	}
+
+	return 0;
 }
 
 // Calculates the [1,2,3,2,1] filter in place for triplets * 3
@@ -95,8 +98,12 @@ void filter3(uint8_t *input, uint16_t triplets) {
 // finds the positive zero corssings and stores them in a vector
 // it overwrites input[length] and input[length+1] and restores them
 
-int16_t zero_crossings[3];
-void find_zero_crossings(uint8_t *input, uint16_t length, uint8_t low, uint8_t high) {
+enum {
+	ZC_LENGTH = 4
+};
+
+int16_t zero_crossings[ZC_LENGTH];
+uint8_t find_zero_crossings(uint8_t *input, uint16_t length, uint8_t low, uint8_t high) {
 	uint8_t *start = input, *last;
 	uint8_t over1, over2, count, a;
 	int16_t pos1, pos2;
@@ -108,7 +115,7 @@ void find_zero_crossings(uint8_t *input, uint16_t length, uint8_t low, uint8_t h
 	start[length + 1] = high;
 
 	--input;
-	for (count = 0; count < 3; count++) {
+	for (count = 0; count < ZC_LENGTH; count++) {
 		while (*(++input) > low)
 			;
 
@@ -134,15 +141,186 @@ void find_zero_crossings(uint8_t *input, uint16_t length, uint8_t low, uint8_t h
 	start[length] = over1;
 	start[length + 1] = over2;
 
-	while (count < 3)
-		zero_crossings[count++] = -1;
+	return count;
+}
+
+inline bool approx(uint8_t a, uint8_t b) {
+	return a <= b + 3 && b <= a + 3;
+}
+
+uint8_t period;
+uint16_t find_period_and_cross() {
+	uint8_t a, b, c, n, m;
+	uint16_t t;
+	int16_t s;
+
+	t = zero_crossings[1] - zero_crossings[0];
+	if (t > 255)
+		return 104;
+	a = t;
+
+	t = zero_crossings[2] - zero_crossings[1];
+	if (t > 255)
+		return 104;
+	b = t;
+
+	t = zero_crossings[3] - zero_crossings[2];
+	if (t > 255)
+		return 104;
+	c = t;
+
+	if (approx(a, b)) {
+		if (approx(b, c)) {
+			n = 1 + 1 + 1;
+			m = 1 + 2 + 3;
+		}
+		else if (approx(b, c >> 1)) {
+			n = 1 + 1 + 2;
+			m = 1 + 2 + 4;
+		}
+		else if (approx(b >> 1, c)) {
+			n = 2 + 2 + 1;
+			m = 2 + 4 + 5;
+		}
+		else
+			return 105;
+	}
+	else if (approx(a >> 1, b)) {
+		if (approx(b, c)) {
+			n = 2 + 1 + 1;
+			m = 2 + 3 + 4;
+		}
+		else if (approx(b, c >> 1)) {
+			n = 2 + 1 + 2;
+			m = 2 + 3 + 5;
+		}
+		else
+			return 105;
+	}
+	else if (approx(a, b >> 1)) {
+		if (approx(b >> 1, c)) {
+			n = 1 + 2 + 1;
+			m = 1 + 3 + 4;
+		}
+		else if (approx(b >> 1, c >> 1)) {
+			n = 1 + 2 + 2;
+			m = 1 + 3 + 5;
+		}
+		else
+			return 105;
+	}
+	else
+		return 105;
+
+	t = zero_crossings[3] - zero_crossings[0] + (n >> 1);
+
+	if (n == 3)
+		period = t / 3;
+	else if (n == 4)
+		period = t >> 2;
+	else
+		period = t / 5;
+
+	if (period == 0)
+		return 106;
+
+	t = zero_crossings[0] + zero_crossings[1] + zero_crossings[2] + zero_crossings[3];
+	t -= ((uint16_t) period) * m;
+	return (t + 2) >> 2;
+}
+
+// processes the input buffer, calculates the period and phase
+// if the period is zero, then the phase contains the error code
+
+enum {
+	INPUT_LENGTH = 420,
+	FIND_TX_START = 1,	// first byte is usually non-zero
+	FIND_TX_END = 50,	// tx must start within 50 samples
+	FILTER_START = 100,
+	FILTER_TRIPLETS = (INPUT_LENGTH - FILTER_START - 2) / 3,
+	FILTERED_LENGTH = FILTER_TRIPLETS * 3
+};
+
+uint8_t phase;
+uint8_t process(unsigned char *input) {
+	uint8_t tx_start, zc_count;
+	uint8_t a, b;
+	uint16_t cross;
+
+	period = 0;
+	phase = 0;
+
+	// we skip first byte (usually not zero)
+	// start must be within the first 50 samples
+	tx_start = find_tx_start(input + FIND_TX_START, FIND_TX_END - FIND_TX_START);
+	if (tx_start == 0)
+		return 101;
+
+	filter3(input + FILTER_START, FILTER_TRIPLETS);
+	if (filter3_max - filter3_min < 9)
+		return 102;
+
+	a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
+	b = (filter3_max - filter3_min) / 4;
+
+	zc_count = find_zero_crossings(input + FILTER_START, FILTERED_LENGTH, a-b, a+b);
+	if (zc_count < 3)
+		return 103;
+
+	cross = find_period_and_cross();
+	if (period == 0)
+		return cross;
+
+	cross += FILTER_START;
+	cross -= tx_start;
+
+	phase = cross % period;
+	return 0;
 }
 
 // --- testing
 
-void test_find_start() {
+uint8_t samples[512];
+uint16_t read_samples(const char *filename) {
+	FILE *file;
+	uint32_t len = 0;
+	size_t count;
+
+	if (filename == NULL)
+		file = stdin;
+	else {
+		file = fopen(filename, "rb");
+		if (file == NULL) {
+			fprintf(stderr, "Could not open file %s\n", filename);
+			return 0;
+		}
+	}
+
+	count = fread(&len, 4, 1, file);
+	len = __bswap_32(len);
+
+	if (count == 1 && len <= 512) {
+		count = fread(samples, 1, len, file);
+		if (count != len)
+			len = 0;
+	}
+
+	if (filename != NULL)
+		fclose(file);
+
+	return len;
+}
+
+void print_samples(uint8_t *input, uint16_t length) {
+	uint16_t i;
+	for (i = 0; i < length; i++)
+		printf("%u ", (unsigned int) input[i]);
+	printf("\n");
+}
+
+void test_find_tx_start() {
 	uint8_t input[11];
-	uint8_t s,i;
+	uint8_t s,i,start;
 
 	for (s = 0; s < 11; s++) {
 		for (i = 0; i < 11; ++i)
@@ -151,11 +329,11 @@ void test_find_start() {
 		for (i = s; i < s + 5 && i < 10; ++i)
 			input[i] = 1;
 
-		find_start(input, 10);
+		start = find_tx_start(input, 10);
 
 		for (i = 0; i < 11; i++)
 			printf("%u ", (unsigned int) input[i]);
-		printf("- %u %u\n", (unsigned int) find_start_last_zero, (unsigned int) find_start_first_data);
+		printf("- %u\n", (unsigned int) start);
 	}
 }
 
@@ -173,24 +351,68 @@ void test_filter3() {
 			printf("%u ", (unsigned int) input[i]);
 		printf("- %u %u\n", (unsigned int) filter3_min, (unsigned int) filter3_max);
 	}
-
 }
 
-// --- samples
+void test_zero_crossings() {
+	uint8_t i, count;
+	uint8_t input[] = {0, 1, 1, 2, 1, 0, 2, 1, 2, 0, 1, -1, -1};
 
-// hatareset/01800_01007.raw
-uint8_t samples1[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 12, 16, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 16, 16, 15, 15};
+	for (i = 0; i < sizeof(input) - 2; i++)
+		printf("%u ", (unsigned int) input[i]);
+	printf("\n");
 
-// hatareset/01870_01002.raw
-uint8_t samples2[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 12, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 11, 10, 11, 10, 11, 11, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	count = find_zero_crossings(input, sizeof(input) - 2, 0, 1);
+	printf("%d : ", (int) count);
+	for (i = 0; i < ZC_LENGTH; i++)
+		printf("%d ", (int) zero_crossings[i]);
+	printf("\n");
 
-// szep/01871_01007.raw
-uint8_t samples3[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 15, 16, 16, 15, 14, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 14, 13, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 15, 14, 13, 13, 13, 14, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 14, 13, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 14, 13, 13, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 15, 14, 13, 13, 13, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13, 13, 13, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13, 13, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 15, 15, 14, 13, 13, 13, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 13, 13, 13, 14, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 14, 13, 13, 14, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 14, 13, 13, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 13, 13, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 14, 13, 13, 14, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 14, 13, 13, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 14, 13, 13, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 13, 13, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 14, 13, 13, 14, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13, 13, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 14, 13, 13, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 15, 15, 14, 13, 13, 13, 14, 14, 14, 15, 15, 16, 16, 16, 16, 16, 16, 16, 15, 15, 15, 14, 13, 13, 13, 13, 14, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 15};
+	count = find_zero_crossings(input, sizeof(input) - 2, 1, 2);
+	printf("%d : ", (int) count);
+	for (i = 0; i < ZC_LENGTH; i++)
+		printf("%d ", (int) zero_crossings[i]);
+	printf("\n");
 
-// lassu/00145_01002.raw
-uint8_t samples4[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 8, 8, 10, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 10, 9, 9, 10, 9, 9, 9, 10, 9, 10, 10, 10, 9, 9, 9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 9, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 6, 6, 5, 6, 5, 5, 4, 5, 5, 5, 5, 6, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 7, 8, 8, 8, 9, 8, 8, 9, 8, 9, 8, 9, 9, 9, 9, 9, 9, 10, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 13, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 11, 11, 12, 12, 11, 11, 11, 11, 11, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 9, 8, 9, 8, 8, 9, 7, 7, 7, 8, 7, 7, 7, 8, 7, 7, 7, 7, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 6, 6, 6, 7, 7, 7, 8, 7, 8, 8, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 9, 10, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 10, 11, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 11, 12, 11, 12, 12, 12, 11, 12, 12, 12, 12, 12, 12, 12, 12, 11, 11, 11, 10, 10, 10, 10};
+	count = find_zero_crossings(input, sizeof(input) - 2, 0, 2);
+	printf("%d : ", (int) count);
+	for (i = 0; i < ZC_LENGTH; i++)
+		printf("%d ", (int) zero_crossings[i]);
+	printf("\n");
+}
 
-void main() {
-	test_find_start();
+void test_process(int argc, char **argv) {
+	int i, j;
+	for (i = 1; i < argc; i++) {
+		const char *filename = argv[i];
+
+		uint16_t count = read_samples(filename);
+		if (count < INPUT_LENGTH)
+			continue;
+
+		for (j = 0; j < ZC_LENGTH; j++)
+			zero_crossings[j] = 0;
+
+		uint8_t error = process(samples);
+
+		char *filename_dup = strdup(filename);
+		char *filename_bas = basename(filename_dup);
+
+		printf("%s process %d %d %d filter %d %d xing", filename_bas,
+			(int) error, (int) period, (int) phase,
+			(int) filter3_min, (int) filter3_max);
+		for (j = 1; j < ZC_LENGTH; j++)
+			printf(" %d", (int) (zero_crossings[j] - zero_crossings[j-1]));
+		printf("\n");
+
+		// print_samples(samples, INPUT_LENGTH);
+
+		free(filename_dup);
+	}
+}
+
+void main(int argc, char **argv) {
+	// test_find_tx_start();
 	// test_filter3();
+	// test_zero_crossings();
+	test_process(argc, argv);
 }
