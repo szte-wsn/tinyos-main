@@ -6,277 +6,294 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-// finds the start of the real transmission (where it becomes non-zero)
-// returns 0 if the start could not be found
-// we modify the byte input[length] and restore it
+	enum {
+		ERR_NONE = 0,
+		ERR_START_NOT_FOUND = 101,
+		ERR_SMALL_MINMAX_RANGE = 102,
+		ERR_FEW_ZERO_CROSSINGS = 103,
+		ERR_LARGE_PERIOD = 104,
+		ERR_PERIOD_MISMATCH = 105,
+		ERR_ZERO_PERIOD = 106
+	};
 
-uint8_t find_tx_start(uint8_t *input, uint8_t length) {
-	uint8_t *pos1 = input, *pos2 = input + length;
-	uint8_t overwritten;
+	uint8_t err;
 
-	overwritten = *pos2;
-	*pos2 = 1;
+	enum {
+		INPUT_LENGTH = 480,
+		FIND_TX_START = 1,	// first byte is usually non-zero
+		FIND_TX_END = 50,	// tx must start within 50 samples
+		FILTER_START = 120,
+		FILTER_TRIPLETS = (INPUT_LENGTH - FILTER_START - 2) / 3,
+		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
+		ZERO_CROSSINGS = 4
+	};
 
-	--pos1;
-	while (*(++pos1) == 0)
-		;
+	// finds the start of the real transmission (where it becomes non-zero)
+	// returns 0 if the start could not be found
+	// we modify the byte input[length] and restore it
 
-	*pos2 = overwritten;
+	uint8_t tx_start;
+	void find_tx_start(uint8_t *input, uint8_t length) {
+		uint8_t *pos1 = input, *pos2 = input + length;
+		uint8_t overwritten;
 
-	if (pos1 != input && pos1 != pos2) {
-		while (*(--pos2) != 0)
+		overwritten = *pos2;
+		*pos2 = 1;
+
+		--pos1;
+		while (*(++pos1) == 0)
 			;
 
-		if (pos2 + 1 == pos1)
-			return pos1 - input;
+		*pos2 = overwritten;
+
+		if (pos1 != input && pos1 != pos2) {
+			while (*(--pos2) != 0)
+				;
+
+			if (pos2 + 1 == pos1) {
+				tx_start = pos1 - input;
+				return;
+			}
+		}
+
+		tx_start = 0;
+		err = ERR_START_NOT_FOUND;
 	}
 
-	return 0;
-}
+	// Calculates the [1,2,3,2,1] filter in place for triplets * 3
+	// many input samples, it looks 4 samples back into the input
+	// it also calculates the min and max filtered values
 
-// Calculates the [1,2,3,2,1] filter in place for triplets * 3
-// many input samples, it looks 4 samples back into the input
-// it also calculates the min and max filtered values
+	uint8_t filter3_min, filter3_max;
+	void filter3(uint8_t *input, uint16_t triplets) {
+		uint8_t x0 = input[-3];
+		uint8_t x1 = input[-2];
+		uint8_t x2 = input[-1];
 
-uint8_t filter3_min, filter3_max;
-void filter3(uint8_t *input, uint16_t triplets) {
-	uint8_t x0 = input[-3];
-	uint8_t x1 = input[-2];
-	uint8_t x2 = input[-1];
+		uint8_t y0 = input[-4] + x0;
+		uint8_t y1 = y0 + x1;
+		uint8_t y2 = x0 + x1 + x2;
 
-	uint8_t y0 = input[-4] + x0;
-	uint8_t y1 = y0 + x1;
-	uint8_t y2 = x0 + x1 + x2;
+		uint8_t z = y0 + y1 + y2;
 
-	uint8_t z = y0 + y1 + y2;
+		uint8_t min = 255;
+		uint8_t max = 0;
 
-	uint8_t min = 255;
-	uint8_t max = 0;
+		do {
+			z -= y0;
+			y0 = y2 - x0;
+			x0 = *input;
+			y0 += x0;
+			z += y0;
+			*(input++) = z;
 
-	do {
-		z -= y0;
-		y0 = y2 - x0;
-		x0 = *input;
-		y0 += x0;
-		z += y0;
-		*(input++) = z;
+			if (z < min)
+				min = z;
+			if (z > max)
+				max = z;
 
-		if (z < min)
-			min = z;
-		if (z > max)
-			max = z;
+			z -= y1;
+			y1 = y0 - x1;
+			x1 = *input;
+			y1 += x1;
+			z += y1;
+			*(input++) = z;
 
-		z -= y1;
-		y1 = y0 - x1;
-		x1 = *input;
-		y1 += x1;
-		z += y1;
-		*(input++) = z;
+			if (z < min)
+				min = z;
+			if (z > max)
+				max = z;
 
-		if (z < min)
-			min = z;
-		if (z > max)
-			max = z;
+			z -= y2;
+			y2 = y1 - x2;
+			x2 = *input;
+			y2 += x2;
+			z += y2;
+			*(input++) = z;
 
-		z -= y2;
-		y2 = y1 - x2;
-		x2 = *input;
-		y2 += x2;
-		z += y2;
-		*(input++) = z;
+			if (z < min)
+				min = z;
+			if (z > max)
+				max = z;
+		} while (--triplets != 0);
 
-		if (z < min)
-			min = z;
-		if (z > max)
-			max = z;
-	} while (--triplets != 0);
+		filter3_min = min;
+		filter3_max = max;
 
-	filter3_min = min;
-	filter3_max = max;
-}
+		if (filter3_max - filter3_min < 9)
+			err = ERR_SMALL_MINMAX_RANGE;
+	}
 
-// finds the positive zero corssings and stores them in a vector
-// it overwrites input[length] and input[length+1] and restores them
+	// finds the positive zero corssings and stores them in a vector
+	// it overwrites input[length] and input[length+1] and restores them
 
-enum {
-	ZC_LENGTH = 4
-};
+	int16_t zero_crossings[ZERO_CROSSINGS];
+	void find_zero_crossings(uint8_t *input, uint16_t length, uint8_t low, uint8_t high) {
+		uint8_t *start = input, *last;
+		uint8_t over1, over2, count, a;
+		int16_t pos1, pos2;
 
-int16_t zero_crossings[ZC_LENGTH];
-uint8_t find_zero_crossings(uint8_t *input, uint16_t length, uint8_t low, uint8_t high) {
-	uint8_t *start = input, *last;
-	uint8_t over1, over2, count, a;
-	int16_t pos1, pos2;
+		over1 = start[length];
+		over2 = start[length + 1];
 
-	over1 = start[length];
-	over2 = start[length + 1];
+		start[length] = low;
+		start[length + 1] = high;
 
-	start[length] = low;
-	start[length + 1] = high;
+		--input;
+		for (count = 0; count < ZERO_CROSSINGS; count++) {
+			while (*(++input) > low)
+				;
 
-	--input;
-	for (count = 0; count < ZC_LENGTH; count++) {
-		while (*(++input) > low)
-			;
+			last = input;
 
-		last = input;
+			for(;;) {
+				a = *(++input);
+				if (a <= low)
+					last = input;
+				else if (a >= high)
+					break;
+			}
 
-		for(;;) {
-			a = *(++input);
-			if (a <= low)
-				last = input;
-			else if (a >= high)
+			pos1 = last - start;
+			if (pos1 == length) {
+				err = ERR_FEW_ZERO_CROSSINGS;
 				break;
+			}
+
+			pos2 = input - start;
+
+			zero_crossings[count] = (pos1 + pos2) >> 1;
 		}
 
-		pos1 = last - start;
-		if (pos1 == length)
-			break;
-
-		pos2 = input - start;
-
-		zero_crossings[count] = (pos1 + pos2) >> 1;
+		start[length] = over1;
+		start[length + 1] = over2;
 	}
 
-	start[length] = over1;
-	start[length + 1] = over2;
+	inline bool approx(uint8_t a, uint8_t b) {
+		return a <= b + 3 && b <= a + 3;
+	}
 
-	return count;
-}
+	uint8_t period;
+	uint16_t phase;
+	void find_period_and_phase() {
+		uint8_t a, b, c, n, m;
+		uint16_t t;
 
-inline bool approx(uint8_t a, uint8_t b) {
-	return a <= b + 3 && b <= a + 3;
-}
+		// period = 0;
+		err = ERR_LARGE_PERIOD;
 
-uint8_t period;
-uint16_t find_period_and_cross() {
-	uint8_t a, b, c, n, m;
-	uint16_t t;
-	int16_t s;
+		t = zero_crossings[1] - zero_crossings[0];
+		if (t > 255)
+			return;
+		a = t;
 
-	t = zero_crossings[1] - zero_crossings[0];
-	if (t > 255)
-		return 104;
-	a = t;
+		t = zero_crossings[2] - zero_crossings[1];
+		if (t > 255)
+			return;
+		b = t;
 
-	t = zero_crossings[2] - zero_crossings[1];
-	if (t > 255)
-		return 104;
-	b = t;
+		t = zero_crossings[3] - zero_crossings[2];
+		if (t > 255)
+			return;
+		c = t;
 
-	t = zero_crossings[3] - zero_crossings[2];
-	if (t > 255)
-		return 104;
-	c = t;
+		err = ERR_PERIOD_MISMATCH;
 
-	if (approx(a, b)) {
-		if (approx(b, c)) {
-			n = 1 + 1 + 1;
-			m = 1 + 2 + 3;
+		if (approx(a, b)) {
+			if (approx(b, c)) {
+				n = 1 + 1 + 1;
+				m = 1 + 2 + 3;
+			}
+			else if (approx(b, c >> 1)) {
+				n = 1 + 1 + 2;
+				m = 1 + 2 + 4;
+			}
+			else if (approx(b >> 1, c)) {
+				n = 2 + 2 + 1;
+				m = 2 + 4 + 5;
+			}
+			else
+				return;
 		}
-		else if (approx(b, c >> 1)) {
-			n = 1 + 1 + 2;
-			m = 1 + 2 + 4;
+		else if (approx(a >> 1, b)) {
+			if (approx(b, c)) {
+				n = 2 + 1 + 1;
+				m = 2 + 3 + 4;
+			}
+			else if (approx(b, c >> 1)) {
+				n = 2 + 1 + 2;
+				m = 2 + 3 + 5;
+			}
+			else
+				return;
 		}
-		else if (approx(b >> 1, c)) {
-			n = 2 + 2 + 1;
-			m = 2 + 4 + 5;
+		else if (approx(a, b >> 1)) {
+			if (approx(b >> 1, c)) {
+				n = 1 + 2 + 1;
+				m = 1 + 3 + 4;
+			}
+			else if (approx(b >> 1, c >> 1)) {
+				n = 1 + 2 + 2;
+				m = 1 + 3 + 5;
+			}
+			else
+				return;
 		}
 		else
-			return 105;
-	}
-	else if (approx(a >> 1, b)) {
-		if (approx(b, c)) {
-			n = 2 + 1 + 1;
-			m = 2 + 3 + 4;
-		}
-		else if (approx(b, c >> 1)) {
-			n = 2 + 1 + 2;
-			m = 2 + 3 + 5;
-		}
+			return;
+
+		t = zero_crossings[3] - zero_crossings[0] + (n >> 1);
+
+		if (n == 3)
+			period = t / 3;
+		else if (n == 4)
+			period = t >> 2;
 		else
-			return 105;
-	}
-	else if (approx(a, b >> 1)) {
-		if (approx(b >> 1, c)) {
-			n = 1 + 2 + 1;
-			m = 1 + 3 + 4;
+			period = t / 5;
+
+		if (period == 0) {
+			err = ERR_ZERO_PERIOD;
+			return;
 		}
-		else if (approx(b >> 1, c >> 1)) {
-			n = 1 + 2 + 2;
-			m = 1 + 3 + 5;
-		}
-		else
-			return 105;
+
+		err = ERR_NONE;
+
+		t = zero_crossings[0] + zero_crossings[1] + zero_crossings[2] + zero_crossings[3];
+		t -= ((uint16_t) period) * m;
+		phase = (t + 2) >> 2;
 	}
-	else
-		return 105;
 
-	t = zero_crossings[3] - zero_crossings[0] + (n >> 1);
+	// processes the input buffer, calculates the period and phase
+	// if the period is zero, then the phase contains the error code
 
-	if (n == 3)
-		period = t / 3;
-	else if (n == 4)
-		period = t >> 2;
-	else
-		period = t / 5;
+	void process(unsigned char *input) {
+		uint8_t zc_count;
+		uint8_t a, b;
 
-	if (period == 0)
-		return 106;
+		err = ERR_NONE;
 
-	t = zero_crossings[0] + zero_crossings[1] + zero_crossings[2] + zero_crossings[3];
-	t -= ((uint16_t) period) * m;
-	return (t + 2) >> 2;
-}
+		find_tx_start(input + FIND_TX_START, FIND_TX_END - FIND_TX_START);
+		if (err != ERR_NONE)
+			return;
 
-// processes the input buffer, calculates the period and phase
-// if the period is zero, then the phase contains the error code
+		filter3(input + FILTER_START, FILTER_TRIPLETS);
+		if (err != ERR_NONE)
+			return;
 
-enum {
-	INPUT_LENGTH = 420,
-	FIND_TX_START = 1,	// first byte is usually non-zero
-	FIND_TX_END = 50,	// tx must start within 50 samples
-	FILTER_START = 100,
-	FILTER_TRIPLETS = (INPUT_LENGTH - FILTER_START - 2) / 3,
-	FILTERED_LENGTH = FILTER_TRIPLETS * 3
-};
+		a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
+		b = (filter3_max - filter3_min) >> 2;
+		find_zero_crossings(input + FILTER_START, FILTERED_LENGTH, a-b, a+b);
+		if (err != ERR_NONE)
+			return;
 
-uint8_t phase;
-uint8_t process(unsigned char *input) {
-	uint8_t tx_start, zc_count;
-	uint8_t a, b;
-	uint16_t cross;
+		find_period_and_phase();
+		if (err != ERR_NONE)
+			return;
 
-	period = 0;
-	phase = 0;
-
-	// we skip first byte (usually not zero)
-	// start must be within the first 50 samples
-	tx_start = find_tx_start(input + FIND_TX_START, FIND_TX_END - FIND_TX_START);
-	if (tx_start == 0)
-		return 101;
-
-	filter3(input + FILTER_START, FILTER_TRIPLETS);
-	if (filter3_max - filter3_min < 9)
-		return 102;
-
-	a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
-	b = (filter3_max - filter3_min) / 4;
-
-	zc_count = find_zero_crossings(input + FILTER_START, FILTERED_LENGTH, a-b, a+b);
-	if (zc_count < 3)
-		return 103;
-
-	cross = find_period_and_cross();
-	if (period == 0)
-		return cross;
-
-	cross += FILTER_START;
-	cross -= tx_start;
-
-	phase = cross % period;
-	return 0;
-}
+		phase += FILTER_START;
+		phase -= tx_start;
+		phase %= period;
+	}
 
 // --- testing
 
@@ -329,11 +346,12 @@ void test_find_tx_start() {
 		for (i = s; i < s + 5 && i < 10; ++i)
 			input[i] = 1;
 
-		start = find_tx_start(input, 10);
+		err = ERR_NONE;
+		find_tx_start(input, 10);
 
 		for (i = 0; i < 11; i++)
 			printf("%u ", (unsigned int) input[i]);
-		printf("- %u\n", (unsigned int) start);
+		printf("- %u %u\n", (unsigned int) err, (unsigned int) tx_start);
 	}
 }
 
@@ -349,33 +367,36 @@ void test_filter3() {
 
 		for (i = 0; i < 16; i++)
 			printf("%u ", (unsigned int) input[i]);
-		printf("- %u %u\n", (unsigned int) filter3_min, (unsigned int) filter3_max);
+		printf("- %d %u %u\n", (int) err, (unsigned int) filter3_min, (unsigned int) filter3_max);
 	}
 }
 
 void test_zero_crossings() {
-	uint8_t i, count;
-	uint8_t input[] = {0, 1, 1, 2, 1, 0, 2, 1, 2, 0, 1, -1, -1};
+	uint8_t i;
+	uint8_t input[] = {0, 1, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 0, 1, -1, -1};
 
 	for (i = 0; i < sizeof(input) - 2; i++)
 		printf("%u ", (unsigned int) input[i]);
 	printf("\n");
 
-	count = find_zero_crossings(input, sizeof(input) - 2, 0, 1);
-	printf("%d : ", (int) count);
-	for (i = 0; i < ZC_LENGTH; i++)
+	err = ERR_NONE;
+	find_zero_crossings(input, sizeof(input) - 2, 0, 1);
+	printf("%d : ", (int) err);
+	for (i = 0; i < ZERO_CROSSINGS; i++)
 		printf("%d ", (int) zero_crossings[i]);
 	printf("\n");
 
-	count = find_zero_crossings(input, sizeof(input) - 2, 1, 2);
-	printf("%d : ", (int) count);
-	for (i = 0; i < ZC_LENGTH; i++)
+	err = ERR_NONE;
+	find_zero_crossings(input, sizeof(input) - 2, 1, 2);
+	printf("%d : ", (int) err);
+	for (i = 0; i < ZERO_CROSSINGS; i++)
 		printf("%d ", (int) zero_crossings[i]);
 	printf("\n");
 
-	count = find_zero_crossings(input, sizeof(input) - 2, 0, 2);
-	printf("%d : ", (int) count);
-	for (i = 0; i < ZC_LENGTH; i++)
+	err = ERR_NONE;
+	find_zero_crossings(input, sizeof(input) - 2, 0, 2);
+	printf("%d : ", (int) err);
+	for (i = 0; i < ZERO_CROSSINGS; i++)
 		printf("%d ", (int) zero_crossings[i]);
 	printf("\n");
 }
@@ -389,18 +410,18 @@ void test_process(int argc, char **argv) {
 		if (count < INPUT_LENGTH)
 			continue;
 
-		for (j = 0; j < ZC_LENGTH; j++)
+		for (j = 0; j < ZERO_CROSSINGS; j++)
 			zero_crossings[j] = 0;
 
-		uint8_t error = process(samples);
+		process(samples);
 
 		char *filename_dup = strdup(filename);
 		char *filename_bas = basename(filename_dup);
 
 		printf("%s process %d %d %d filter %d %d xing", filename_bas,
-			(int) error, (int) period, (int) phase,
+			(int) err, (int) period, (int) phase,
 			(int) filter3_min, (int) filter3_max);
-		for (j = 1; j < ZC_LENGTH; j++)
+		for (j = 1; j < ZERO_CROSSINGS; j++)
 			printf(" %d", (int) (zero_crossings[j] - zero_crossings[j-1]));
 		printf("\n");
 
