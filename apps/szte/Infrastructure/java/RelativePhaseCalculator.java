@@ -69,8 +69,8 @@ public class RelativePhaseCalculator implements SlotListener {
 		double relativePhase = 0.0;
 		double avgPeriod = 0.0;
 		int status = STATUS_OK;
-		SlotMeasurement referenceNode = new SlotMeasurement(rx1);
-		SlotMeasurement otherNode = new SlotMeasurement(rx2);
+		SlotMeasurement referenceNode = new SlotMeasurement(rx1, null);
+		SlotMeasurement otherNode = new SlotMeasurement(rx2, null);
 
 		ArrayList<SlotMeasurement> slotMeasures = receivedSlot.measurements;
 		

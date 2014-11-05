@@ -35,7 +35,7 @@ class Slot {
 				return true;
 			}
 		}
-		SlotMeasurement meas = new SlotMeasurement(dataSource);
+		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
 		meas.setMeasurement(phaseRef, min, max, period, phase);
 		measurements.add(meas);
 		return false;
@@ -49,7 +49,7 @@ class Slot {
 				return true;
 			}
 		}
-		SlotMeasurement meas = new SlotMeasurement(dataSource);
+		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
 		meas.addToWaveForm(offset, data);
 		measurements.add(meas);
 		return false;
