@@ -275,9 +275,7 @@ implementation {
 	// if the period is zero, then the phase contains the error code
 
 	void process(unsigned char *input) {
-		uint8_t zc_count;
 		uint8_t a, b;
-
 		err = ERR_NONE;
 
 		find_tx_start(input + FIND_TX_START, FIND_TX_END - FIND_TX_START);
@@ -342,10 +340,10 @@ implementation {
 	}
 
 	command uint16_t MeasureWave.getPeriod() {
-		return error == ERROR_NONE ? period ? 0;
+		return err == ERR_NONE ? period : 0;
 	}
 
 	command uint8_t MeasureWave.getPhase() {
-		return error == ERROR_NONE ? phase ? error;
+		return err == ERR_NONE ? phase : err;
 	}
 }

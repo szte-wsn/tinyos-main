@@ -267,9 +267,7 @@
 	// if the period is zero, then the phase contains the error code
 
 	void process(unsigned char *input) {
-		uint8_t zc_count;
 		uint8_t a, b;
-
 		err = ERR_NONE;
 
 		find_tx_start(input + FIND_TX_START, FIND_TX_END - FIND_TX_START);
