@@ -4,10 +4,13 @@ import java.util.ArrayList;
 public class RelativePhaseCalculator implements SlotListener {
 	
 	public static final int STATUS_OK = 0;
-	public static final int STATUS_PERIOD_ZERO = 1;
+	public static final int STATUS_PERIOD_NOT_CALCULATED = 1;
 	public static final int STATUS_PHASE_ZERO = 2;
 	public static final int STATUS_PERIOD_DIFF_LARGE = 3;
-	public static final int PERIOD_DIFF  = 3;
+	public static final int PERIOD_DIFF  = 4;
+	public static final int STATUS_PERIOD_ERROR = 5;
+	public static final int STATUS_PHASE_ERROR = 6;
+	public static final int STATUS_PHASE_NOT_CALCULATED = 7;
 	
 	private ArrayList<Integer> registeredSlots;		
 	private MoteSettings ms;
@@ -77,21 +80,25 @@ public class RelativePhaseCalculator implements SlotListener {
 			if(slotMeasures.get(i).nodeid == rx2)
 				otherNode = slotMeasures.get(i);
 		}
-		
 		if(referenceNode.period == 0 || otherNode.period == 0) {
-			status = STATUS_PERIOD_ZERO;
+			status = STATUS_PERIOD_NOT_CALCULATED;
+		} else if(referenceNode.phase == 255 || otherNode.phase == 255) {
+			status = STATUS_PHASE_NOT_CALCULATED;
+		} else if(referenceNode.period == 1 || otherNode.period == 1) {
+			status = STATUS_PERIOD_ERROR;
+		} else if(referenceNode.phase >= referenceNode.period || otherNode.phase >= otherNode.period) {
+			status = STATUS_PHASE_ERROR;
 		} else if(Math.abs(referenceNode.period - otherNode.period) > PERIOD_DIFF) {
 			status = STATUS_PERIOD_DIFF_LARGE;
 		} else {
 			avgPeriod = (referenceNode.period + otherNode.period)>>1;
-			relativePhase = (referenceNode.phase - otherNode.phase) % avgPeriod;
+			relativePhase = (referenceNode.phase - otherNode.phase);
 			if(relativePhase < 0)
 				relativePhase += avgPeriod;
 			relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
 			if(referenceNode.phase == 0 || otherNode.phase == 0)
 				status = STATUS_PHASE_ZERO;
 		}		
-
 		for(RelativePhaseListener listener : listeners)
 			listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
 	}
