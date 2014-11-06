@@ -166,7 +166,7 @@ implementation {
 			}
 
 			pos1 = last - start;
-			if (pos1 == length) {
+			if (pos1 >= length) {
 				err = ERR_FEW_ZERO_CROSSINGS;
 				break;
 			}
