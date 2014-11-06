@@ -46,7 +46,7 @@ implementation{
   enum {
 		MEAS_SLOT = 80, //measure slot
 		SYNC_SLOT = 150, //sync slot
-		DEBUG_SLOT = 10000, //between super frames
+		DEBUG_SLOT = 6250, //between super frames
 		WAIT_SLOT_1 = 62,
 		WAIT_SLOT_10 = 625,
 		WAIT_SLOT_100 = 6250,
@@ -117,6 +117,24 @@ implementation{
 	task void sendDummySync();
 	task void processData();
 	
+	#ifdef MEASURE_CPU_LOAD
+	uint32_t superframeStart;
+	uint32_t lastTime;
+	uint32_t busyTime;
+	uint32_t lastFrame;
+	uint32_t lastBusy;
+	task void measureTask(){
+		atomic{
+			uint32_t now = call Alarm.getNow();
+			if( (now - lastTime) > 1 ){
+				busyTime += now - lastTime;
+			}
+			lastTime = now;
+		}
+		post measureTask();
+	}
+	#endif
+	
 	event void Boot.booted(){
 		uint8_t i;
 		call SplitControl.start();
@@ -134,6 +152,11 @@ implementation{
 			call Alarm.startAt(0,firetime);
 			firetime = 0; //! 
 		}
+		#ifdef MEASURE_CPU_LOAD
+		post measureTask();
+		lastTime = call Alarm.getNow();
+		busyTime = 0;
+		#endif
 	}
 
 	event void SplitControl.stopDone(error_t error){}
@@ -230,6 +253,12 @@ implementation{
 			#ifdef ENABLE_DEBUG_SLOTS
 			sendedMeasureCounter = 0;
 			#endif
+			#ifdef MEASURE_CPU_LOAD
+			lastFrame = call Alarm.getNow() - superframeStart;
+			lastBusy = busyTime;
+			superframeStart = call Alarm.getNow();
+			busyTime = 0;
+			#endif
 		}
 		if(unsynchronized == NO_SYNC){
 			call Leds.set(~NO_SYNC);
@@ -243,6 +272,10 @@ implementation{
 		int8_t temp=NUMBER_OF_RX-1;
 		#endif
 		currentSyncPayload->frame = activeMeasure; //activeMeasure is incremented before this task, so it indicates the next slot
+		#ifdef MEASURE_CPU_LOAD
+		currentSyncPayload->freq[0] = lastFrame;
+		currentSyncPayload->freq[1] = lastBusy;
+		#endif
 		
 		startOfFrame = startOfFrame+firetime;
 		firetime = SYNC_SLOT;
