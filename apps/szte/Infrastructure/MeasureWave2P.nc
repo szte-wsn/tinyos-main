@@ -354,7 +354,7 @@ implementation {
 			return;
 
 		a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
-		b = (filter3_max - filter3_min) >> 2;
+		b = (filter3_max - filter3_min) >> 3;
 		find_zero_crossings(input + FILTER_START, FILTERED_LENGTH, a-b, a+b);
 		if (err != ERR_NONE)
 			return;
