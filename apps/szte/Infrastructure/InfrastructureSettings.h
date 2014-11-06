@@ -17,11 +17,11 @@ enum {
 	WCAL = 12,
 };
 
-#define FOUR_MOTE 0
-#define FOUR_MOTE_WF 1
-#define PHASEMAP_TEST_13 2
-#define PHASEMAP_TEST_18 3
-#define PROCESSING_DEBUG 4
+#define FOUR_MOTE 1
+#define FOUR_MOTE_WF 2
+#define PHASEMAP_TEST_13 3
+#define PHASEMAP_TEST_18 4
+#define PROCESSING_DEBUG 5
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
