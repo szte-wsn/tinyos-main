@@ -26,12 +26,47 @@ public class WaveformPlotter implements plotWaveform{
 	 */
 	class WaveformChart extends JPanel{
 		
+		public class RefreshThread extends Thread
+		{
+			private XYDataset dataset;
+			private int timeout;
+
+			public RefreshThread(int timeout) {
+		    	this.timeout = timeout;
+			}
+			
+			synchronized public void setDataset(XYDataset dataset) {
+		    	this.dataset = dataset;
+			}
+
+			@Override
+		    public void run()
+		    {
+				Thread.currentThread().setName("ChartRefreshThread");
+				while(true) {
+					synchronized ( this ) {
+						if( dataset != null){
+							chartPanel.getChart().getXYPlot().setDataset(dataset);
+							dataset = null;
+						}
+					}
+					try {
+						Thread.sleep(timeout);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+		    }
+		}
+		
 		private static final long serialVersionUID = 1L;
 	    
 	    /**
 	     * A chart which contains a waveform.
 	     */
 	    private ChartPanel chartPanel;
+	    private RefreshThread rthread;
 		
 		/**
 		 * @param chartTitle The title of the chart. 
@@ -49,6 +84,8 @@ public class WaveformPlotter implements plotWaveform{
 					false , true , false);   
 			chartPanel = new ChartPanel( xylineChart );   
 	        this.add(chartPanel);
+	        rthread = new RefreshThread(500);
+	        rthread.start();
 		}
 		
 		/**
@@ -77,8 +114,8 @@ public class WaveformPlotter implements plotWaveform{
 		 * Refreshes the current waveform with the new data array.
 		 */
 		public void refreshWaveform( Short[] data){
-			XYDataset dataset = createDataset(data ); 
-			chartPanel.getChart().getXYPlot().setDataset(dataset);
+			rthread.setDataset(createDataset(data )); 
+			
 		}
 	}
 

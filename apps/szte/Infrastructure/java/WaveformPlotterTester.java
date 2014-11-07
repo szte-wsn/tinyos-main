@@ -29,15 +29,15 @@ public class WaveformPlotterTester implements SlotListener {
 		sfm = new SuperFrameMerger(moteInterface, moteSettings);
 		if(mode == 'S'){
 			wfprs = new WaveformPlotter(slotOrMoteNumber+". slot");
-			sfm.registerListener(this,slotOrMoteNumber);
 			for( int nodeid: moteSettings.getNodeIds(slotOrMoteNumber, MoteSettings.RX))
 				wfprs.addWaveform( (short) nodeid);
+			sfm.registerListener(this,slotOrMoteNumber);
 		}
 		if(mode == 'M'){
 			wfprs = new WaveformPlotter(slotOrMoteNumber+". mote");
 			for( int slot :moteSettings.getSlotNumbers(slotOrMoteNumber, MoteSettings.RX)){
-				sfm.registerListener(this,slot);
 				wfprs.addWaveform( (short) slot);
+				sfm.registerListener(this,slot);
 			}
 		}
 	}
