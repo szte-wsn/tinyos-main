@@ -1,8 +1,3 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-
 import net.tinyos.message.MoteIF;
 import net.tinyos.packet.BuildSource;
 import net.tinyos.packet.PhoenixSource;
@@ -11,12 +6,10 @@ import net.tinyos.util.PrintStreamMessenger;
 
 public class WaveformPlotterTester implements SlotListener {
 
-	private WaveformPlotter wfpr;
 	char mode;
 	short slotOrMoteNumber;
 
 	WaveformPlotter wfprs;
-	ArrayList<Integer> displayedMotesOrSlots = new ArrayList<Integer>();
 
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
@@ -37,17 +30,14 @@ public class WaveformPlotterTester implements SlotListener {
 		if(mode == 'S'){
 			wfprs = new WaveformPlotter(slotOrMoteNumber+". slot");
 			sfm.registerListener(this,slotOrMoteNumber);
+			for( int nodeid: moteSettings.getNodeIds(slotOrMoteNumber, MoteSettings.RX))
+				wfprs.addWaveform( (short) nodeid);
 		}
 		if(mode == 'M'){
 			wfprs = new WaveformPlotter(slotOrMoteNumber+". mote");
-			int numOfMotes = moteSettings.getNumberOfMotes();
-			for(int i=0;i<numOfMotes;i++){
-				if( i+1 == slotOrMoteNumber){
-					ArrayList<Integer> receiverSlots = moteSettings.getSlotNumbers(slotOrMoteNumber, "RX");
-					for( int slot : receiverSlots ){
-						sfm.registerListener(this,slot);
-					}
-				}
+			for( int slot :moteSettings.getSlotNumbers(slotOrMoteNumber, MoteSettings.RX)){
+				sfm.registerListener(this,slot);
+				wfprs.addWaveform( (short) slot);
 			}
 		}
 	}
@@ -55,45 +45,15 @@ public class WaveformPlotterTester implements SlotListener {
 	@Override
 	public void slotReceived(Slot receivedSlot) {
 		if(mode == 'S'){
-			if(receivedSlot.slotId== slotOrMoteNumber){
-				ArrayList<Integer> receivers = receivedSlot.receivers;
-				for(int i:receivers){
-					if(!displayedMotesOrSlots.contains(i)){
-						displayedMotesOrSlots.add(i);
-						wfprs.addWaveform( (short) i);
-					}else{
-						for(SlotMeasurement meas:receivedSlot.measurements){
-							if(meas.nodeid == i && meas.hasWaveForm){
-								try{
-									wfprs.plot(meas.getWaveForm(), (short) i );
-								}catch(Exception e){
-									System.out.println("Error during drawing the waveform.\n");
-								}
-							}
-						}
-					}
-				}
+			for(SlotMeasurement meas:receivedSlot.measurements){
+				if( meas.hasWaveForm )
+					wfprs.plot(meas.getWaveForm(), (short) meas.nodeid );
 			}
 		}
 		if(mode == 'M'){
-			ArrayList<Integer> receivers = receivedSlot.receivers;
-			for(int i:receivers){
-				if( i == slotOrMoteNumber){
-					if(!displayedMotesOrSlots.contains(receivedSlot.slotId)){
-						displayedMotesOrSlots.add(receivedSlot.slotId);
-						wfprs.addWaveform( (short) receivedSlot.slotId);
-					}else{
-						for(SlotMeasurement meas:receivedSlot.measurements){
-							if(meas.nodeid == slotOrMoteNumber && meas.hasWaveForm){
-								try{
-									wfprs.plot(meas.getWaveForm(), (short) receivedSlot.slotId );
-								}catch(Exception e){
-									System.out.println("Error during drawing the waveform.\n");
-								}
-							}
-						}
-					}
-				}
+			for(SlotMeasurement meas:receivedSlot.measurements){
+				if( meas.hasWaveForm )
+					wfprs.plot(meas.getWaveForm(), (short) receivedSlot.slotId );
 			}
 		}
 		
@@ -110,14 +70,21 @@ public class WaveformPlotterTester implements SlotListener {
 		String source = null;
 		char localMode = 'S';
 		short localslotOrMoteNumber = 0;
-		if (args.length == 3) {
-			if (!args[0].equals("-comm")) {
+		if ( args.length == 1 ){
+			localMode = args[0].charAt(1);  //-Sx or -Mx -> S or M
+			localslotOrMoteNumber = Short.parseShort(args[0].substring(2)); // x from -Sx or -Mx
+		} else if (args.length == 3) {
+			if (args[0].equals("-comm")) {
+				source = args[1];
+				localMode = args[2].charAt(1);  //-Sx or -Mx -> S or M
+				localslotOrMoteNumber = Short.parseShort(args[2].substring(2)); // x from -Sx or -Mx
+			} else if (args[1].equals("-comm")) {
+				source = args[2];
+				localMode = args[0].charAt(1);  //-Sx or -Mx -> S or M
+				localslotOrMoteNumber = Short.parseShort(args[0].substring(2)); // x from -Sx or -Mx
+			} else
 				usage();
-			}
-			source = args[1];
-			localMode = args[2].charAt(1);  //-Sx or -Mx -> S or M
-			localslotOrMoteNumber = Short.parseShort(args[2].substring(2)); // x from -Sx or -Mx
-		} else if (args.length != 0) {
+		} else {
 			usage();
 		}
 
@@ -129,7 +96,7 @@ public class WaveformPlotterTester implements SlotListener {
 
 
 		moteInterface = new MoteIF(phoenix);
-		WaveformPlotterTester tester = new WaveformPlotterTester("settings.ini",localMode, localslotOrMoteNumber);
+		new WaveformPlotterTester("settings.ini",localMode, localslotOrMoteNumber);
 
 	}
 
