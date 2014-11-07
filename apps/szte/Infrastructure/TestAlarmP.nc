@@ -378,6 +378,7 @@ implementation{
 					measureBuffer = measureBuffer%NUMBER_OF_RX;
 				}
 				unsynchronized = NO_SYNC_TOLERANCE;
+				call Leds.set(0);
 			}
 		}
 		return bufPtr;
