@@ -42,7 +42,7 @@ public class WaveformPlotter implements plotWaveform{
 			@Override
 		    public void run()
 		    {
-				Thread.currentThread().setName("ChartRefreshThread");
+				Thread.currentThread().setName("ChartRefreshThread"+title);
 				while(true) {
 					synchronized ( this ) {
 						if( dataset != null){
@@ -67,12 +67,14 @@ public class WaveformPlotter implements plotWaveform{
 	     */
 	    private ChartPanel chartPanel;
 	    private RefreshThread rthread;
+	    private String title;
 		
 		/**
 		 * @param chartTitle The title of the chart. 
 		 * Constructor. Crates a new waveform with empty DataSet();
 		 */
 		public WaveformChart(String chartTitle){
+			this.title = chartTitle;
 			this.setLayout(new GridLayout());
 			XYDataset dataset = createDataset(new Short[Consts.BUFFER_LEN_MIG] );         
 			JFreeChart xylineChart = ChartFactory.createXYLineChart(
