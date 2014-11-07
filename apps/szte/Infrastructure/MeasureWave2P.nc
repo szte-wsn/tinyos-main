@@ -31,9 +31,9 @@ implementation {
 		INPUT_LENGTH = 480,
 		FIND_TX_LEVEL = 3,
 		FIND_TX_START = 1,	// first byte is usually non-zero
-		FIND_TX_END = 80,	// tx must start befor
-		FILTER_START = 120,
-		FILTER_TRIPLETS = (INPUT_LENGTH - FILTER_START - 2) / 3,
+		FIND_TX_END = 80,	// tx must start before
+		FILTER_START_DELAY = 40,
+		FILTER_TRIPLETS = (INPUT_LENGTH - FIND_TX_END - FILTER_START_DELAY - 2) / 3,
 		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
 		ZERO_CROSSINGS = 3,
 		APPROX_WINDOW = 4
@@ -349,13 +349,15 @@ implementation {
 		if (err != ERR_NONE)
 			return;
 
-		filter3(input + FILTER_START, FILTER_TRIPLETS);
+		input += tx_start + FILTER_START_DELAY;
+
+		filter3(input, FILTER_TRIPLETS);
 		if (err != ERR_NONE)
 			return;
 
 		a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
 		b = (filter3_max - filter3_min) >> 3;
-		find_zero_crossings(input + FILTER_START, FILTERED_LENGTH, a-b, a+b);
+		find_zero_crossings(input, FILTERED_LENGTH, a-b, a+b);
 		if (err != ERR_NONE)
 			return;
 
@@ -366,8 +368,6 @@ implementation {
 		if (err != ERR_NONE)
 			return;
 
-		phase += FILTER_START;
-		phase -= tx_start;
 		phase %= period;
 	}
 
