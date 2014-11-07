@@ -82,18 +82,8 @@ public class WaveformPlotter implements plotWaveform{
 		}
 	}
 
-	/**
-	 * To store the waveform which will be plotted.
-	 */
-	private Short[] data;
-	/**
-	 * The thread that plots the waveform.
-	 */
 
-	HashMap<Short , WaveformChart> waveforms = new HashMap<Short , WaveformChart>();
-	
-	WaveformPlotter wfplotter;
-	
+	HashMap<Short , WaveformChart> waveforms = new HashMap<Short , WaveformChart>();	
 	JFrame frame;
 
 	
@@ -102,20 +92,21 @@ public class WaveformPlotter implements plotWaveform{
 	 * Constructor.
 	 */
 	public WaveformPlotter(String name){
-		data = new Short[Consts.BUFFER_LEN_MIG];
 		frame = new JFrame(name);
         frame.setSize(600, 400);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new GridLayout(0, 2));
         frame.setVisible(true);
 	}
-	/* 
-	 * @see plotWaveform#plot(java.lang.Short[])
+	
+	/**
+	 * Refreshes the data of an already added plot
+	 * @param id The id of the plot
+	 * @param waveform The data itself
 	 */
-	public void plot(Short[] waveform, short nodeId){
-		System.arraycopy(waveform, 0, data, 0,waveform.length );
-		if(waveforms.containsKey(nodeId)){
-			waveforms.get(nodeId).refreshWaveform(data);
+	public void plot(Short[] waveform, short id){
+		if(waveforms.containsKey(id)){
+			waveforms.get(id).refreshWaveform(waveform);
 		}
 	}
 
@@ -128,7 +119,7 @@ public class WaveformPlotter implements plotWaveform{
 			waveforms.put(nodeId, new WaveformChart(nodeId+"."));
 			frame.add(waveforms.get(nodeId));
 			frame.pack();
-        frame.setVisible(true);
+			frame.setVisible(true);
 		}
 	}
 
