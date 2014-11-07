@@ -20,6 +20,67 @@ import org.jfree.data.xy.XYSeriesCollection;
  * The main class which can plot multiple waveforms.
  */
 public class WaveformPlotter implements plotWaveform{
+	/**
+	 * @author Gyoorey
+	 * This class represents a chart for a waveform
+	 */
+	class WaveformChart extends JPanel{
+		
+		private static final long serialVersionUID = 1L;
+	    
+	    /**
+	     * A chart which contains a waveform.
+	     */
+	    private ChartPanel chartPanel;
+		
+		/**
+		 * @param chartTitle The title of the chart. 
+		 * Constructor. Crates a new waveform with empty DataSet();
+		 */
+		public WaveformChart(String chartTitle){
+			this.setLayout(new GridLayout());
+			XYDataset dataset = createDataset(new Short[Consts.BUFFER_LEN_MIG] );         
+			JFreeChart xylineChart = ChartFactory.createXYLineChart(
+					chartTitle ,
+					"Sample" ,
+					"RSSI" ,
+					dataset ,
+					PlotOrientation.VERTICAL ,
+					false , true , false);   
+			chartPanel = new ChartPanel( xylineChart );   
+	        this.add(chartPanel);
+		}
+		
+		/**
+		 * @param data Array which cointains the waveform.
+		 * @return The new dataset which is calculated from the data paramter.
+		 */
+		private XYDataset createDataset( Short[] data) 
+		{
+			XYSeries waveform = new XYSeries( "Waveform" );         
+			for (int i = 0; i < Consts.BUFFER_LEN_MIG; i++)    
+			{
+				try 
+				{
+					waveform.add(i, data[i] );                 
+				}
+				catch ( Exception e ) 
+				{
+					System.err.println("Error adding to series");
+				}
+			}
+			return new XYSeriesCollection(waveform);
+		} 
+	
+		/**
+		 * @param data The new waveform array.
+		 * Refreshes the current waveform with the new data array.
+		 */
+		public void refreshWaveform( Short[] data){
+			XYDataset dataset = createDataset(data ); 
+			chartPanel.getChart().getXYPlot().setDataset(dataset);
+		}
+	}
 
 	/**
 	 * To store the waveform which will be plotted.
@@ -67,71 +128,8 @@ public class WaveformPlotter implements plotWaveform{
 			waveforms.put(nodeId, new WaveformChart(nodeId+"."));
 			frame.add(waveforms.get(nodeId));
 			frame.pack();
-	        frame.setVisible(true);
+        frame.setVisible(true);
 		}
 	}
 
-}
-
-/**
- * @author Gyoorey
- * This class represents a chart for a waveform
- */
-class WaveformChart extends JPanel{
-	
-	private static final long serialVersionUID = 1L;
-    
-    /**
-     * A chart which contains a waveform.
-     */
-    private ChartPanel chartPanel;
-	
-	/**
-	 * @param chartTitle The title of the chart. 
-	 * Constructor. Crates a new waveform with empty DataSet();
-	 */
-	public WaveformChart(String chartTitle){
-		this.setLayout(new GridLayout());
-		XYDataset dataset = createDataset(new Short[Consts.BUFFER_LEN_MIG] );         
-		JFreeChart xylineChart = ChartFactory.createXYLineChart(
-				chartTitle ,
-				"Sample" ,
-				"RSSI" ,
-				dataset ,
-				PlotOrientation.VERTICAL ,
-				true , true , false);   
-		chartPanel = new ChartPanel( xylineChart );   
-        this.add(chartPanel);
-	}
-	
-	/**
-	 * @param data Array which cointains the waveform.
-	 * @return The new dataset which is calculated from the data paramter.
-	 */
-	private XYDataset createDataset( Short[] data) 
-	{
-		XYSeries waveform = new XYSeries( "Waveform" );         
-		for (int i = 0; i < Consts.BUFFER_LEN_MIG; i++)    
-		{
-			try 
-			{
-				waveform.add(i, data[i] );                 
-			}
-			catch ( Exception e ) 
-			{
-				System.err.println("Error adding to series");
-			}
-		}
-		return new XYSeriesCollection(waveform);
-	} 
-
-	/**
-	 * @param data The new waveform array.
-	 * Refreshes the current waveform with the new data array.
-	 */
-	public void refreshWaveform( Short[] data){
-		XYDataset dataset = createDataset(data ); 
-		chartPanel.getChart().getXYPlot().setDataset(dataset);
-	}
-	
 }
