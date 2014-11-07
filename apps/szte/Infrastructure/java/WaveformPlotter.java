@@ -1,4 +1,3 @@
-import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.HashMap;
 
@@ -29,7 +28,12 @@ public class WaveformPlotter implements plotWaveform{
 	/**
 	 * The thread that plots the waveform.
 	 */
-	private plotDataThread plotterThread;
+
+	HashMap<Short , WaveformChart> waveforms = new HashMap<Short , WaveformChart>();
+	
+	WaveformPlotter wfplotter;
+	
+	JFrame frame;
 
 	
 	/**
@@ -38,16 +42,20 @@ public class WaveformPlotter implements plotWaveform{
 	 */
 	public WaveformPlotter(String name){
 		data = new Short[Consts.BUFFER_LEN_MIG];
-		plotterThread = new plotDataThread(this,name);
-		plotterThread.setPriority(Thread.MIN_PRIORITY);
-		plotterThread.start();
+		frame = new JFrame(name);
+        frame.setSize(600, 400);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new GridLayout(0, 2));
+        frame.setVisible(true);
 	}
 	/* 
 	 * @see plotWaveform#plot(java.lang.Short[])
 	 */
 	public void plot(Short[] waveform, short nodeId){
 		System.arraycopy(waveform, 0, data, 0,waveform.length );
-		plotterThread.refreshChart(data,nodeId);
+		if(waveforms.containsKey(nodeId)){
+			waveforms.get(nodeId).refreshWaveform(data);
+		}
 	}
 
 	/**
@@ -55,63 +63,11 @@ public class WaveformPlotter implements plotWaveform{
 	 * Adds a new waveform to the JFrame.
 	 */
 	public void addWaveform(short nodeId){
-		plotterThread.addWaveform(nodeId);
-	}
-
-}
-
-/**
- * @author Gyoorey
- *	The thread which handles the waveform plottings.
- */
-class plotDataThread extends Thread{
-	WaveformPlotter wfplotter;
-	
-	JFrame frame;
-	HashMap<Short , WaveformChart> waveforms;
-
-	/**
-	 * @param mWfpr The class which runs this thread.
-	 * @param name  The name of the frame.
-	 */
-	public plotDataThread(WaveformPlotter mWfpr,String name){
-		this.wfplotter = mWfpr;
-		waveforms = new HashMap<Short , WaveformChart>();
-	}
-
-	/* 
-	 * @see java.lang.Thread#run()
-	 * Creates the surface for waveform plotting.
-	 */
-	public void run(){
-		frame = new JFrame("Waveforms");
-        frame.setSize(600, 400);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLayout(new GridLayout(0, 2));
-        frame.setVisible(true);
-        return;
-	}
-	
-	/**
-	 * @param nodeId Which nodeId's waveform is this.
-	 * Adds a new waveform with a specified nodeId.
-	 */
-	public void addWaveform(short nodeId){
 		if(!waveforms.containsKey(nodeId)){
 			waveforms.put(nodeId, new WaveformChart(nodeId+"."));
 			frame.add(waveforms.get(nodeId));
 			frame.pack();
 	        frame.setVisible(true);
-		}
-	}
-
-	/**
-	 * @param data : that will be plotted
-	 * Refreshes the surface with the new waveform.
-	 */
-	public  void refreshChart(Short[] data, short nodeId){
-		if(waveforms.containsKey(nodeId)){
-			waveforms.get(nodeId).refreshWaveform(data);
 		}
 	}
 
@@ -124,8 +80,6 @@ class plotDataThread extends Thread{
 class WaveformChart extends JPanel{
 	
 	private static final long serialVersionUID = 1L;
-	private static final int W = 200;
-    private static final int H = 70;
     
     /**
      * A chart which contains a waveform.
