@@ -19,10 +19,8 @@ if sys.argv[2] == 'y':
 else:
   generateDuplicates=False
 if sys.argv[3] == 'y':
-  numDebugSlots = motes*numRX
-  numDebugSlots += numDebugSlots//DEBUGSYNC
+  sendWaveform=True
 else:
-  numDebugSlots = 0
   sendWaveform=False
 if len(sys.argv) < 5:
   waitSlot = ""
@@ -46,8 +44,11 @@ txmotes = []
 done=False
 index = 0
 nextSync = 0
-debugNode = 0
-debugIndex = 0
+if(sendWaveform):
+  debugNode = 0
+  debugIndex = 0
+else:
+  debugNode = motes
 #we don't count the wait slots: we calculate it as part of the sync slot
 while not done:
   slot = []
