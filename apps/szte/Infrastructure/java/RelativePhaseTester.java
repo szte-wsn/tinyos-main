@@ -62,16 +62,16 @@ public class RelativePhaseTester implements SlotListener {
 	}
 
 	public static void usage() {
-		System.err.println("Usage: RelativePhaseTester [-comm <source>] saveToFile(true or false) tx1 tx2 referenceNode rx1,rx2,rx3,...");
+		System.err.println("Usage: RelativePhaseTester saveToFile(true or false) tx1 tx2 referenceNode rx1,rx2,rx3,...,rxN [-comm <source>]");
 		System.exit(1);
 	}
 	
 	private static void initalize(String[] args) {
-		saveToFile = (args[2].equals("true"));
-		tx1 = Integer.parseInt(args[3]);
-		tx2 = Integer.parseInt(args[4]);
-		reference = Integer.parseInt(args[5]);
-		StringTokenizer st = new StringTokenizer(args[6],",");
+		saveToFile = (args[0].equals("true"));
+		tx1 = Integer.parseInt(args[1]);
+		tx2 = Integer.parseInt(args[2]);
+		reference = Integer.parseInt(args[3]);
+		StringTokenizer st = new StringTokenizer(args[4],",");
 		others = new int[st.countTokens()];
 		for(int i=0; st.hasMoreElements(); i++) 
 			others[i] = (Integer.parseInt((String) st.nextElement()));
@@ -80,10 +80,12 @@ public class RelativePhaseTester implements SlotListener {
 	public static void main(String[] args) {
 		String source = null;
 		if (args.length == 7) {
-			if (!args[0].equals("-comm")) {
+			if (!args[5].equals("-comm")) {
 				usage();
 			}
-			source = args[1];
+			source = args[6];
+		} else if (args.length == 5) {
+			source = "sf@localhost:9002";
 		} else if (args.length != 0) {
 			usage();
 		}
