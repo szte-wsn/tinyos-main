@@ -40,7 +40,7 @@
 		uint8_t overwritten;
 
 		overwritten = *pos2;
-		*pos2 = 1;
+		*pos2 = 255;
 
 		--pos1;
 		while (*(++pos1) <= FIND_TX_LEVEL)
