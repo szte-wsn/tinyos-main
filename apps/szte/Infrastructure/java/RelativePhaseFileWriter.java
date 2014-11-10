@@ -4,14 +4,19 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
 
-
-
-class FileRecord{
-	
+public class RelativePhaseFileWriter implements RelativePhaseListener{
+		
 	private String path;
 	
-	public FileRecord(String path) {
+	public RelativePhaseFileWriter(String path) {
 		this.path = path;
+		File dir = new File(path);
+		dir.mkdirs();
+	}
+
+	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, final int status, int slotId, int rx1, int rx2) {
+		final String str = slotId + ":" + rx1 + "," + rx2;
+		writeToFile(relativePhase, avgPeriod, status, str);
 	}
 	
 	public void writeToFile(double relativePhase, double avgPeriod, int status, String fileName) {
@@ -23,25 +28,6 @@ class FileRecord{
 			e.printStackTrace();
 		}
 	}
-}
 
-public class RelativePhaseFileWriter implements RelativePhaseListener{
-	
-	private FileRecord fr;
-	
-	public RelativePhaseFileWriter(String path) {
-		File dir = new File(path);
-		dir.mkdirs();
-		fr = new FileRecord(path);
-	}
-
-	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, final int status, int slotId, int rx1, int rx2) {
-		final String str = slotId + ":" + rx1 + "," + rx2;
-		new Thread() {
-			public void run() {
-				fr.writeToFile(relativePhase, avgPeriod, status, str);
-			}
-		}.start();	
-	}
 	
 }
