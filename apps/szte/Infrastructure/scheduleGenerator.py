@@ -117,9 +117,15 @@ print("#define  NUMBER_OF_INFRAST_NODES "+str(motes))
 print("#define NUMBER_OF_SLOTS "+str(len(superframe)))
 print("#define NUMBER_OF_RX "+str(numRX))
 print("{")
+print("//\t", end="")
+for i in range(len(superframe)):
+    print("%5s "%i, end="")
+print()
 for i in range(motes):
   print("\t{ ", end="")
-  for slot in superframe:
-    print("%5s,"%slot[i], end="")
-  print("}")
+  for j in range(len(superframe)):
+    print("%5s"%superframe[j][i], end="")
+    if j < len(superframe)-1:
+      print(",", end="")
+  print("},")
 print("}")
