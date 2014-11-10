@@ -12,23 +12,23 @@ int main(int argc, char** argv){
 		return -1;
 	}
 	if(mode == 'd'){
-		printf("{ SSYN, TX1, RSYN, NDEB");
+		printf("{ DSYN, TX1, W100, RSYN, NDEB");
 		for(i=0;i<numberOfNodes-3;i++){
 			printf(", RSYN, NDEB");
 		}	
 		printf("},\n");
-		printf("{ RSYN, TX2, RSYN, NDEB");
+		printf("{ RSYN, TX2, W100, RSYN, NDEB");
 		for(i=0;i<numberOfNodes-3;i++){
 			printf(", RSYN, NDEB");
 		}	
 		printf("},\n");
-		printf("{ RSYN,  RX, SSYN,  DEB");
+		printf("{ RSYN,  RX, W100, SSYN,  DEB");
 		for(i=0;i<numberOfNodes-3;i++){
 			printf(", RSYN, NDEB");
 		}	
 		printf("},\n");
 		for(j=0;j<numberOfNodes-3;j++){
-			printf("{ RSYN,  RX, RSYN, NDEB");
+			printf("{ RSYN,  RX, W100, RSYN, NDEB");
 			for(i=0;i<numberOfNodes-3;i++){
 				if(i==j){
 					printf(", SSYN,  DEB");			
@@ -36,26 +36,30 @@ int main(int argc, char** argv){
 					printf(", RSYN, NDEB");
 				}
 			}	
-			printf("},\n");	
+			if(j<numberOfNodes-4){
+				printf("},\n");
+			}else{
+				printf("}\n");
+			}
 		}
 	}else{
-		printf("{ SSYN, TX1, WCAL, RSYN");
+		printf("{ DSYN, TX1, W100, RSYN");
 		for(i=0;i<numberOfNodes-3;i++){
 			printf(", RSYN");
 		}	
 		printf("},\n");
-		printf("{ RSYN, TX2, WCAL, RSYN");
+		printf("{ RSYN, TX2, W100, RSYN");
 		for(i=0;i<numberOfNodes-3;i++){
 			printf(", RSYN");
 		}	
 		printf("},\n");
-		printf("{ RSYN,  RX, WCAL, SSYN");
+		printf("{ RSYN,  RX, W100, SSYN");
 		for(i=0;i<numberOfNodes-3;i++){
 			printf(", RSYN");
 		}	
 		printf("},\n");
 		for(j=0;j<numberOfNodes-3;j++){
-			printf("{ RSYN,  RX, WCAL, RSYN");
+			printf("{ RSYN,  RX, W100, RSYN");
 			for(i=0;i<numberOfNodes-3;i++){
 				if(i==j){
 					printf(", SSYN");			
