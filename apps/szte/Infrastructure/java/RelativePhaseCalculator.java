@@ -11,6 +11,12 @@ public class RelativePhaseCalculator implements SlotListener {
 	public static final int STATUS_PERIOD_ERROR = 5;
 	public static final int STATUS_PHASE_ERROR = 6;
 	public static final int STATUS_PHASE_NOT_CALCULATED = 7;
+	public static final int ERR_START_NOT_FOUND = 101;
+	public static final int	ERR_SMALL_MINMAX_RANGE = 102;
+	public static final int	ERR_FEW_ZERO_CROSSINGS = 103;
+	public static final int	ERR_LARGE_PERIOD = 104;
+	public static final int ERR_PERIOD_MISMATCH = 105;
+	public static final int ERR_ZERO_PERIOD = 106;
 	
 	private ArrayList<Integer> registeredSlots;		
 	private MoteSettings ms;
@@ -80,8 +86,10 @@ public class RelativePhaseCalculator implements SlotListener {
 			if(slotMeasures.get(i).nodeid == rx2)
 				otherNode = slotMeasures.get(i);
 		}
+		
 		if(referenceNode.period == 0 || otherNode.period == 0) {
-			status = STATUS_PERIOD_NOT_CALCULATED;
+//			status = STATUS_PERIOD_NOT_CALCULATED;
+			status = referenceNode.phase;
 		} else if(referenceNode.phase == 255 || otherNode.phase == 255) {
 			status = STATUS_PHASE_NOT_CALCULATED;
 		} else if(referenceNode.period == 1 || otherNode.period == 1) {
