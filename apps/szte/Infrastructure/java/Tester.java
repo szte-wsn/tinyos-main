@@ -14,7 +14,6 @@ public class Tester implements SlotListener {
 	SuperFrameMerger sfm;
 	MoteSettings moteSettings;
 	static PhoenixSource phoenix;
-	DrawRelativePhase drp;
 
 	public Tester(String settingsPath) {
 		try {
@@ -29,11 +28,6 @@ public class Tester implements SlotListener {
 		for(int i=0; i<moteSettings.getNumberOfSlots();i++){
 			if(moteSettings.hasMeasurements(i))
 				sfm.registerListener(this,i);
-		}
-
-    	drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
-    	for(int node:others){
-    		new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2, drp);
 		}
 	}
 
