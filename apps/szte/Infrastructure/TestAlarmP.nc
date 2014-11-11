@@ -136,14 +136,10 @@ implementation{
 	#endif
 	
 	event void Boot.booted(){
-// 		uint8_t i;
 		call SplitControl.start();
 		firetime = 65000UL+((uint32_t)TOS_NODE_ID<<16);
 		startOfFrame = firetime;
 		unsynchronized = NO_SYNC;
-// 		for(i=0;i<NUMBER_OF_SLOTS;i++){
-// 			settings[i] = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
-// 		}
 	}
 	
 	event void SplitControl.startDone(error_t error){
@@ -439,8 +435,7 @@ implementation{
 			sendedMeasureCounter++;
 		}
 		if( sendedMeasureCounter < NUMBER_OF_RX ){
-			//call Timer.startOneShot(100);
-			post sendWaveform();
+			call Timer.startOneShot(10);
 		}
 	}
 	#endif
