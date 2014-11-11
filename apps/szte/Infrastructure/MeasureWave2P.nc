@@ -29,7 +29,7 @@ implementation {
 
 	enum {
 		INPUT_LENGTH = 480,
-		FIND_TX_LEVEL = 3,
+		FIND_TX_LEVEL = 4,
 		FIND_TX_START = 1,	// first byte is usually non-zero
 		FIND_TX_END = 80,	// tx must start before
 		FILTER_START_DELAY = 40,
@@ -58,13 +58,13 @@ implementation {
 		*pos2 = overwritten;
 
 		if (pos1 != input && pos1 != pos2) {
-			while (*(--pos2) > FIND_TX_LEVEL)
-				;
+			//while (*(--pos2) > FIND_TX_LEVEL)
+			//	;
 
-			if (pos2 + 1 == pos1) {
+			//if (pos2 + 1 == pos1) {
 				tx_start = pos1 - input;
 				return;
-			}
+			//}
 		}
 
 		tx_start = 0;
