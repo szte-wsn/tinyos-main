@@ -30,6 +30,7 @@ module TestAlarmP{
 	uses interface MeasureWave;
 	#ifdef ENABLE_DEBUG_SLOTS	
 	uses interface AMSend;
+	uses interface Timer<TMilli>;
 	#endif
 	#if defined(TEST_CALCULATION_TIMING)
 	uses interface DiagMsg;
@@ -38,7 +39,7 @@ module TestAlarmP{
 implementation{
 
 	enum {
-		CHANNEL = 11,
+    CHANNEL = 11,
 		TRIM1 = 0,
 		TRIM2 = 7,
   };
@@ -46,7 +47,7 @@ implementation{
   enum {
 		MEAS_SLOT = 80, //measure slot
 		SYNC_SLOT = 150, //sync slot
-		DEBUG_SLOT = 6250, //between super frames
+		DEBUG_SLOT = 3000UL*NUMBER_OF_RX, //between super frames
 		WAIT_SLOT_1 = 62,
 		WAIT_SLOT_10 = 625,
 		WAIT_SLOT_100 = 6250,
@@ -88,7 +89,6 @@ implementation{
 	#endif
   
 
-	norace uint8_t settings[NUMBER_OF_SLOTS];
 	norace bool waitToStart=TRUE;
 	message_t debugPacket;
 	message_t syncPacket[2];
@@ -136,14 +136,14 @@ implementation{
 	#endif
 	
 	event void Boot.booted(){
-		uint8_t i;
+// 		uint8_t i;
 		call SplitControl.start();
 		firetime = 65000UL+((uint32_t)TOS_NODE_ID<<16);
 		startOfFrame = firetime;
 		unsynchronized = NO_SYNC;
-		for(i=0;i<NUMBER_OF_SLOTS;i++){
-			settings[i] = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
-		}
+// 		for(i=0;i<NUMBER_OF_SLOTS;i++){
+// 			settings[i] = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
+// 		}
 	}
 	
 	event void SplitControl.startDone(error_t error){
@@ -162,11 +162,12 @@ implementation{
 	event void SplitControl.stopDone(error_t error){}
 
 	void startAlarm(uint8_t nextMeas, uint32_t start,uint32_t fire){
-		if(settings[nextMeas]==TX1){
+		uint8_t nextMeasType = read_uint8_t(&(motesettings[TOS_NODE_ID-1][nextMeas]));
+		if(nextMeasType==TX1){
 				call Alarm.startAt(start,fire+TX1_THRESHOLD);
-			}else if(settings[nextMeas]==TX2){
+			}else if(nextMeasType==TX2){
 				call Alarm.startAt(start,fire+TX2_THRESHOLD);
-			}else if(settings[nextMeas]==RX){
+			}else if(nextMeasType==RX){
 				call Alarm.startAt(start,fire+RX_THRESHOLD);
 			}else{
 				call Alarm.startAt(start,fire);
@@ -174,10 +175,11 @@ implementation{
 	}
 
 	async event void Alarm.fired(){
+		uint8_t measType = read_uint8_t(&(motesettings[TOS_NODE_ID-1][activeMeasure]));
 		if(waitToStart){
 			waitToStart = FALSE;
 		}
-		if(settings[activeMeasure]==RSYN){//waits for SYNC in this frame
+		if(measType==RSYN){//waits for SYNC in this frame
 			atomic{
 				if(unsynchronized != NO_SYNC){
 					unsynchronized--;
@@ -189,19 +191,19 @@ implementation{
 				return;
 			}
 		}
-		if(settings[activeMeasure]==TX1 || settings[activeMeasure]==TX2 || settings[activeMeasure]==RX || settings[activeMeasure]==NTRX){
+		if(measType==TX1 || measType==TX2 || measType==RX || measType==NTRX){
 			firetime += MEAS_SLOT;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
-		if(settings[activeMeasure]==TX1){ //sender
+		if(measType==TX1){ //sender
 			if(unsynchronized != NO_SYNC){
 				call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
 			}
-		}else if(settings[activeMeasure]==TX2){
+		}else if(measType==TX2){
 			if(unsynchronized != NO_SYNC){
 				call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
 			}
-		}else if(settings[activeMeasure]==RX){ //receiver
+		}else if(measType==RX){ //receiver
 			if(unsynchronized != NO_SYNC){
 				uint16_t time = 0;
 				#ifndef DEBUG_COLLECTOR
@@ -218,30 +220,30 @@ implementation{
 				}
 				measureBuffer = (measureBuffer + 1) % NUMBER_OF_RX;
 			}
-    }else if(settings[activeMeasure]==SSYN){//sends SYNC in this frame
+    }else if(measType==SSYN){//sends SYNC in this frame
 			post sendSync();
-		} else if(settings[activeMeasure]==DSYN){
+		} else if(measType==DSYN){
 			post sendDummySync();
 		#ifdef ENABLE_DEBUG_SLOTS
-		}else if(settings[activeMeasure]==DEB || settings[activeMeasure]==NDEB){
+		}else if(measType==DEB || measType==NDEB){
 			firetime += DEBUG_SLOT;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 			if(unsynchronized != NO_SYNC){
-				if(settings[activeMeasure]==DEB){
+				if(measType==DEB){
 					post debugProcess();
 				}
 			}
 		#endif
-		}else if(settings[activeMeasure]==WCAL){
+		}else if(measType==WCAL){
 			firetime += WAIT_SLOT_CAL;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
-		}else if(settings[activeMeasure]==W1){
+		}else if(measType==W1){
 			firetime += WAIT_SLOT_1;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
-		}else if(settings[activeMeasure]==W10){
+		}else if(measType==W10){
 			firetime += WAIT_SLOT_10;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
-		}else if(settings[activeMeasure]==W100){
+		}else if(measType==W100){
 			firetime += WAIT_SLOT_100;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
 		}
@@ -371,14 +373,14 @@ implementation{
 					waitToStart = FALSE;
 					measureBuffer = 0;
 					for(i=0;i<activeMeasure;i++){
-						if(settings[i]==RX){
+						if( read_uint8_t(&(motesettings[TOS_NODE_ID-1][i])) == RX ){
 							measureBuffer++;
 						}
 					}
 					measureBuffer = measureBuffer%NUMBER_OF_RX;
+          call Leds.set(0);
 				}
 				unsynchronized = NO_SYNC_TOLERANCE;
-				call Leds.set(0);
 			}
 		}
 		return bufPtr;
@@ -402,37 +404,44 @@ implementation{
 	}
 	
 	task void sendWaveform(){
-		if(sendedBytesCounter < BUFFER_LEN){
-			uint8_t i;
-			wave_message_t* msg = (wave_message_t*)call AMSend.getPayload(&debugPacket,sizeof(wave_message_t));
-			msg->whichWaveform = sendedMeasureCounter;
-			msg->whichPartOfTheWaveform = sendedMessageCounter;
-			for(i=0;i<WAVE_MESSAGE_LENGTH;i++){
-				if(sendedBytesCounter+i < BUFFER_LEN)
-					msg->data[i] = buffer[sendedMeasureCounter][sendedBytesCounter+i];
-			}
-			if(call AMSend.send(0xFFFF, &debugPacket, sizeof(wave_message_t)) == SUCCESS){
-				sendedMessageCounter++;
-			}else{
-				failedSendCounter++;
-				if(failedSendCounter<4){
-					post sendWaveform();
-				}else{
-					failedSendCounter = 0;
-					sendedBytesCounter = 0;
-					sendedMessageCounter = 0;
-				}
-			}
-		}else{
-			sendedBytesCounter = 0;
-			sendedMessageCounter = 0;
-			sendedMeasureCounter = (sendedMeasureCounter+1)%NUMBER_OF_RX;
+		uint8_t i;
+		wave_message_t* msg = (wave_message_t*)call AMSend.getPayload(&debugPacket,sizeof(wave_message_t));
+		msg->whichWaveform = sendedMeasureCounter;
+		msg->whichPartOfTheWaveform = sendedMessageCounter;
+		
+		for(i=0;i<WAVE_MESSAGE_LENGTH;i++){
+			if(sendedBytesCounter+i < BUFFER_LEN)
+				msg->data[i] = buffer[sendedMeasureCounter][sendedBytesCounter+i];
 		}
+		if(call AMSend.send(0xFFFF, &debugPacket, sizeof(wave_message_t)) != SUCCESS){
+			failedSendCounter++;
+			if(failedSendCounter<4){
+				post sendWaveform();
+			}else{
+				failedSendCounter = 0;
+				sendedBytesCounter = 0;
+				sendedMessageCounter = 0;
+			}
+		}
+	}
+	
+	event void Timer.fired(){
+		post sendWaveform();
 	}
 	
 	event void AMSend.sendDone(message_t* bufPtr, error_t error){
 		sendedBytesCounter += WAVE_MESSAGE_LENGTH;
-		post sendWaveform();
+		sendedMessageCounter++;
+		failedSendCounter = 0;
+		if(sendedBytesCounter >= BUFFER_LEN){
+			sendedBytesCounter = 0;
+			sendedMessageCounter = 0;
+			sendedMeasureCounter++;
+		}
+		if( sendedMeasureCounter < NUMBER_OF_RX ){
+			//call Timer.startOneShot(100);
+			post sendWaveform();
+		}
 	}
 	#endif
 

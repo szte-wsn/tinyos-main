@@ -2,7 +2,7 @@
 #define TEST_ALARM_H
 
 #include "InfrastructureSettings.h"
-#define WAVE_MESSAGE_LENGTH 80
+#define WAVE_MESSAGE_LENGTH 96
 #define BUFFER_LEN 480
 
 enum {
