@@ -23,6 +23,7 @@ public class RelativePhaseTester implements SlotListener {
 	DrawRelativePhase drp;
 	RelativePhaseFileWriter rpfw;
 	RelativePhaseMap rpm;
+	ErrorsWriteToConsole ewtc;
 
 	public RelativePhaseTester(String settingsPath) {
 		try {
@@ -46,9 +47,12 @@ public class RelativePhaseTester implements SlotListener {
 			rpm = new RelativePhaseMap(IMAGEPATH);
 		}
 
+		ewtc = new ErrorsWriteToConsole();
+		
     	for(int node:others){
     		RelativePhaseCalculator rpc = new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2);
     		rpc.registerListener(drp);
+    		rpc.registerListener(ewtc);
     		if(saveToFile) {
 	    		rpc.registerListener(rpfw);
 	    		rpc.registerListener(rpm);
