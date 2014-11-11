@@ -11,6 +11,9 @@ DSYNCSLOT ="DSYN"
 DEBSLOT="DEB"
 NDEBSLOT="NDEB"
 
+if len(sys.argv) != 4 and len(sys.argv) != 5:
+  print("Usage: scheduleGenerator.py <number of motes> <generateDuplicates?> <sendWaveform?> <waitSlotName>")
+  sys.exit(1)
 
 motes=int(sys.argv[1])
 numRX=(motes-1)*(motes-2)
@@ -89,7 +92,7 @@ while not done:
       superframe.append(slot)
     index+=1
   elif debugNode < motes:
-    if (index-nonDebugSlots) % DEBUGSYNC == 0: #sync slot
+    if (index-nonDebugSlots) % 2 == 0: #sync slot
       for i in range(0,nextSync):
         slot.append(RSYNCSLOT)
       slot.append(DSYNCSLOT)
@@ -104,10 +107,10 @@ while not done:
       slot.append(DEBSLOT)
       for i in range(debugNode+1, motes):
         slot.append(NDEBSLOT)
-      debugIndex+=1
-      if debugIndex == numRX:
-        debugNode+=1
-        debugIndex=0
+      #debugIndex+=1
+      #if debugIndex == numRX:
+      debugNode+=1
+        #debugIndex=0
       superframe.append(slot)
     index+=1
   else:
@@ -116,8 +119,8 @@ while not done:
 print("#define  NUMBER_OF_INFRAST_NODES "+str(motes))
 print("#define NUMBER_OF_SLOTS "+str(len(superframe)))
 print("#define NUMBER_OF_RX "+str(numRX))
-print("{")
-print("//\t", end="")
+print("const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {")
+print("\t//", end="")
 for i in range(len(superframe)):
     print("%5s "%i, end="")
 print()
@@ -127,5 +130,8 @@ for i in range(motes):
     print("%5s"%superframe[j][i], end="")
     if j < len(superframe)-1:
       print(",", end="")
-  print("},")
-print("}")
+  if i < motes-1:
+    print("},")
+  else:
+    print("}")
+print("};")
