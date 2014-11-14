@@ -20,10 +20,12 @@
 
 	enum {
 		INPUT_LENGTH = 480,
-		FIND_TX_LEVEL = 3,
-		FIND_TX_START = 1,	// first byte is usually non-zero
+		FIND_TX_LEVEL = 5,
+		FIND_TX_START = 1,	// first few bytes are usually non-zero
 		FIND_TX_END = 80,	// tx must start before
-		FILTER_START_DELAY = 40,
+		FIND_TX_NODIP = 0,	// level should not dip below TX_LEVEL
+		FILTER_START_DELAY = 50,
+		FILTER_MINMAX_RANGE = 7,
 		FILTER_TRIPLETS = (INPUT_LENGTH - FIND_TX_END - FILTER_START_DELAY - 2) / 3,
 		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
 		ZERO_CROSSINGS = 3,
@@ -49,10 +51,16 @@
 		*pos2 = overwritten;
 
 		if (pos1 != input && pos1 != pos2) {
-			while (*(--pos2) > FIND_TX_LEVEL)
-				;
+			if (FIND_TX_NODIP) {
+				while (*(--pos2) > FIND_TX_LEVEL)
+					;
 
-			if (pos2 + 1 == pos1) {
+				if (pos2 + 1 == pos1) {
+					tx_start = pos1 - input;
+					return;
+				}
+			}
+			else {
 				tx_start = pos1 - input;
 				return;
 			}
@@ -122,7 +130,7 @@
 		filter3_min = min;
 		filter3_max = max;
 
-		if (filter3_max - filter3_min < 9)
+		if (filter3_max - filter3_min < FILTER_MINMAX_RANGE)
 			err = ERR_SMALL_MINMAX_RANGE;
 	}
 
@@ -347,7 +355,7 @@
 			return;
 
 		a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
-		b = (filter3_max - filter3_min) >> 3;
+		b = (filter3_max - filter3_min + 2) >> 3;
 		find_zero_crossings(input, FILTERED_LENGTH, a-b, a+b);
 		if (err != ERR_NONE)
 			return;
