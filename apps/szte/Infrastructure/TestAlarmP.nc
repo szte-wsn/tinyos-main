@@ -31,6 +31,7 @@ module TestAlarmP{
 	#ifdef ENABLE_DEBUG_SLOTS	
 	uses interface AMSend;
 	uses interface Timer<TMilli>;
+	uses interface BusyWait<TMicro, uint16_t>;
 	#endif
 	#if defined(TEST_CALCULATION_TIMING)
 	uses interface DiagMsg;
@@ -435,7 +436,10 @@ implementation{
 			sendedMeasureCounter++;
 		}
 		if( sendedMeasureCounter < NUMBER_OF_RX ){
-			call Timer.startOneShot(10);
+			atomic{
+				call BusyWait.wait(1000);
+			}
+			post sendWaveform();
 		}
 	}
 	#endif
