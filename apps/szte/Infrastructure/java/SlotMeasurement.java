@@ -9,8 +9,15 @@ import java.util.ArrayList;
 import java.util.Date;
 
 class SlotMeasurement {
-	public static final int CALCULATION_ERROR = 1;
 	public static final int FILEVERSION = 1;
+	public static final int ERR_START_NOT_FOUND = 101;
+	public static final int	ERR_SMALL_MINMAX_RANGE = 102;
+	public static final int	ERR_FEW_ZERO_CROSSINGS = 103;
+	public static final int	ERR_LARGE_PERIOD = 104;
+	public static final int ERR_PERIOD_MISMATCH = 105;
+	public static final int ERR_ZERO_PERIOD = 106;
+	public static final int ERR_CALCULATION_TIMEOUT = 255;
+	
 	public int nodeid, phaseRef, minimum, maximum, period, phase;
 	public boolean hasMeasurement, hasWaveForm, hasLocalMeasurement;
 	

@@ -21,19 +21,19 @@ public class ErrorsWriteToConsole  implements RelativePhaseListener{
 	        	for(Entry<Integer, Integer> entry : errors.entrySet()) {
         		    int status = entry.getKey();
         		    int value = (Integer)entry.getValue();
-        			if(status == RelativePhaseCalculator.STATUS_PERIOD_NOT_CALCULATED)
+        			if(status == SlotMeasurement.ERR_CALCULATION_TIMEOUT)
         				System.out.println("STATUS_PERIOD_NOT_CALCULATED: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_START_NOT_FOUND) 
+        			else if(status == SlotMeasurement.ERR_START_NOT_FOUND) 
         	    		System.out.println("ERR_START_NOT_FOUND: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_SMALL_MINMAX_RANGE)
+        			else if(status == SlotMeasurement.ERR_SMALL_MINMAX_RANGE)
         	    		System.out.println("ERR_SMALL_MINMAX_RANGE: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_FEW_ZERO_CROSSINGS)
+        			else if(status == SlotMeasurement.ERR_FEW_ZERO_CROSSINGS)
         	    		System.out.println("ERR_FEW_ZERO_CROSSINGS: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_LARGE_PERIOD)
+        			else if(status == SlotMeasurement.ERR_LARGE_PERIOD)
         				System.out.println("ERR_LARGE_PERIOD: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_PERIOD_MISMATCH)
+        			else if(status == SlotMeasurement.ERR_PERIOD_MISMATCH)
         				System.out.println("ERR_PERIOD_MISMATCH: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_ZERO_PERIOD)
+        			else if(status == SlotMeasurement.ERR_ZERO_PERIOD)
         				System.out.println("ERR_ZERO_PERIOD: " + value);
         		}
 	        	System.out.println("");

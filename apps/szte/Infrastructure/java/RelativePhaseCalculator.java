@@ -11,12 +11,6 @@ public class RelativePhaseCalculator implements SlotListener {
 	public static final int STATUS_PERIOD_ERROR = 5;
 	public static final int STATUS_PHASE_ERROR = 6;
 	public static final int STATUS_PHASE_NOT_CALCULATED = 7;
-	public static final int ERR_START_NOT_FOUND = 101;
-	public static final int	ERR_SMALL_MINMAX_RANGE = 102;
-	public static final int	ERR_FEW_ZERO_CROSSINGS = 103;
-	public static final int	ERR_LARGE_PERIOD = 104;
-	public static final int ERR_PERIOD_MISMATCH = 105;
-	public static final int ERR_ZERO_PERIOD = 106;
 	
 	private ArrayList<Integer> registeredSlots;		
 	private MoteSettings ms;
