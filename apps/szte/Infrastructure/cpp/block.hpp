@@ -48,31 +48,30 @@ template <class DATA> class Producer;
 template <class DATA> class Consumer {
 private:
 	std::string name;
-	std::atomic<int> opened_count;
+	std::atomic<int> conn_count;
 
 public:
-	Consumer(const char *name) : name(name), opened_count(0) {
+	Consumer(const char *name) : name(name), conn_count(0) {
 	}
 
 	~Consumer() {
-		if (opened_count != 0)
-			throw std::runtime_error(name + " is still connected in destructor");
+		if (conn_count != 0)
+			throw std::runtime_error(name + " is not disconnected");
 	}
 
-	virtual void work(DATA data) {
-	};
+	virtual void work(DATA data) = 0;
 
 private:
 	friend class Producer<DATA>;
 
-	void opened() {
-		assert(opened_count >= 0);
-		opened_count++;
+	void connected() {
+		assert(conn_count >= 0);
+		conn_count++;
 	}
 
-	void closed() {
-		assert(opened_count > 0);
-		opened_count--;
+	void disconnected() {
+		assert(conn_count > 0);
+		conn_count--;
 	}
 };
 
@@ -99,7 +98,7 @@ private:
 
 public:
 	~Producer() {
-		disconnect();
+		disconnect_all();
 	}
 
 	void send(DATA data) {
@@ -111,7 +110,7 @@ public:
 	void connect(Consumer<DATA> &c) {
 		std::lock_guard<std::mutex> lock(producer_mutex);
 		consumers.push_back(&c);
-		c.opened();
+		c.connected();
 	}
 
 	void disconnect(Consumer<DATA> &c) {
@@ -124,13 +123,13 @@ public:
 		*it = consumers.back();
 		consumers.pop_back();
 
-		c.closed();
+		c.disconnected();
 	}
 
-	void disconnect() {
+	void disconnect_all() {
 		std::lock_guard<std::mutex> lock(producer_mutex);
 		for(Consumer<DATA> *c : consumers)
-			c->closed();
+			c->disconnected();
 
 		consumers.clear();
 	}
@@ -157,7 +156,6 @@ public:
 			buffer_exit = true;
 			buffer_cond.notify_one();
 		}
-
 		buffer_thread.join();
 	}
 

@@ -32,21 +32,18 @@
  * Author: Miklos Maroti
  */
 
-#include <cstdio>
-#include <string>
-
-#include "producer.hpp"
+#include "block.hpp"
 
 int main() {
-	printf("Hihi");
-
-	// SerialComm serial("/dev/ttyUSB0", 115200);
-	// PacketDecoder<SyncMsg> decoder(serial);
-	// FileReader textfile(filename)
-	// LineParser<SyncMsg> parser(textfile);
-
-	Producer<std::string> producer;
-	Consumer<std::string> consumer;
-	producer.connect(consumer);
-	producer.disconnect(consumer);
+	std::cout << "Start\n";
+	Printer<int> printer;
+	Buffer<int> buffer;
+	Producer<int> source;
+	source.connect(buffer);
+	buffer.connect(printer);
+	source.connect(printer);
+	source.send(12);
+	source.send(13);
+	std::cout << "End\n";
+	buffer.disconnect_all();
 }
