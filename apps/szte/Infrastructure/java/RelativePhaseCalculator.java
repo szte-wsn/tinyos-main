@@ -4,13 +4,8 @@ import java.util.ArrayList;
 public class RelativePhaseCalculator implements SlotListener {
 	
 	public static final int STATUS_OK = 0;
-	public static final int STATUS_PERIOD_NOT_CALCULATED = 1;
-	public static final int STATUS_PHASE_ZERO = 2;
-	public static final int STATUS_PERIOD_DIFF_LARGE = 3;
-	public static final int PERIOD_DIFF  = 4;
-	public static final int STATUS_PERIOD_ERROR = 5;
-	public static final int STATUS_PHASE_ERROR = 6;
-	public static final int STATUS_PHASE_NOT_CALCULATED = 7;
+	public static final int STATUS_PERIOD_DIFF_LARGE = 1;
+	private static final float PERIOD_DIFF  = 0.1f;
 	
 	private ArrayList<Integer> registeredSlots;		
 	private MoteSettings ms;
@@ -33,14 +28,14 @@ public class RelativePhaseCalculator implements SlotListener {
 	}
 	
 	private void registerSlots() {
-		System.out.println("In registerSlots");
+//		System.out.println("In registerSlots");
 		ArrayList<Integer> tx1slots = ms.getSlotNumbers(tx1, MoteSettings.TX1);
 		ArrayList<Integer> tx2slots = ms.getSlotNumbers(tx2, MoteSettings.TX2);
 		ArrayList<Integer> rx1slots = ms.getSlotNumbers(rx1, MoteSettings.RX);
 		ArrayList<Integer> rx2slots = ms.getSlotNumbers(rx2, MoteSettings.RX);
 		for(int slot:tx1slots){
 			if( tx2slots.contains(slot) && rx1slots.contains(slot) && rx2slots.contains(slot)){
-				System.out.println("registered");
+//				System.out.println("registered");
 				registeredSlots.add(slot);
 				sfm.registerListener(this,slot);
 			}
@@ -81,25 +76,18 @@ public class RelativePhaseCalculator implements SlotListener {
 				otherNode = slotMeasures.get(i);
 		}
 		
-		if(referenceNode.period == 0 || otherNode.period == 0) {
-//			status = STATUS_PERIOD_NOT_CALCULATED;
-			status = referenceNode.phase;
-		} else if(referenceNode.phase == 255 || otherNode.phase == 255) {
-			status = STATUS_PHASE_NOT_CALCULATED;
-		} else if(referenceNode.period == 1 || otherNode.period == 1) {
-			status = STATUS_PERIOD_ERROR;
-		} else if(referenceNode.phase >= referenceNode.period || otherNode.phase >= otherNode.period) {
-			status = STATUS_PHASE_ERROR;
-		} else if(Math.abs(referenceNode.period - otherNode.period) > PERIOD_DIFF) {
+		if( referenceNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
+			status = referenceNode.getErrorCode();
+		} else if( otherNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
+			status = otherNode.getErrorCode();
+		} else if(Math.abs(referenceNode.period - otherNode.period) > referenceNode.period*PERIOD_DIFF) {
 			status = STATUS_PERIOD_DIFF_LARGE;
 		} else {
-			avgPeriod = (referenceNode.period + otherNode.period)>>1;
+			avgPeriod = (referenceNode.period + otherNode.period)/2;
 			relativePhase = (referenceNode.phase - otherNode.phase);
 			if(relativePhase < 0)
 				relativePhase += avgPeriod;
 			relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
-			if(referenceNode.phase == 0 || otherNode.phase == 0)
-				status = STATUS_PHASE_ZERO;
 		}		
 		for(RelativePhaseListener listener : listeners)
 			listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
