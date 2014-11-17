@@ -26,17 +26,16 @@ class Slot {
 		}
 	}
 
-	public boolean addMeasurement(int dataSource, short phaseRef, short min, short max,
-			int period, short phase) {
+	public boolean addMeasurement(int dataSource, int period, short phase) {
 		
 		for(int i=0;i<measurements.size();i++){
 			if( measurements.get(i).nodeid == dataSource ){
-				measurements.get(i).setMeasurement(phaseRef, min, max, period, phase);
+				measurements.get(i).setMeasurement(period, phase);
 				return true;
 			}
 		}
 		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
-		meas.setMeasurement(phaseRef, min, max, period, phase);
+		meas.setMeasurement(period, phase);
 		measurements.add(meas);
 		return false;
 	}

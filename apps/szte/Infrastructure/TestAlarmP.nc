@@ -57,7 +57,7 @@ implementation{
 
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
-		nx_uint16_t freq[NUMBER_OF_RX];
+		nx_uint8_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
 	} sync_message_t;
 	

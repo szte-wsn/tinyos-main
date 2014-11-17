@@ -99,18 +99,12 @@ public class SuperFrameMerger implements MessageListener{
 					if( receivedslot < currentSlot ){
 						superFrames.getLast().get(receivedslot).addMeasurement(
 								dataSource,
-								msg.getElement_phaseRef(i),
-								msg.getElement_min(i),
-								msg.getElement_max(i),
 								msg.getElement_freq(i),
 								msg.getElement_phase(i)
 								);
 					} else {
 						superFrames.getFirst().get(receivedslot).addMeasurement(
 								dataSource,
-								msg.getElement_phaseRef(i),
-								msg.getElement_min(i),
-								msg.getElement_max(i),
 								msg.getElement_freq(i),
 								msg.getElement_phase(i)
 								);
