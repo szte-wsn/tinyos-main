@@ -120,6 +120,12 @@ public class RelativePhaseMap implements RelativePhaseListener{
 				return Color.ORANGE;
 			else if(status == SlotMeasurement.ERR_ZERO_PERIOD)
 				return Color.PINK;
+			else if(status == SlotMeasurement.ERR_CALCULATION_TIMEOUT)
+				return Color.CYAN;
+			else if(status == SlotMeasurement.ERR_NO_MEASUREMENT)
+				return Color.MAGENTA;
+			else if(status == RelativePhaseCalculator.STATUS_PERIOD_DIFF_LARGE)
+				return Color.DARK_GRAY;
 			else
 				return Color.BLACK;
 		}
