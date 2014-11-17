@@ -82,6 +82,8 @@ public class SuperFrameMerger implements MessageListener{
 		if( m instanceof SyncMsg ){
 			SyncMsg msg = (SyncMsg)m;
 			int currentSlot = msg.get_frame()-1;
+			if(currentSlot < 0)
+				currentSlot = ms.getNumberOfSlots()-1;
 			if( ms.isDataSync(currentSlot, dataSource)){
 				if( currentSlot <= lastSlot ){
 					ArrayList<Slot> signalData = replaceSuperFrame(false);
