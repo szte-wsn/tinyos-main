@@ -22,11 +22,8 @@ typedef nx_struct wave_message_t{
 //just for mig
 typedef nx_struct real_sync_message_t{
   nx_uint8_t frame;
-  nx_uint8_t phaseRef[NUMBER_OF_RX];
   nx_uint16_t freq[NUMBER_OF_RX];
   nx_uint8_t phase[NUMBER_OF_RX];
-  nx_uint8_t min[NUMBER_OF_RX];
-  nx_uint8_t max[NUMBER_OF_RX];
   nx_uint8_t originalAm;
   nx_uint32_t timesync;
 } real_sync_message_t;

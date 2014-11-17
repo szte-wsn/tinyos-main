@@ -57,11 +57,8 @@ implementation{
 
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
-		nx_uint8_t phaseRef[NUMBER_OF_RX];
 		nx_uint16_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
-		nx_uint8_t min[NUMBER_OF_RX];
-		nx_uint8_t max[NUMBER_OF_RX];
 	} sync_message_t;
 	
 	enum {
@@ -319,16 +316,16 @@ implementation{
 				call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
 				break;
 			case PROCESS_PHASEREF:
-				currentSyncPayload->phaseRef[processBuffer] = call MeasureWave.getPhaseRef();
+				call MeasureWave.getPhaseRef();
 				break;
 			case PROCESS_FILTER:
 				call MeasureWave.filter();
 				break;
 			case PROCESS_MIN:
-				currentSyncPayload->min[processBuffer] = call MeasureWave.getMinAmplitude();
+				call MeasureWave.getMinAmplitude();
 				break;
 			case PROCESS_MAX:
-				currentSyncPayload->max[processBuffer] = call MeasureWave.getMaxAmplitude();
+				call MeasureWave.getMaxAmplitude();
 				break;
 			case PROCESS_FREQ:
 				#ifndef DEBUG_COLLECTOR
