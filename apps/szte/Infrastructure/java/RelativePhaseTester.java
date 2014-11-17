@@ -35,9 +35,12 @@ public class RelativePhaseTester implements SlotListener {
 		}
 
 		sfm = new SuperFrameMerger(moteInterface, moteSettings);
+		ewtc = new ErrorsWriteToConsole();
 		for(int i=0; i<moteSettings.getNumberOfSlots();i++){
-			if(moteSettings.hasMeasurements(i))
+			if(moteSettings.hasMeasurements(i)){
 				sfm.registerListener(this,i);
+				sfm.registerListener(ewtc, i);
+			}
 		}    	
 		
 		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
@@ -46,13 +49,10 @@ public class RelativePhaseTester implements SlotListener {
 			rpfw = new RelativePhaseFileWriter(RELATIVEPHASEPATH);
 			rpm = new RelativePhaseMap(IMAGEPATH);
 		}
-
-		ewtc = new ErrorsWriteToConsole();
 		
     	for(int node:others){
     		RelativePhaseCalculator rpc = new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2);
     		rpc.registerListener(drp);
-    		rpc.registerListener(ewtc);
     		if(saveToFile) {
 	    		rpc.registerListener(rpfw);
 	    		rpc.registerListener(rpm);
@@ -62,7 +62,7 @@ public class RelativePhaseTester implements SlotListener {
 
 	@Override
 	public void slotReceived(Slot receivedSlot) {
-		receivedSlot.print();
+		//receivedSlot.print();
 	}
 
 	public static void usage() {

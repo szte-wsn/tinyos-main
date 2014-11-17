@@ -10,6 +10,8 @@ import java.util.Date;
 
 class SlotMeasurement {
 	public static final int FILEVERSION = 1;
+	public static final int NO_ERROR = 0;
+	private static final int ERR_MARKER = 0;
 	public static final int ERR_START_NOT_FOUND = 101;
 	public static final int	ERR_SMALL_MINMAX_RANGE = 102;
 	public static final int	ERR_FEW_ZERO_CROSSINGS = 103;
@@ -17,6 +19,7 @@ class SlotMeasurement {
 	public static final int ERR_PERIOD_MISMATCH = 105;
 	public static final int ERR_ZERO_PERIOD = 106;
 	public static final int ERR_CALCULATION_TIMEOUT = 255;
+	public static final int ERR_NO_MEASUREMENT = 256;
 	
 	public int nodeid, phaseRef, minimum, maximum, period, phase;
 	public boolean hasMeasurement, hasWaveForm, hasLocalMeasurement;
@@ -75,6 +78,15 @@ class SlotMeasurement {
 				return false;
 		}
 		return true;
+	}
+	
+	public int getErrorCode(){
+		if( !hasMeasurement )
+			return ERR_NO_MEASUREMENT;
+		else if( period != ERR_MARKER )
+			return NO_ERROR;
+		else
+			return phase;
 	}
 
 	public void print() {
