@@ -1,42 +1,55 @@
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 
 
-public class ErrorsWriteToConsole  implements RelativePhaseListener{
+public class ErrorsWriteToConsole  implements SlotListener{
 	
 	public static final int WAITFORWRITETOCONSOLE = 1000;
+	private static final int RECEIVEDMEASID = 0;
 	
 	Map<Integer, Integer> errors;
 	
 	public ErrorsWriteToConsole() {
 		errors = new HashMap<Integer,Integer>();
+		errors.put(RECEIVEDMEASID, 0);
+		errors.put(SlotMeasurement.ERR_CALCULATION_TIMEOUT, 0);
+		errors.put(SlotMeasurement.ERR_FEW_ZERO_CROSSINGS, 0);
+		errors.put(SlotMeasurement.ERR_LARGE_PERIOD, 0);
+		errors.put(SlotMeasurement.ERR_NO_MEASUREMENT, 0);
+		errors.put(SlotMeasurement.ERR_PERIOD_MISMATCH, 0);
+		errors.put(SlotMeasurement.ERR_SMALL_MINMAX_RANGE, 0);
+		errors.put(SlotMeasurement.ERR_START_NOT_FOUND, 0);
+		errors.put(SlotMeasurement.ERR_ZERO_PERIOD, 0);
 		(new ErrorWriteToConsoleThread()).start();
 	}
 	
 	public class ErrorWriteToConsoleThread extends Thread {
 	    public void run() {
-	        for(;;) {	
-	        	System.out.println("");
-	        	for(Entry<Integer, Integer> entry : errors.entrySet()) {
-        		    int status = entry.getKey();
-        		    int value = (Integer)entry.getValue();
-        			if(status == RelativePhaseCalculator.STATUS_PERIOD_NOT_CALCULATED)
-        				System.out.println("STATUS_PERIOD_NOT_CALCULATED: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_START_NOT_FOUND) 
-        	    		System.out.println("ERR_START_NOT_FOUND: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_SMALL_MINMAX_RANGE)
-        	    		System.out.println("ERR_SMALL_MINMAX_RANGE: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_FEW_ZERO_CROSSINGS)
-        	    		System.out.println("ERR_FEW_ZERO_CROSSINGS: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_LARGE_PERIOD)
-        				System.out.println("ERR_LARGE_PERIOD: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_PERIOD_MISMATCH)
-        				System.out.println("ERR_PERIOD_MISMATCH: " + value);
-        			else if(status == RelativePhaseCalculator.ERR_ZERO_PERIOD)
-        				System.out.println("ERR_ZERO_PERIOD: " + value);
-        		}
-	        	System.out.println("");
+	    	System.out.println(String.format("%10s %5s %5s %5s %5s %5s %5s %5s %5s",
+	    			"Received",
+	    			"Start",
+	    			"Apml",
+	    			"FewZ",
+	    			"LPer",
+	    			"PerM",
+	    			"ZPer",
+	    			"TimeO",
+	    			"NoMea"));
+	        for(;;) {
+	        	String line;
+	        	synchronized (errors) {
+		        	line = String.format("%10d %5d %5d %5d %5d %5d %5d %5d %5d",
+		        			errors.get(RECEIVEDMEASID),
+		        			errors.get(SlotMeasurement.ERR_START_NOT_FOUND),
+		        			errors.get(SlotMeasurement.ERR_SMALL_MINMAX_RANGE),
+		        			errors.get(SlotMeasurement.ERR_FEW_ZERO_CROSSINGS),
+		        			errors.get(SlotMeasurement.ERR_LARGE_PERIOD),
+		        			errors.get(SlotMeasurement.ERR_PERIOD_MISMATCH),
+		        			errors.get(SlotMeasurement.ERR_ZERO_PERIOD),
+		        			errors.get(SlotMeasurement.ERR_CALCULATION_TIMEOUT),
+		        			errors.get(SlotMeasurement.ERR_NO_MEASUREMENT));
+	        	}
+	        	System.out.println(line);
         		try {
 	        		Thread.sleep(WAITFORWRITETOCONSOLE);
 	        	} catch (InterruptedException e) {
@@ -46,18 +59,18 @@ public class ErrorsWriteToConsole  implements RelativePhaseListener{
 	        }      
 	    }
 	}
-	
-	public void addError(int status) {
-		if(!errors.containsKey(status))
-			errors.put(status, 1);
-		else
-			errors.put(status, errors.get(status)+1);
-	}
 
 	@Override
-	public void relativePhaseReceived(double relativePhase, double avg_period,
-			int status, int slotId, int rx1, int rx2) {
-		addError(status);
+	public void slotReceived(Slot receivedSlot) {
+		for(SlotMeasurement meas: receivedSlot.measurements){
+			int err = meas.getErrorCode();
+			if( err!= SlotMeasurement.NO_ERROR ){
+				errors.put(err, errors.get(err)+1);
+			}
+		}
+		errors.put(RECEIVEDMEASID, errors.get(RECEIVEDMEASID) + receivedSlot.measurements.size());
+		
 	}
+
 	
 }

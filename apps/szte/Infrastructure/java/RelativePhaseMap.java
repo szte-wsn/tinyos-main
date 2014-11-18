@@ -108,18 +108,24 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		}
 		
 		public Color setColor(int status) {
-			if(status == RelativePhaseCalculator.ERR_START_NOT_FOUND) 
+			if(status == SlotMeasurement.ERR_START_NOT_FOUND) 
 	    		return Color.RED;
-			else if(status == RelativePhaseCalculator.ERR_SMALL_MINMAX_RANGE)
+			else if(status == SlotMeasurement.ERR_SMALL_MINMAX_RANGE)
 				return Color.BLUE;
-			else if(status == RelativePhaseCalculator.ERR_FEW_ZERO_CROSSINGS)
+			else if(status == SlotMeasurement.ERR_FEW_ZERO_CROSSINGS)
 				return Color.GRAY;
-			else if(status == RelativePhaseCalculator.ERR_LARGE_PERIOD)
+			else if(status == SlotMeasurement.ERR_LARGE_PERIOD)
 				return Color.YELLOW;
-			else if(status == RelativePhaseCalculator.ERR_PERIOD_MISMATCH)
+			else if(status == SlotMeasurement.ERR_PERIOD_MISMATCH)
 				return Color.ORANGE;
-			else if(status == RelativePhaseCalculator.ERR_ZERO_PERIOD)
+			else if(status == SlotMeasurement.ERR_ZERO_PERIOD)
 				return Color.PINK;
+			else if(status == SlotMeasurement.ERR_CALCULATION_TIMEOUT)
+				return Color.CYAN;
+			else if(status == SlotMeasurement.ERR_NO_MEASUREMENT)
+				return Color.MAGENTA;
+			else if(status == RelativePhaseCalculator.STATUS_PERIOD_DIFF_LARGE)
+				return Color.DARK_GRAY;
 			else
 				return Color.BLACK;
 		}

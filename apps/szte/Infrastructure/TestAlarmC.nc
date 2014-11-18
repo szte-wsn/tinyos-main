@@ -26,9 +26,10 @@ implementation{
 	App.MeasureWave -> MeasureWaveC;
 
 	#ifdef ENABLE_DEBUG_SLOTS
-  components new AMSenderC(AM_WAVE_MESSAGE_T), new TimerMilliC();
+  components new AMSenderC(AM_WAVE_MESSAGE_T), new TimerMilliC(), BusyWaitMicroC;
 	App.AMSend -> AMSenderC;
 	App.Timer -> TimerMilliC;
+	App.BusyWait -> BusyWaitMicroC;
 	#endif
 
 	#if defined(TEST_CALCULATION_TIMING)

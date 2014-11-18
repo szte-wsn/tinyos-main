@@ -31,6 +31,7 @@ module TestAlarmP{
 	#ifdef ENABLE_DEBUG_SLOTS	
 	uses interface AMSend;
 	uses interface Timer<TMilli>;
+	uses interface BusyWait<TMicro, uint16_t>;
 	#endif
 	#if defined(TEST_CALCULATION_TIMING)
 	uses interface DiagMsg;
@@ -56,11 +57,8 @@ implementation{
 
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
-		nx_uint8_t phaseRef[NUMBER_OF_RX];
-		nx_uint16_t freq[NUMBER_OF_RX];
+		nx_uint8_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
-		nx_uint8_t min[NUMBER_OF_RX];
-		nx_uint8_t max[NUMBER_OF_RX];
 	} sync_message_t;
 	
 	enum {
@@ -136,14 +134,10 @@ implementation{
 	#endif
 	
 	event void Boot.booted(){
-// 		uint8_t i;
 		call SplitControl.start();
 		firetime = 65000UL+((uint32_t)TOS_NODE_ID<<16);
 		startOfFrame = firetime;
 		unsynchronized = NO_SYNC;
-// 		for(i=0;i<NUMBER_OF_SLOTS;i++){
-// 			settings[i] = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
-// 		}
 	}
 	
 	event void SplitControl.startDone(error_t error){
@@ -322,16 +316,16 @@ implementation{
 				call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
 				break;
 			case PROCESS_PHASEREF:
-				currentSyncPayload->phaseRef[processBuffer] = call MeasureWave.getPhaseRef();
+				call MeasureWave.getPhaseRef();
 				break;
 			case PROCESS_FILTER:
 				call MeasureWave.filter();
 				break;
 			case PROCESS_MIN:
-				currentSyncPayload->min[processBuffer] = call MeasureWave.getMinAmplitude();
+				call MeasureWave.getMinAmplitude();
 				break;
 			case PROCESS_MAX:
-				currentSyncPayload->max[processBuffer] = call MeasureWave.getMaxAmplitude();
+				call MeasureWave.getMaxAmplitude();
 				break;
 			case PROCESS_FREQ:
 				#ifndef DEBUG_COLLECTOR
@@ -439,7 +433,9 @@ implementation{
 			sendedMeasureCounter++;
 		}
 		if( sendedMeasureCounter < NUMBER_OF_RX ){
-			//call Timer.startOneShot(100);
+			atomic{
+				call BusyWait.wait(1000);
+			}
 			post sendWaveform();
 		}
 	}
