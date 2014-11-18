@@ -32,19 +32,34 @@
  * Author: Miklos Maroti
  */
 
-#include "block.hpp"
-#include "serial.hpp"
+#ifndef __SERIAL_HPP__
+#define __SERIAL_HPP__
 
-int main() {
-	std::cout << "Start\n";
-	Printer<int> printer;
-	Buffer<int> buffer;
-	Producer<int> source;
-	source.connect(buffer);
-	buffer.connect(printer);
-	source.connect(printer);
-	source.send(12);
-	source.send(13);
-	std::cout << "End\n";
-	buffer.disconnect_all();
-}
+#include <vector>
+#include <string>
+
+#include "block.hpp"
+
+class SerialBase : public Producer<std::vector<unsigned char>>, public Consumer<std::vector<unsigned char>> {
+public:
+	SerialBase(const char *devicename, int baudrate);
+	~SerialBase();
+
+//	virtual void work(const std::vector<unsigned char> &data);
+
+private:
+	void write_hdlc(const std::vector<unsigned char> &packet);
+
+private:
+	std::string devicename;
+	int read_fd, write_fd;
+	std::mutex write_mutex;
+
+	enum {
+		HDLC_SYN = 126,
+		HDLC_ESC = 125,
+		HDLC_XOR = 32,
+	};
+};
+
+#endif//__SERIALCOMM_HPP__

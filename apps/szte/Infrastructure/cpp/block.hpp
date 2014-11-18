@@ -32,6 +32,9 @@
  * Author: Miklos Maroti
  */
 
+#ifndef __BLOCK_HPP__
+#define __BLOCK_HPP__
+
 #include <cassert>
 #include <mutex>
 #include <condition_variable>
@@ -46,20 +49,24 @@
 template <class DATA> class Producer;
 
 template <class DATA> class Consumer {
-private:
-	std::string name;
-	std::atomic<int> conn_count;
-
 public:
 	Consumer(const char *name) : name(name), conn_count(0) {
 	}
 
 	~Consumer() {
 		if (conn_count != 0)
-			throw std::runtime_error(name + " is not disconnected");
+			throw std::runtime_error(name + " block is not disconnected");
 	}
 
-	virtual void work(DATA data) = 0;
+	const std::string &get_name() const {
+		return name;
+	}
+
+	virtual void work(const DATA &data) = 0;
+
+private:
+	std::string name;
+	std::atomic<int> conn_count;
 
 private:
 	friend class Producer<DATA>;
@@ -76,26 +83,21 @@ private:
 };
 
 template <class DATA> class Printer: public Consumer<DATA> {
-private:
-	std::mutex printer_mutex;
-
 public:
 	Printer(const char *name = "Printer")
 		: Consumer<DATA>(name) {
 	}
 
-	virtual void work(DATA data) {
+	virtual void work(const DATA &data) {
 		std::lock_guard<std::mutex> lock(printer_mutex);
 		std::cout << data << std::endl;
 	}
+
+private:
+	std::mutex printer_mutex;
 };
 
 template <class DATA> class Producer {
-private:
-	std::vector<Consumer<DATA>*> consumers;
-
-	std::mutex producer_mutex;
-
 public:
 	~Producer() {
 		disconnect_all();
@@ -133,17 +135,14 @@ public:
 
 		consumers.clear();
 	}
+
+private:
+	std::vector<Consumer<DATA>*> consumers;
+
+	std::mutex producer_mutex;
 };
 
 template <class DATA> class Buffer: public Consumer<DATA>, public Producer<DATA> {
-private:
-	std::deque<DATA> queue;
-
-	std::mutex buffer_mutex;
-	bool buffer_exit = false;
-	std::condition_variable buffer_cond;
-	std::thread buffer_thread;
-
 public:
 	Buffer(const char *name = "Buffer")
 		: Consumer<DATA>(name),
@@ -159,36 +158,51 @@ public:
 		buffer_thread.join();
 	}
 
-	void work(DATA data) {
+	void work(const DATA &data) {
 		std::lock_guard<std::mutex> lock(buffer_mutex);
 		queue.push_back(data);
 		buffer_cond.notify_one();
 	}
 
 private:
+	std::deque<DATA> queue;
+
+	std::mutex buffer_mutex;
+	bool buffer_exit = false;
+	std::condition_variable buffer_cond;
+	std::thread buffer_thread;
+
+private:
 	void pump() {
-		for (;;) {
-			std::unique_lock<std::mutex> lock(buffer_mutex);
+		try {
+			for (;;) {
+				std::unique_lock<std::mutex> lock(buffer_mutex);
 
-			if (queue.empty()) {
-				if (buffer_exit)
-					break;
+				if (queue.empty()) {
+					if (buffer_exit)
+						break;
 
-				buffer_cond.wait(lock);
+					buffer_cond.wait(lock);
 
-				if (buffer_exit)
-					break;
+					if (buffer_exit)
+						break;
+				}
+
+				DATA data = queue.front();
+				queue.pop_front();
+
+				lock.unlock();
+
+				this->send(data);
 			}
-
-			DATA data = queue.front();
-			queue.pop_front();
-
-			lock.unlock();
-
-			this->send(data);
+		}
+		catch (std::exception e) {
+			std::cerr << "exception in " << this->get_name() << std::endl; // TODO: add description
 		}
 	};
 };
 
 template <class INPUT, class OUTPUT> class Block: public Consumer<INPUT>, public Producer<OUTPUT> {
 };
+
+#endif//__BLOCK_HPP__
