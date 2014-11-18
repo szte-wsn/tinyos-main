@@ -381,12 +381,21 @@ implementation {
 
 // ------- MeasureWave interface
 
+#ifdef MEASUREWAVE_SAVE_BUFFER
+	uint8_t temp[BUFFER_LEN];
+#endif
+
 	command void MeasureWave.changeData(uint8_t *newData, uint16_t newLen) {
 #ifdef MEASUREWAVE_PROFILER
 		uint32_t starttime = call LocalTime.get();
 #endif
 		phase=period=filter3_max=filter3_min=tx_start=255;
+#ifdef MEASUREWAVE_SAVE_BUFFER
+		memcpy(temp, newData, newLen<BUFFER_LEN?newLen:BUFFER_LEN);
+		process(temp);
+#else
 		process(newData);
+#endif
 #ifdef MEASUREWAVE_PROFILER
 		starttime = call LocalTime.get() - starttime;
 		if( call DiagMsg.record() ) {
