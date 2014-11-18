@@ -40,7 +40,7 @@ module TestAlarmP{
 implementation{
 
 	enum {
-    CHANNEL = 11,
+    CHANNEL = 17,
 		TRIM1 = 0,
 		TRIM2 = 7,
   };
@@ -170,6 +170,7 @@ implementation{
 
 	async event void Alarm.fired(){
 		uint8_t measType = read_uint8_t(&(motesettings[TOS_NODE_ID-1][activeMeasure]));
+		error_t err = SUCCESS;
 		if(waitToStart){
 			waitToStart = FALSE;
 		}
@@ -191,17 +192,17 @@ implementation{
 		}
 		if(measType==TX1){ //sender
 			if(unsynchronized != NO_SYNC){
-				call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
+				err = call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
 			}
 		}else if(measType==TX2){
 			if(unsynchronized != NO_SYNC){
-				call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
+				err = call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
 			}
 		}else if(measType==RX){ //receiver
 			if(unsynchronized != NO_SYNC){
 				uint16_t time = 0;
 				#ifndef DEBUG_COLLECTOR
-				call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
+				err = call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
 				#else
 				for(time=0;time<BUFFER_LEN;time++){
 					buffer[measureBuffer][time]=activeMeasure;
@@ -240,6 +241,10 @@ implementation{
 		}else if(measType==W100){
 			firetime += WAIT_SLOT_100;
 			startAlarm((activeMeasure+1)%NUMBER_OF_SLOTS,startOfFrame,firetime);
+		}
+		
+		if( err != SUCCESS ){
+			call Leds.led1Toggle();
 		}
 		
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
@@ -358,6 +363,9 @@ implementation{
 		sync_message_t* msg = (sync_message_t*)payload;
 		if(call TimeSyncPacket.isValid(bufPtr)){
 			if(msg->frame == activeMeasure || waitToStart || unsynchronized==NO_SYNC){
+				int32_t diff = (int32_t)(startOfFrame -  call TimeSyncPacket.eventTime(bufPtr));
+				if( diff < -2 || diff > 2)
+					call Leds.led2Toggle();
 				startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 				firetime = SYNC_SLOT;
 				if(waitToStart || unsynchronized==NO_SYNC){
