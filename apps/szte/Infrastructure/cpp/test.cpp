@@ -36,6 +36,8 @@
 #include "serial.hpp"
 
 int main() {
+	SerialBase serial("hihi", 0);
+
 	std::cout << "Start\n";
 	Printer<int> printer;
 	Buffer<int> buffer;

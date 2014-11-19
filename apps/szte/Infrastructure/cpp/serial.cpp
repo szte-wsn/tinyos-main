@@ -32,72 +32,96 @@
  * Author: Miklos Maroti
  */
 
-#include <cstring>
+#include "serial.hpp"
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
+#include <poll.h>
+#include <cstring>
 #include <vector>
+#include <memory>
 
-#include "serial.hpp"
 
 SerialBase::SerialBase(const char *devicename, int baudrate)
-	: Consumer<std::vector<unsigned char>>(devicename),
-	devicename(devicename) {
+	: Consumer<std::vector<unsigned char>>(devicename), serial_fd(-1) {
+	try {
+		serial_fd = open(devicename, O_RDWR | O_NOCTTY);
+		if (serial_fd < 0)
+			throw std::runtime_error("Could not open " + get_name() + ": " + std::strerror(errno));
 
-	read_fd = open(devicename, O_RDONLY | O_NOCTTY);
-	if (read_fd < 0)
-		throw std::runtime_error("could not open " + this->devicename);
+		if (baudrate > 0) {
+			struct termios newtio;
+			memset(&newtio, 0, sizeof(newtio));
+			newtio.c_cflag = CS8 | CLOCAL | CREAD;
+			newtio.c_iflag = IGNPAR | IGNBRK;
+			newtio.c_oflag = 0;
+			cfsetspeed(&newtio, baudrate);
 
-	write_fd = open(devicename, O_WRONLY | O_NOCTTY);
-	if (write_fd < 0) {
-		close(read_fd);
-		throw std::runtime_error("could not open " + this->devicename);
+			if (tcflush(serial_fd, TCIFLUSH) < 0 || tcsetattr(serial_fd, TCSANOW, &newtio) < 0)
+				throw std::runtime_error("Could not set baudrate for " + get_name() + ": " + std::strerror(errno));
+		}
+
+		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialBase::pump, this));
+		std::cerr << "Opened device " << devicename << " with baudrate " << baudrate << std::endl;
 	}
+	catch(const std::exception &e) {
+		if (serial_fd >= 0) {
+			close(serial_fd);
+			serial_fd = -1;
+		}
 
-	struct termios newtio;
-	memset(&newtio, 0, sizeof(newtio));
-	newtio.c_cflag = CS8 | CLOCAL | CREAD;
-	newtio.c_iflag = IGNPAR | IGNBRK;
-	newtio.c_oflag = 0;
-	cfsetspeed(&newtio, baudrate);
-
-	if (tcflush(read_fd, TCIFLUSH) < 0 || tcsetattr(read_fd, TCSANOW, &newtio) < 0
-		|| tcflush(write_fd, TCIFLUSH) < 0 || tcsetattr(write_fd, TCSANOW, &newtio) < 0)
-	{
-		close(read_fd);
-		close(write_fd);
-		throw std::runtime_error("could not set baudrate for " + this->devicename);
+		throw;
 	}
-
-	std::cerr << "opened device " << devicename << " with baudrate " << baudrate;
 }
 
 SerialBase::~SerialBase() {
-	close(read_fd);
-	close(write_fd);
+	reader_exit = true;
+	if (reader_thread != NULL)
+		reader_thread->join();
+
+	close(serial_fd);
+
+	std::cerr << "Closed device " << get_name() << std::endl;
 }
 
-void SerialBase::write_hdlc(const std::vector<unsigned char> &packet) {
+void SerialBase::work(const std::vector<unsigned char> &packet) {
 	std::vector<unsigned char> encoded;
 
-	encoded.push_back(HDLC_SYN);
+	encoded.push_back(HDLC_FLG);
 	for (unsigned char c : packet) {
-		if (c == HDLC_SYN || c == HDLC_ESC) {
+		if (c == HDLC_FLG || c == HDLC_ESC) {
 			encoded.push_back(HDLC_ESC);
 			c ^= HDLC_XOR;
 		}
 		encoded.push_back(c);
 	}
-	encoded.push_back(HDLC_SYN);
+	encoded.push_back(HDLC_FLG);
 
 	std::lock_guard<std::mutex> lock(write_mutex);
 
 	int sent = 0;
 	do {
-		int n = write(write_fd, encoded.data() + sent, encoded.size() - sent);
+		int n = write(serial_fd, encoded.data() + sent, encoded.size() - sent);
 		if (n < 0)
-			throw std::runtime_error(get_name() + ": write failed with ");	// TODO: add number
+			throw std::runtime_error(get_name() + " write failed: " + std::strerror(errno));
 		else
 			sent += n;
 	} while (sent < encoded.size());
+}
+
+void SerialBase::pump() {
+	struct pollfd fds[1];
+	fds[0].fd = serial_fd;
+	fds[0].events = POLLIN | POLLPRI;
+
+	while (!reader_exit) {
+		int n = poll(fds, 1, 1000);	// 100 ms timeout
+		if (n < 0)
+			throw std::runtime_error(get_name() + " poll failed: " + std::strerror(errno));
+		if (reader_exit)
+			return;
+
+		std::cerr << std::to_string(n) << std::endl;
+	}
 }

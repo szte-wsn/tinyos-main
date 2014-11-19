@@ -103,7 +103,7 @@ public:
 		disconnect_all();
 	}
 
-	void send(DATA data) {
+	void send(const DATA &data) {
 		std::lock_guard<std::mutex> lock(producer_mutex);
 		for(Consumer<DATA> *c : consumers)
 			c->work(data);
@@ -120,7 +120,7 @@ public:
 
 		auto it = std::find(consumers.begin(), consumers.end(), &c);
 		if (it == consumers.end())
-			throw std::invalid_argument("consumer not found");
+			throw std::invalid_argument("Consumer not found");
 
 		*it = consumers.back();
 		consumers.pop_back();
@@ -174,30 +174,25 @@ private:
 
 private:
 	void pump() {
-		try {
-			for (;;) {
-				std::unique_lock<std::mutex> lock(buffer_mutex);
+		for (;;) {
+			std::unique_lock<std::mutex> lock(buffer_mutex);
 
-				if (queue.empty()) {
-					if (buffer_exit)
-						break;
+			if (queue.empty()) {
+				if (buffer_exit)
+					break;
 
-					buffer_cond.wait(lock);
+				buffer_cond.wait(lock);
 
-					if (buffer_exit)
-						break;
-				}
-
-				DATA data = queue.front();
-				queue.pop_front();
-
-				lock.unlock();
-
-				this->send(data);
+				if (buffer_exit)
+					break;
 			}
-		}
-		catch (std::exception e) {
-			std::cerr << "exception in " << this->get_name() << std::endl; // TODO: add description
+
+			DATA data = queue.front();
+			queue.pop_front();
+
+			lock.unlock();
+
+			this->send(data);
 		}
 	};
 };

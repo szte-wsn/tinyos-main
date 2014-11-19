@@ -35,31 +35,32 @@
 #ifndef __SERIAL_HPP__
 #define __SERIAL_HPP__
 
+#include "block.hpp"
+
 #include <vector>
 #include <string>
-
-#include "block.hpp"
 
 class SerialBase : public Producer<std::vector<unsigned char>>, public Consumer<std::vector<unsigned char>> {
 public:
 	SerialBase(const char *devicename, int baudrate);
 	~SerialBase();
 
-//	virtual void work(const std::vector<unsigned char> &data);
+	virtual void work(const std::vector<unsigned char> &data);
 
 private:
-	void write_hdlc(const std::vector<unsigned char> &packet);
-
-private:
-	std::string devicename;
-	int read_fd, write_fd;
+	int serial_fd;
 	std::mutex write_mutex;
 
 	enum {
-		HDLC_SYN = 126,
+		HDLC_FLG = 126,
 		HDLC_ESC = 125,
 		HDLC_XOR = 32,
 	};
+
+	volatile bool reader_exit = false;
+	std::unique_ptr<std::thread> reader_thread;
+
+	void pump();
 };
 
 #endif//__SERIALCOMM_HPP__
