@@ -25,9 +25,9 @@ public class RelativePhaseTester implements SlotListener {
 	RelativePhaseMap rpm;
 	ErrorsWriteToConsole ewtc;
 
-	public RelativePhaseTester(String settingsPath) {
+	public RelativePhaseTester(String settingsPath, int refNode, int[] otherNode) {
 		try {
-			moteSettings=new MoteSettings(settingsPath);
+			moteSettings = new MoteSettings(settingsPath);
 		} catch (Exception e) {
 			System.err.println("Error: setting.ini is not readable");
 			e.printStackTrace();
@@ -38,26 +38,28 @@ public class RelativePhaseTester implements SlotListener {
 		ewtc = new ErrorsWriteToConsole();
 		for(int i=0; i<moteSettings.getNumberOfSlots();i++){
 			if(moteSettings.hasMeasurements(i)){
-				sfm.registerListener(this,i);
+				sfm.registerListener(this, i);
 				sfm.registerListener(ewtc, i);
 			}
 		}    	
 		
 		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
-		
+		rpm = new RelativePhaseMap(IMAGEPATH, refNode, otherNode, saveToFile);
+
 		if(saveToFile) {
 			rpfw = new RelativePhaseFileWriter(RELATIVEPHASEPATH);
-			rpm = new RelativePhaseMap(IMAGEPATH);
 		}
 		
     	for(int node:others){
     		RelativePhaseCalculator rpc = new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2);
     		rpc.registerListener(drp);
+    		rpc.registerListener(rpm);
     		if(saveToFile) {
 	    		rpc.registerListener(rpfw);
-	    		rpc.registerListener(rpm);
     		}
 		}
+    	
+
 	}
 
 	@Override
@@ -70,7 +72,7 @@ public class RelativePhaseTester implements SlotListener {
 		System.exit(1);
 	}
 	
-	private static void initalize(String[] args) {
+	private static int[] initalize(String[] args) {
 		saveToFile = (args[0].equals("true"));
 		tx1 = Integer.parseInt(args[1]);
 		tx2 = Integer.parseInt(args[2]);
@@ -79,10 +81,12 @@ public class RelativePhaseTester implements SlotListener {
 		others = new int[st.countTokens()];
 		for(int i=0; st.hasMoreElements(); i++) 
 			others[i] = (Integer.parseInt((String) st.nextElement()));
+		return others;
 	}
 
 	public static void main(String[] args) {
 		String source = null;
+		int[] otherNodes;
 		if (args.length == 7) {
 			if (!args[5].equals("-comm")) {
 				usage();
@@ -99,8 +103,8 @@ public class RelativePhaseTester implements SlotListener {
 		} else {
 			phoenix = BuildSource.makePhoenix(source, PrintStreamMessenger.err);
 		}
-		initalize(args);
+		otherNodes = initalize(args);
 		moteInterface = new MoteIF(phoenix);
-		new RelativePhaseTester("settings.ini");
+		new RelativePhaseTester("settings.ini", Integer.parseInt(args[3]), otherNodes);
 	}
 }
