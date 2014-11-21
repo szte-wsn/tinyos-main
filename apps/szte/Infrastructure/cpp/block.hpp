@@ -46,9 +46,9 @@
 #include <atomic>
 #include <string>
 
-template <class DATA> class Producer;
+template <typename DATA> class Producer;
 
-template <class DATA> class Consumer {
+template <typename DATA> class Consumer {
 public:
 	Consumer(const char *name) : name(name), conn_count(0) {
 	}
@@ -82,7 +82,7 @@ private:
 	}
 };
 
-template <class DATA> class Printer: public Consumer<DATA> {
+template <typename DATA> class Printer: public Consumer<DATA> {
 public:
 	Printer(const char *name = "Printer")
 		: Consumer<DATA>(name) {
@@ -97,7 +97,9 @@ private:
 	std::mutex printer_mutex;
 };
 
-template <class DATA> class Producer {
+std::ostream& operator <<(std::ostream& output, const std::vector<unsigned char> &vector);
+
+template <typename DATA> class Producer {
 public:
 	~Producer() {
 		disconnect_all();
@@ -142,7 +144,7 @@ private:
 	std::mutex producer_mutex;
 };
 
-template <class DATA> class Buffer: public Consumer<DATA>, public Producer<DATA> {
+template <typename DATA> class Buffer: public Consumer<DATA>, public Producer<DATA> {
 public:
 	Buffer(const char *name = "Buffer")
 		: Consumer<DATA>(name),
@@ -197,7 +199,7 @@ private:
 	};
 };
 
-template <class INPUT, class OUTPUT> class Block: public Consumer<INPUT>, public Producer<OUTPUT> {
+template <typename INPUT, typename OUTPUT> class Block: public Consumer<INPUT>, public Producer<OUTPUT> {
 };
 
 #endif//__BLOCK_HPP__

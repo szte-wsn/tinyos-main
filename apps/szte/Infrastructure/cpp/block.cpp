@@ -33,26 +33,12 @@
  */
 
 #include "block.hpp"
-#include "serial.hpp"
-#include <chrono>
+#include <iomanip>
 
-int main() {
-	SerialBase serial("/dev/ttyACM0", 57600);
-	Printer<std::vector<unsigned char>> printer;
-	serial.connect(printer);
-
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-	serial.disconnect_all();
-
-//	std::cout << "Start\n";
-//	Printer<int> printer;
-//	Buffer<int> buffer;
-//	Producer<int> source;
-//	source.connect(buffer);
-//	buffer.connect(printer);
-//	source.connect(printer);
-//	source.send(12);
-//	source.send(13);
-//	std::cout << "End\n";
-//	buffer.disconnect_all();
+std::ostream& operator <<(std::ostream& output, const std::vector<unsigned char> &vector) {
+	output << "[" << std::hex << std::setfill('0');
+	for (unsigned char a : vector)
+		output << " " << std::setw(2) << (int) a;
+	output << " ]";
+	return output;
 }
