@@ -36,9 +36,7 @@
 #define __SERIAL_HPP__
 
 #include "block.hpp"
-
 #include <vector>
-#include <string>
 
 class SerialBase : public Producer<std::vector<unsigned char>>, public Consumer<std::vector<unsigned char>> {
 public:
@@ -48,19 +46,24 @@ public:
 	virtual void work(const std::vector<unsigned char> &data);
 
 private:
+	enum {
+		HDLC_FLAG = 126,
+		HDLC_ESCAPE = 125,
+		HDLC_XOR = 32,
+
+		READ_BUFFER = 1024,
+		READ_MAXLEN = 255,
+	};
+
 	int serial_fd;
 	std::mutex write_mutex;
 
-	enum {
-		HDLC_FLG = 126,
-		HDLC_ESC = 125,
-		HDLC_XOR = 32,
-	};
-
-	volatile bool reader_exit = false;
 	std::unique_ptr<std::thread> reader_thread;
+	unsigned char read_buffer[READ_BUFFER];
+	int pipe_fds[2];
 
 	void pump();
+	void error(const char *msg, int err);
 };
 
 #endif//__SERIALCOMM_HPP__

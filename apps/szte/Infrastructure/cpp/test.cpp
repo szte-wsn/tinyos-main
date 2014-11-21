@@ -36,7 +36,7 @@
 #include "serial.hpp"
 
 int main() {
-	SerialBase serial("hihi", 0);
+	SerialBase serial("/dev/pts/7", 57600);
 
 	std::cout << "Start\n";
 	Printer<int> printer;

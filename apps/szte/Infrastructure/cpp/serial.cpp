@@ -33,70 +33,81 @@
  */
 
 #include "serial.hpp"
+#include <cstring>
+#include <vector>
+#include <memory>
 
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
 #include <poll.h>
-#include <cstring>
-#include <vector>
-#include <memory>
-
 
 SerialBase::SerialBase(const char *devicename, int baudrate)
-	: Consumer<std::vector<unsigned char>>(devicename), serial_fd(-1) {
+	: Consumer<std::vector<unsigned char>>(devicename) {
+	serial_fd = -1;
+	pipe_fds[0] = -1;
+	pipe_fds[1] = -1;
+
 	try {
+		int a = pipe2(pipe_fds, O_NONBLOCK);
+		if (a < 0)
+			error("Creating pipe", errno);
+
 		serial_fd = open(devicename, O_RDWR | O_NOCTTY);
 		if (serial_fd < 0)
-			throw std::runtime_error("Could not open " + get_name() + ": " + std::strerror(errno));
+			error("Open", errno);
 
-		if (baudrate > 0) {
-			struct termios newtio;
-			memset(&newtio, 0, sizeof(newtio));
-			newtio.c_cflag = CS8 | CLOCAL | CREAD;
-			newtio.c_iflag = IGNPAR | IGNBRK;
-			newtio.c_oflag = 0;
-			cfsetspeed(&newtio, baudrate);
+		struct termios newtio;
+		memset(&newtio, 0, sizeof(newtio));
+		newtio.c_cflag = CS8 | CLOCAL | CREAD;
+		newtio.c_iflag = IGNPAR | IGNBRK;
+		newtio.c_oflag = 0;
+		cfsetspeed(&newtio, baudrate);
 
-			if (tcflush(serial_fd, TCIFLUSH) < 0 || tcsetattr(serial_fd, TCSANOW, &newtio) < 0)
-				throw std::runtime_error("Could not set baudrate for " + get_name() + ": " + std::strerror(errno));
-		}
+		if (tcflush(serial_fd, TCIFLUSH) < 0 || tcsetattr(serial_fd, TCSANOW, &newtio) < 0)
+			error("Set baudrate", errno);
 
 		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialBase::pump, this));
-		std::cerr << "Opened device " << devicename << " with baudrate " << baudrate << std::endl;
+		std::cerr << "Opened " << get_name() << " with baudrate " << baudrate << std::endl;
 	}
 	catch(const std::exception &e) {
-		if (serial_fd >= 0) {
+		if (serial_fd >= 0)
 			close(serial_fd);
-			serial_fd = -1;
-		}
+		if (pipe_fds[0] >= 0)
+			close(pipe_fds[0]);
+		if (pipe_fds[1] >= 0)
+			close(pipe_fds[1]);
 
 		throw;
 	}
 }
 
 SerialBase::~SerialBase() {
-	reader_exit = true;
+	unsigned char data = 0;
+	write(pipe_fds[1], &data, 1);
+
 	if (reader_thread != NULL)
 		reader_thread->join();
 
 	close(serial_fd);
+	close(pipe_fds[0]);
+	close(pipe_fds[1]);
 
-	std::cerr << "Closed device " << get_name() << std::endl;
+	std::cerr << "Closed " << get_name() << std::endl;
 }
 
 void SerialBase::work(const std::vector<unsigned char> &packet) {
 	std::vector<unsigned char> encoded;
 
-	encoded.push_back(HDLC_FLG);
+	encoded.push_back(HDLC_FLAG);
 	for (unsigned char c : packet) {
-		if (c == HDLC_FLG || c == HDLC_ESC) {
-			encoded.push_back(HDLC_ESC);
+		if (c == HDLC_FLAG || c == HDLC_ESCAPE) {
+			encoded.push_back(HDLC_ESCAPE);
 			c ^= HDLC_XOR;
 		}
 		encoded.push_back(c);
 	}
-	encoded.push_back(HDLC_FLG);
+	encoded.push_back(HDLC_FLAG);
 
 	std::lock_guard<std::mutex> lock(write_mutex);
 
@@ -104,24 +115,72 @@ void SerialBase::work(const std::vector<unsigned char> &packet) {
 	do {
 		int n = write(serial_fd, encoded.data() + sent, encoded.size() - sent);
 		if (n < 0)
-			throw std::runtime_error(get_name() + " write failed: " + std::strerror(errno));
+			error("Write", errno);
 		else
 			sent += n;
 	} while (sent < encoded.size());
 }
 
 void SerialBase::pump() {
-	struct pollfd fds[1];
-	fds[0].fd = serial_fd;
+	struct pollfd fds[2];
+	fds[0].fd = pipe_fds[0];
 	fds[0].events = POLLIN | POLLPRI;
+	fds[1].fd = serial_fd;
+	fds[1].events = POLLIN | POLLPRI;
 
-	while (!reader_exit) {
-		int n = poll(fds, 1, 1000);	// 100 ms timeout
-		if (n < 0)
-			throw std::runtime_error(get_name() + " poll failed: " + std::strerror(errno));
-		if (reader_exit)
+	std::vector<unsigned char> packet;
+	packet.reserve(READ_MAXLEN);
+	bool synchronize = true;
+	bool escaped;
+
+	for(;;) {
+		int a = poll(fds, 2, -1);
+		if (a < 0)
+			error("Poll", errno);
+
+		if ((fds[0].revents & (POLLIN | POLLPRI)) != 0)
 			return;
+		else if ((fds[1].revents & (POLLIN | POLLPRI)) != 0) {
+			ssize_t n = read(serial_fd, read_buffer, READ_BUFFER);
+			if (n < 0)
+				error("Read", errno);
 
-		std::cerr << std::to_string(n) << std::endl;
+			for (int i = 0; i < n; ++i) {
+				unsigned char c = read_buffer[i];
+
+				if (c == HDLC_FLAG) {
+					if (!synchronize && packet.size() > 0) {
+						send(packet);
+						packet.clear();
+					}
+
+					synchronize = false;
+					escaped = false;
+				}
+				else if (synchronize)
+					;
+				else if (c == HDLC_ESCAPE)
+					escaped = true;
+				else {
+					if (packet.size() >= READ_MAXLEN) {
+						std::cerr << "Synchronizing " << get_name() << std::endl;
+						synchronize = true;
+					}
+					else {
+						if (escaped) {
+							c ^= HDLC_XOR;
+							escaped = false;
+						}
+
+						packet.push_back(c);
+					}
+				}
+			}
+		}
+
 	}
+}
+
+void SerialBase::error(const char *msg, int err) {
+	throw std::runtime_error(std::string(msg) + " failed for " + get_name() + ": " + std::strerror(err));
 }
