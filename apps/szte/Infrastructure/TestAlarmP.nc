@@ -41,8 +41,8 @@ implementation{
 
 	enum {
     CHANNEL = 17,
-		TRIM1 = 0,
-		TRIM2 = 7,
+		TRIM1 = 2,
+		TRIM2 = 5,
   };
   
   enum {
@@ -363,11 +363,14 @@ implementation{
 		sync_message_t* msg = (sync_message_t*)payload;
 		if(call TimeSyncPacket.isValid(bufPtr)){
 			if(msg->frame == activeMeasure || waitToStart || unsynchronized==NO_SYNC){
-				int32_t diff = (int32_t)(startOfFrame -  call TimeSyncPacket.eventTime(bufPtr));
-				if( diff < -2 || diff > 2)
+				//int32_t diff = (int32_t)(startOfFrame -  call TimeSyncPacket.eventTime(bufPtr));
+				//workaround
+				if(call TimeSyncPacket.eventTime(bufPtr) > call Alarm.getNow()){	
 					call Leds.led2Toggle();
-				startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
-				firetime = SYNC_SLOT;
+				}else{
+					startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
+					firetime = SYNC_SLOT;
+				}
 				if(waitToStart || unsynchronized==NO_SYNC){
 					int i;
 					activeMeasure = msg->frame;
