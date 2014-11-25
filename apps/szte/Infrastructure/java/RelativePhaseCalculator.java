@@ -5,6 +5,8 @@ public class RelativePhaseCalculator implements SlotListener {
 	
 	public static final int STATUS_OK = 0;
 	public static final int STATUS_PERIOD_DIFF_LARGE = 1;
+	public static final int STATUS_NO_DATA = 2;
+	public static final int STATUS_NO_REFERENCE = 3;
 	private static final float PERIOD_DIFF  = 0.1f;
 	
 	private ArrayList<Integer> registeredSlots;		
@@ -64,8 +66,8 @@ public class RelativePhaseCalculator implements SlotListener {
 		double relativePhase = 0.0;
 		double avgPeriod = 0.0;
 		int status = STATUS_OK;
-		SlotMeasurement referenceNode = new SlotMeasurement(rx1, null);
-		SlotMeasurement otherNode = new SlotMeasurement(rx2, null);
+		SlotMeasurement referenceNode = null;
+		SlotMeasurement otherNode = null;
 
 		ArrayList<SlotMeasurement> slotMeasures = receivedSlot.measurements;
 		
@@ -75,22 +77,29 @@ public class RelativePhaseCalculator implements SlotListener {
 			if(slotMeasures.get(i).nodeid == rx2)
 				otherNode = slotMeasures.get(i);
 		}
-		
-		if( referenceNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
-			status = referenceNode.getErrorCode();
-		} else if( otherNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
-			status = otherNode.getErrorCode();
-		} else if(Math.abs(referenceNode.period - otherNode.period) > referenceNode.period*PERIOD_DIFF) {
-			status = STATUS_PERIOD_DIFF_LARGE;
+		if( otherNode == null ){
+			for(RelativePhaseListener listener : listeners)
+				listener.relativePhaseReceived(0, 0, STATUS_NO_DATA, receivedSlot.slotId, rx1, rx2);
+		} else if( referenceNode == null ){
+			for(RelativePhaseListener listener : listeners)
+				listener.relativePhaseReceived(0, 0, STATUS_NO_REFERENCE, receivedSlot.slotId, rx1, rx2);
 		} else {
-			avgPeriod = (referenceNode.period + otherNode.period)/2;
-			relativePhase = (referenceNode.phase - otherNode.phase);
-			if(relativePhase < 0)
-				relativePhase += avgPeriod;
-			relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
-		}		
-		for(RelativePhaseListener listener : listeners)
-			listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
+			if( referenceNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
+				status = referenceNode.getErrorCode();
+			} else if( otherNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
+				status = otherNode.getErrorCode();
+			} else if(Math.abs(referenceNode.period - otherNode.period) > referenceNode.period*PERIOD_DIFF) {
+				status = STATUS_PERIOD_DIFF_LARGE;
+			} else {
+				avgPeriod = (referenceNode.period + otherNode.period)/2;
+				relativePhase = (referenceNode.phase - otherNode.phase);
+				if(relativePhase < 0)
+					relativePhase += avgPeriod;
+				relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
+			}		
+			for(RelativePhaseListener listener : listeners)
+				listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
+		}
 	}
 	
 }
