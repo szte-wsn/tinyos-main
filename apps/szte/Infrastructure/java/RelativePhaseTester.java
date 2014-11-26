@@ -15,6 +15,7 @@ public class RelativePhaseTester implements SlotListener {
 	static int tx1;
 	static int tx2;
 	static boolean saveToFile;
+	static boolean summarizeData;
 		
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
@@ -41,10 +42,10 @@ public class RelativePhaseTester implements SlotListener {
 				sfm.registerListener(this, i);
 				sfm.registerListener(ewtc, i);
 			}
-		}    	
+		}   
 		
 		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
-		rpm = new RelativePhaseMap(IMAGEPATH, refNode, otherNode, saveToFile);
+		rpm = new RelativePhaseMap(IMAGEPATH, refNode, otherNode, saveToFile, summarizeData);
 
 		if(saveToFile) {
 			rpfw = new RelativePhaseFileWriter(RELATIVEPHASEPATH);
@@ -57,7 +58,7 @@ public class RelativePhaseTester implements SlotListener {
     		if(saveToFile) {
 	    		rpc.registerListener(rpfw);
     		}
-		}
+		}; 
     	
 
 	}
@@ -68,16 +69,17 @@ public class RelativePhaseTester implements SlotListener {
 	}
 
 	public static void usage() {
-		System.err.println("Usage: RelativePhaseTester saveToFile(true or false) tx1 tx2 referenceNode rx1,rx2,rx3,...,rxN [-comm <source>]");
+		System.err.println("Usage: RelativePhaseTester saveToFile(true or false) summarizeData(true or false) tx1 tx2 referenceNode rx1,rx2,rx3,...,rxN [-comm <source>]");
 		System.exit(1);
 	}
 	
 	private static int[] initalize(String[] args) {
 		saveToFile = (args[0].equals("true"));
-		tx1 = Integer.parseInt(args[1]);
-		tx2 = Integer.parseInt(args[2]);
-		reference = Integer.parseInt(args[3]);
-		StringTokenizer st = new StringTokenizer(args[4],",");
+		summarizeData = (args[1].equals("true"));
+		tx1 = Integer.parseInt(args[2]);
+		tx2 = Integer.parseInt(args[3]);
+		reference = Integer.parseInt(args[4]);
+		StringTokenizer st = new StringTokenizer(args[5],",");
 		others = new int[st.countTokens()];
 		for(int i=0; st.hasMoreElements(); i++) 
 			others[i] = (Integer.parseInt((String) st.nextElement()));
@@ -87,14 +89,14 @@ public class RelativePhaseTester implements SlotListener {
 	public static void main(String[] args) {
 		String source = null;
 		int[] otherNodes;
-		if (args.length == 7) {
-			if (!args[5].equals("-comm")) {
+		if (args.length == 8) {
+			if (!args[6].equals("-comm")) {
 				usage();
 			}
-			source = args[6];
-		} else if (args.length == 5) {
+			source = args[7];
+		} else if (args.length == 6) {
 			source = "sf@localhost:9002";
-		} else if (args.length != 0) {
+		} else {
 			usage();
 		}
 
@@ -105,6 +107,6 @@ public class RelativePhaseTester implements SlotListener {
 		}
 		otherNodes = initalize(args);
 		moteInterface = new MoteIF(phoenix);
-		new RelativePhaseTester("settings.ini", Integer.parseInt(args[3]), otherNodes);
+		new RelativePhaseTester("settings.ini", Integer.parseInt(args[4]), otherNodes);
 	}
 }
