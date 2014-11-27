@@ -133,17 +133,16 @@ implementation{
 	
 	event void Boot.booted(){
 		call SplitControl.start();
-		firetime = 65000UL+((uint32_t)TOS_NODE_ID<<16);
-		startOfFrame = firetime;
 		unsynchronized = NO_SYNC;
+		call Leds.set(0xff);
 	}
 	
 	event void SplitControl.startDone(error_t error){
 		if(TOS_NODE_ID <= NUMBER_OF_INFRAST_NODES){
 			currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 			startOfFrame = call Alarm.getNow();
+			firetime = 0; 
 			call Alarm.startAt(startOfFrame, 100);
-			firetime = 0; //! 
 		}
 		#ifdef MEASURE_CPU_LOAD
 		post measureTask();
