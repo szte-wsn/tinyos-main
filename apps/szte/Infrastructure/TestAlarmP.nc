@@ -60,18 +60,6 @@ implementation{
 		nx_uint8_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
 	} sync_message_t;
-	
-	enum {
-		PROCESS_IDLE=0,
-		PROCESS_CHANGEBUFFER=1,
-		PROCESS_PHASEREF=2,
-		PROCESS_FILTER=3,
-		PROCESS_MIN=4,
-		PROCESS_MAX=5,
-		PROCESS_FREQ=6,
-		PROCESS_PHASE=7,
-		PROCESS_DONE=8,
-	};
 
 	enum {
 		NO_SYNC = 0,
@@ -89,8 +77,9 @@ implementation{
 	message_t debugPacket;
 	message_t syncPacket[2];
 	uint8_t currentSyncPacket=0;
-	norace sync_message_t* currentSyncPayload;
-	norace uint8_t processBufferState=PROCESS_IDLE;//only the change PROCESS_IDLE->PROCESS_CHANGEBUFFER is legal in atomic context
+	sync_message_t* currentSyncPayload;
+	uint8_t syncFrame;
+	norace bool processing = FALSE; //there's a non-critical race condition: it might won't start processing in time
   
 	norace uint8_t activeMeasure=0;
 	norace uint32_t firetime;
@@ -207,11 +196,11 @@ implementation{
 				}
 			}break;
 			case SSYN:{
-				currentSyncPayload->frame = activeMeasure;
+				syncFrame = activeMeasure;
 				post sendSync();
 			}break;
 			case DSYN:{
-				currentSyncPayload->frame = activeMeasure;
+				syncFrame = activeMeasure;
 				post sendDummySync();
 			} break;
 			case TX1:{
@@ -234,8 +223,8 @@ implementation{
 						buffer[measureBuffer][time]=activeMeasure; //it's already incremented
 					}
 					#endif
-					if(processBufferState == PROCESS_IDLE){
-						processBufferState++;
+					if( !processing ){
+						processing = TRUE;
 						processBuffer = measureBuffer;
 						post processData();
 					}
@@ -281,7 +270,10 @@ implementation{
 		currentSyncPayload->freq[1] = lastBusy;
 		#endif
 		
-		processBufferState=PROCESS_IDLE;
+		atomic{
+			currentSyncPayload->frame = syncFrame;
+		}
+		
 		//workaround
 		if( 0 < (int32_t)(call Alarm.getNow()-startOfFrame) )
     		call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
@@ -306,52 +298,30 @@ implementation{
 	}
 	
 	task void sendDummySync(){
+		atomic{
+			currentSyncPayload->frame = syncFrame;
+		}
 		call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
 	}
 
 	task void processData(){
-    #ifndef DISABLE_PROCESSING
-		switch(processBufferState){
-			case PROCESS_IDLE://we probably run out of calculation time
-				return;
-				break;
-			case PROCESS_CHANGEBUFFER:
-				call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
-				break;
-			case PROCESS_PHASEREF:
-				call MeasureWave.getPhaseRef();
-				break;
-			case PROCESS_FILTER:
-				call MeasureWave.filter();
-				break;
-			case PROCESS_MIN:
-				call MeasureWave.getMinAmplitude();
-				break;
-			case PROCESS_MAX:
-				call MeasureWave.getMaxAmplitude();
-				break;
-			case PROCESS_FREQ:
-				#ifndef DEBUG_COLLECTOR
-				currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
-				#else
-				currentSyncPayload->freq[processBuffer] = buffer[processBuffer][0];
-				#endif
-				break;
-			case PROCESS_PHASE:
-				currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
-				break;
+		#ifndef DISABLE_PROCESSING
+		if ( !processing ) //the message was sent between processData tasks
+			return;
+		call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
+		currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
+		currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
+		#ifdef DEBUG_COLLECTOR
+		currentSyncPayload->freq[processBuffer] = buffer[processBuffer][0];
+		#endif
+		
+		processBuffer = (processBuffer+1)%NUMBER_OF_RX;
+		if ( processBuffer != measureBuffer ){
+			post processData();
+		} else {
+			processing = FALSE;
 		}
-		if( ++processBufferState == PROCESS_DONE ){
-			processBuffer = (processBuffer+1)%NUMBER_OF_RX;
-			if( processBuffer == measureBuffer ){
-				processBufferState = PROCESS_IDLE;
-				return;
-			} else {
-				processBufferState = PROCESS_CHANGEBUFFER;
-			}
-		}
-		post processData();
-    #endif
+		#endif
 	}
 
 	/*
