@@ -220,7 +220,7 @@ implementation{
 					err = call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
 					#else
 					for(time=0;time<BUFFER_LEN;time++){
-						buffer[measureBuffer][time]=activeMeasure; //it's already incremented
+						buffer[measureBuffer][time]=activeMeasure-1;
 					}
 					#endif
 					if( !processing ){
