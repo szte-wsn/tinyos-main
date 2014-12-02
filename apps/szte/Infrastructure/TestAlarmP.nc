@@ -293,6 +293,7 @@ implementation{
 		#endif
 		currentSyncPacket = currentSyncPacket==0?1:0;
 		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
+		processing = FALSE;
 		memset(currentSyncPayload, 0, sizeof(sync_message_t)-NUMBER_OF_RX);
 		memset(currentSyncPayload->phase, 255, NUMBER_OF_RX);
 	}
