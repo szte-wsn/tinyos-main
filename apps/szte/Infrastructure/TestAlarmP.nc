@@ -122,7 +122,7 @@ implementation{
 	task void measureTask(){
 		atomic{
 			uint32_t now = call Alarm.getNow();
-			if( (now - lastTime) > 1 ){
+			if( (int32_t)(now - lastTime) > 1 ){
 				busyTime += now - lastTime;
 			}
 			lastTime = now;
@@ -282,7 +282,9 @@ implementation{
 		#endif
 		
 		processBufferState=PROCESS_IDLE;
-    call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		//workaround
+		if( 0 < (int32_t)(call Alarm.getNow()-startOfFrame) )
+    		call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
 		if( currentSyncPayload->phase[NUMBER_OF_RX-1] == 255 )
 			call Leds.led3Toggle();
 		#ifdef TEST_CALCULATION_TIMING
@@ -361,7 +363,7 @@ implementation{
 			if(msg->frame == activeMeasure || unsynchronized==NO_SYNC){
 				//int32_t diff = (int32_t)(startOfFrame -  call TimeSyncPacket.eventTime(bufPtr));
 				//workaround
-				if(call TimeSyncPacket.eventTime(bufPtr) > call Alarm.getNow()){	
+				if( (int32_t)(call TimeSyncPacket.eventTime(bufPtr) - call Alarm.getNow()) > 0){	
 					call Leds.led2Toggle();
 				}else{
 					startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
@@ -390,7 +392,10 @@ implementation{
 		Sync message sent
 	*/
 	event void TimeSyncAMSend.sendDone(message_t* msg, error_t error){
-
+		//workaround
+		if(0 > (int32_t)(call Alarm.getNow() - startOfFrame)){
+			unsynchronized=NO_SYNC;
+		}
 	}
 
 	#ifdef ENABLE_DEBUG_SLOTS
