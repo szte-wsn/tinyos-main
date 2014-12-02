@@ -123,7 +123,7 @@ implementation{
 		atomic{
 			uint32_t now = call Alarm.getNow();
 			if( (int32_t)(now - lastTime) > 1 ){
-				busyTime += now - lastTime;
+				busyTime += (int32_t)(now - lastTime);
 			}
 			lastTime = now;
 		}

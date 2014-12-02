@@ -7,8 +7,8 @@
 module MeasureWave2P {
 	provides interface MeasureWave;
 
-	uses interface DiagMsg;
 #ifdef MEASUREWAVE_PROFILER
+	uses interface DiagMsg;
 	uses interface LocalTime<TMicro>;
 #endif
 }

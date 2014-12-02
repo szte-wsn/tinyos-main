@@ -16,17 +16,28 @@ CFLAGS += -DTOSH_DATA_LENGTH=100
 #Measure types: FOUR_MOTE, FOUR_MOTE_WF, PHASEMAP_TEST_13, PHASEMAP_TEST_18, PROCESSING_DEBUG
 CFLAGS += -DMEASURE_TYPE=FOUR_MOTE
 
+#disables waveform processing
 # CFLAGS += -DDISABLE_PROCESSING
+#copies the buffer before processing (useful for waveform downloading)
+# CFLAGS += -DMEASUREWAVE_SAVE_BUFFER
+#enables GPIO based sync testing (with logic analyzer)
 # CFLAGS += -DCW_SYNC_TEST
+#sets the period and all bytes of the waveform to the current slot's number. Useful for debugging data downloading
 # CFLAGS += -DDEBUG_COLLECTOR
-
+#measures cpu load with infinite task. Overwrites measured frequency
 # CFLAGS += -DMEASURE_CPU_LOAD
+
+#diagmsg based debugs
+#diagmsg configs
 # CFLAGS += -DDIAGMSG_SERIAL_START
 # CFLAGS += -DDIAGMSG_RECORDED_MSGS=70
+#counts dropped frames
 # CFLAGS += -DTEST_CALCULATION_TIMING
+#measures processing time (might give false readings due to interrupts)
 # CFLAGS += -DMEASUREWAVE_PROFILER
-# CFLAGS += -DDEBUG_MEASUREWAVE
-# CFLAGS += -DDEBUG_FILTER
+#radio debug stuff
+# CFLAGS += -DRADIO_DEBUG
+# CFLAGS += -DTRAFFIC_MONITOR
 
 #slightly increases the code size
 CFLAGS += -DENABLE_DEBUG_SLOTS
