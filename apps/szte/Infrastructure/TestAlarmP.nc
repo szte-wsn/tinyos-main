@@ -123,7 +123,7 @@ implementation{
 	event void Boot.booted(){
 		call SplitControl.start();
 		unsynchronized = NO_SYNC;
-		call Leds.set(0xff);
+		//call Leds.set(0xff);
 	}
 	
 	event void SplitControl.startDone(error_t error){
@@ -141,6 +141,32 @@ implementation{
 	}
 
 	event void SplitControl.stopDone(error_t error){}
+	
+	//to store error values and the freezeError initial value
+	enum{
+		FREEZE_INITIAL_VALUE = 100, //measured in frames
+		ERROR_NO_ERROR = 0,
+		ERROR_BUSY_RADIO = 1,
+		ERROR_WAVE_PROCESSING = 2,
+		ERROR_POS_TIMESTAMP_BEFORE_SEND = 3,
+		ERROR_POS_TIMESTAMP_BEFORE_SEND_DUMMY = 4,
+		ERROR_LATE_SEND_DONE_SIGNAL = 5,
+		ERROR_POS_TIMESTAMP_RECEIVED = 6,
+		ERROR_UNSYNCHRONIZED = 7,
+	};
+	
+	
+	norace uint8_t freezeError = 0;
+	
+	//uses the 1st, 2nd and 3rd LED to show error status. Doesn't use led0!
+	void setLeds(uint8_t status){
+		if(freezeError == 0){
+			call Leds.set( (call Leds.get() & 0x01) | ( (status<<1) & 0xFE) );
+			if(status != ERROR_NO_ERROR){
+				freezeError = FREEZE_INITIAL_VALUE;
+			}
+		}
+	}
 
 	void startAlarm(uint8_t nextMeas, uint32_t start,uint32_t fire){
 		uint8_t nextMeasType = read_uint8_t(&(motesettings[TOS_NODE_ID-1][nextMeas]));
@@ -239,7 +265,7 @@ implementation{
 		}
 		
 		if( err != SUCCESS ){
-			call Leds.led1Toggle();
+			setLeds(ERROR_BUSY_RADIO);
 		}
 		
 		if(activeMeasure == 0){
@@ -255,7 +281,13 @@ implementation{
 			#endif
 		}
 		if(unsynchronized == NO_SYNC){
-			call Leds.set( 0xff );
+			setLeds(ERROR_UNSYNCHRONIZED);
+		}else{
+			if(freezeError > 0){
+				freezeError--;
+			}else{
+				setLeds(ERROR_NO_ERROR);
+			}
 		}
 	}
 	/*
@@ -275,10 +307,13 @@ implementation{
 		}
 		
 		//workaround
-		if( 0 < (int32_t)(call Alarm.getNow()-startOfFrame) )
-    		call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		if( 0 < (int32_t)(call Alarm.getNow()-startOfFrame) ){
+			call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		}else{
+			setLeds(ERROR_POS_TIMESTAMP_BEFORE_SEND);
+		}	
 		if( currentSyncPayload->phase[NUMBER_OF_RX-1] == 255 )
-			call Leds.led3Toggle();
+			setLeds(ERROR_WAVE_PROCESSING);
 		#ifdef TEST_CALCULATION_TIMING
 		sentpacket+=NUMBER_OF_RX;
 		while( temp>=0 && currentSyncPayload->phaseRef[temp] == 0 ){
@@ -302,7 +337,12 @@ implementation{
 		atomic{
 			currentSyncPayload->frame = syncFrame;
 		}
-		call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		//workaround
+		if( 0 < (int32_t)(call Alarm.getNow()-startOfFrame) ){
+			call TimeSyncAMSend.send(0xFFFF, &syncPacket[currentSyncPacket], sizeof(sync_message_t), startOfFrame);
+		}else{
+			setLeds(ERROR_POS_TIMESTAMP_BEFORE_SEND_DUMMY);
+		}	
 	}
 
 	task void processData(){
@@ -335,7 +375,7 @@ implementation{
 				//int32_t diff = (int32_t)(startOfFrame -  call TimeSyncPacket.eventTime(bufPtr));
 				//workaround
 				if( (int32_t)(call TimeSyncPacket.eventTime(bufPtr) - call Alarm.getNow()) > 0){	
-					call Leds.led2Toggle();
+					setLeds(ERROR_POS_TIMESTAMP_RECEIVED);
 				}else{
 					startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 					firetime = SYNC_SLOT;
@@ -351,7 +391,7 @@ implementation{
 					}
 					measureBuffer = measureBuffer%NUMBER_OF_RX;
 					call Alarm.startAt(startOfFrame,firetime);
-          call Leds.set(0);
+          //call Leds.set(0);
 				}
 				unsynchronized = NO_SYNC_TOLERANCE;
 			}
@@ -366,6 +406,7 @@ implementation{
 		//workaround
 		if(0 > (int32_t)(call Alarm.getNow() - startOfFrame)){
 			unsynchronized=NO_SYNC;
+			setLeds(ERROR_LATE_SEND_DONE_SIGNAL);
 		}
 	}
 
