@@ -806,10 +806,11 @@ implementation
 
    async command mcu_power_t McuPowerOverride.lowestState()
    {
-      if( (IRQ_MASK & 1<<AWAKE_EN) != 0 || (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) > 5  )
-         return ATM128_POWER_EXT_STANDBY;
-      else
-         return ATM128_POWER_DOWN;
+//       if( (IRQ_MASK & 1<<AWAKE_EN) != 0 || (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) > 5  )
+//          return ATM128_POWER_EXT_STANDBY;
+//       else
+//          return ATM128_POWER_DOWN;
+      return ATM128_POWER_IDLE;
    }
 
   /*----------------- RadioPacket -----------------*/
