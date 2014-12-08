@@ -29,7 +29,7 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		private static final int STORE_LAST_N_MAXSAMPLE = 300; //displayed number of maxsample block
 		public static final int WINDOWS_WIDTH = 1000;
 		public static final int WINDOWS_HEIGHT = 800;
-		private static final int COLOR_WINDOW_WIDTH = 300;
+		private static final int COLOR_WINDOW_WIDTH = 330;
 		private static final int COLOR_WINDOW_HEIGHT = 350;
 		public static final int DIVIDE_WIDTH = 100;
 		public static final int PERIODSCALE = 80;
@@ -95,13 +95,13 @@ public class RelativePhaseMap implements RelativePhaseListener{
 			JPanel labelPanel = new JPanel();
 			labelPanel.setPreferredSize(new Dimension(WINDOWS_WIDTH,FONT_SIZE*2));
 			for(int i=0; i<otherNode.length; i++) {
-				label = new JLabel(otherNode[i] + "");
+				label = new JLabel(String.format("%2d", otherNode[i]));
 				label.setFont(new Font("Serif", Font.BOLD, FONT_SIZE));
-				label.setBounds(i*xScale, 0, 100, FONT_SIZE);
+				label.setBounds(i*xScale+(int)(xScale/2)-5, 0, 100, FONT_SIZE);
 				borderPanel.add(label,BorderLayout.NORTH);
 				label = new JLabel(otherNode[i] + "");
 				label.setFont(new Font("Serif", Font.BOLD, FONT_SIZE));
-				label.setBounds(otherNode.length*xScale + i*xScale + DIVIDE_WIDTH, 0, 100, FONT_SIZE);
+				label.setBounds(otherNode.length*xScale+ DIVIDE_WIDTH + i*xScale+(int)(xScale/2)-5, 0, 100, FONT_SIZE);
 				borderPanel.add(label,BorderLayout.NORTH);
 			}
 			label = new JLabel(" ");
@@ -334,13 +334,13 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		
 		public ArrayList<String> getAllStatusName() {
 			ArrayList<String> statusNames = new ArrayList<String>();
-			statusNames.add("ERR_START_NOT_FOUND");
-			statusNames.add("ERR_SMALL_MINMAX_RANGE");
-			statusNames.add("ERR_FEW_ZERO_CROSSINGS");
-			statusNames.add("ERR_LARGE_PERIOD");
-			statusNames.add("ERR_PERIOD_MISMATCH");
-			statusNames.add("ERR_ZERO_PERIOD");
-			statusNames.add("ERR_CALCULATION_TIMEOUT");
+			statusNames.add("ERR_START_NOT_FOUND (101)");
+			statusNames.add("ERR_SMALL_MINMAX_RANGE (102)");
+			statusNames.add("ERR_FEW_ZERO_CROSSINGS (103)");
+			statusNames.add("ERR_LARGE_PERIOD (104)");
+			statusNames.add("ERR_PERIOD_MISMATCH (105)");
+			statusNames.add("ERR_ZERO_PERIOD (106)");
+			statusNames.add("ERR_CALCULATION_TIMEOUT (255)");
 			statusNames.add("ERR_NO_MEASUREMENT");
 			statusNames.add("STATUS_PERIOD_DIFF_LARGE");
 			statusNames.add("STATUS_NO_DATA");
