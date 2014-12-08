@@ -208,6 +208,12 @@ public class RelativePhaseMap implements RelativePhaseListener{
 				ArrayList<HashMap<Integer,StoreType>> dataClone;
 				while(true){
 					synchronized (this) {
+						try {
+							this.wait();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 						dataClone =  (ArrayList<HashMap<Integer,RelativePhaseMap.PictureSave.StoreType>>) data.clone();
 						data = new ArrayList<HashMap<Integer, StoreType>>();
 					}
@@ -274,15 +280,6 @@ public class RelativePhaseMap implements RelativePhaseListener{
 				        	}    
 				        	saveImage(g, img);
 				        }
-					}
-					
-					try {
-						synchronized (this) {
-							this.wait();
-						}
-					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
 					}
 				}
 		    }
