@@ -33,6 +33,7 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		public static final int DIVIDE_WIDTH = 200;
 		public static final int PERIODSCALE = 80;
 		private static final int FONT_SIZE = 10;
+		private static final int LINE_PER_FILE=100;
 		
 		class StoreType {
 			public int status;
@@ -147,7 +148,9 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		}
 		
 		public class PaintThread extends Thread	{
-			
+			private BufferedImage imageFile = null;
+			private Graphics2D filegraphics = null;
+			private int fileLines = 0; 
 			
 			private int[] measuredNodes;
 			private int periodOffset;
@@ -155,6 +158,8 @@ public class RelativePhaseMap implements RelativePhaseListener{
 			public PaintThread(int[] measuredNodes){
 				this.measuredNodes = measuredNodes;
 				this.periodOffset = measuredNodes.length*xScale + DIVIDE_WIDTH;
+				imageFile = new BufferedImage(WINDOWS_WIDTH, yScale*LINE_PER_FILE, BufferedImage.TYPE_INT_RGB);
+				filegraphics = imageFile.createGraphics();
 			}
 			
 			LinkedList<ImageIcon> icons = new LinkedList<>();
@@ -181,12 +186,18 @@ public class RelativePhaseMap implements RelativePhaseListener{
 				SwingUtilities.invokeLater(addList);
 				
 				if(saveToFile) {
-					try {
-						ImageIO.write(img, "jpg", new File(path + pictureCnt + ".picture.jpg"));
-					} catch(IOException e) {
-						e.printStackTrace();
+					filegraphics.drawImage(img, 0, fileLines*yScale, borderPanel);
+					if( ++fileLines>LINE_PER_FILE ){
+						try {
+							ImageIO.write(imageFile, "png", new File(String.format("%s%04d.picture.png", path, pictureCnt)));
+						} catch(IOException e) {
+							e.printStackTrace();
+						}
+						pictureCnt++;
+						fileLines = 0;
+						imageFile = new BufferedImage(WINDOWS_WIDTH, yScale*LINE_PER_FILE, BufferedImage.TYPE_INT_RGB);
+						filegraphics = imageFile.createGraphics();
 					}
-					pictureCnt++;
 				}
 			}
 			
