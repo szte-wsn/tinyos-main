@@ -8,8 +8,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.Map.Entry;
+import java.util.HashMap;
+import java.util.LinkedList;
 
 import javax.imageio.ImageIO;
 import javax.swing.DefaultListModel;
@@ -19,32 +19,36 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 
 public class RelativePhaseMap implements RelativePhaseListener{
 	
 	class PictureSave {	
-		public static final int MAXSAMPLE = 20;	//the max value of the time domain (y axis)
-		private static final int STORE_LAST_N_MAXSAMPLE = 20; //displayed number of maxsample block
+		public static final int MAXSAMPLE = 3;	//the max value of the time domain (y axis)
+		private static final int STORE_LAST_N_MAXSAMPLE = 300; //displayed number of maxsample block
 		public static final int WINDOWS_WIDTH = 1000;
-		public static final int WINDOWS_HEIGHT = MAXSAMPLE*2;
+		public static final int WINDOWS_HEIGHT = 800;
 		private static final int COLOR_WINDOW_WIDTH = 300;
 		private static final int COLOR_WINDOW_HEIGHT = 350;
 		public static final int DIVIDE_WIDTH = 200;
-		public static final double PI2 = 2*Math.PI;
-		public static final int PERIODSCALE = 3;
+		public static final int PERIODSCALE = 80;
 		private static final int FONT_SIZE = 10;
 		
 		class StoreType {
 			public int status;
-			public double data;
-			public StoreType(int status, double data) {
+			public double phase;
+			public double period;
+			public StoreType(int status, double period, double phase) {
 				this.status = status;
-				this.data = data;
+				this.period = period;
+				this.phase = phase;
 			}
 		}
 		
-		LinkedHashMap<String, ArrayList<StoreType>> phaseMap;
-		LinkedHashMap<String, ArrayList<StoreType>> periodMap;
+		private ArrayList<HashMap<Integer, StoreType>> data = new ArrayList<HashMap<Integer, StoreType>>();
+		private HashMap<Integer, StoreType> currentLine = new HashMap<Integer, StoreType>();
+		
+		
 		private String path;
 		private int pictureCnt;	//variable for file name
 		private int xScale;
@@ -59,31 +63,28 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		int[] otherNode; 
 		boolean saveToFile;	//create picture or not
 		boolean summarizeData;	//summarize data or not
+		boolean rx1isReference;
+		
+		PaintThread paint;
+		
 		
 		public PictureSave(String path, boolean saveToFile, boolean summarizeData) {
 			if(saveToFile) 
 				this.path = path;
 			this.saveToFile = saveToFile;
 			this.summarizeData = summarizeData;
-			phaseMap = new LinkedHashMap<String, ArrayList<StoreType>>();
-			periodMap = new LinkedHashMap<String, ArrayList<StoreType>>();
-			yScale = WINDOWS_HEIGHT / MAXSAMPLE;
 			pictureCnt = 0;
+			yScale = WINDOWS_HEIGHT / 60;
 		}
 		
 		private void initalize(int refNode, 	int[] otherNode) {
-			for(int i : otherNode) {
-				String str = refNode + "," + i;
-				phaseMap.put(str, new ArrayList<StoreType>());
-				periodMap.put(str, new ArrayList<StoreType>());
-			}
 			xScale = (WINDOWS_WIDTH-DIVIDE_WIDTH) / (otherNode.length*2);
 			listModel = new DefaultListModel<ImageIcon>();
 			lsm = new JList<ImageIcon>(listModel);
-			lsm.setFixedCellHeight(WINDOWS_HEIGHT);
+			lsm.setFixedCellHeight(yScale);
 			jsp = new JScrollPane(lsm);
 			jsp.setPreferredSize(new Dimension(WINDOWS_WIDTH,WINDOWS_HEIGHT));
-			frame = new JFrame();
+			frame = new JFrame("PhaseMap");
 			borderPanel = new JPanel(new BorderLayout());
 		//write mote numbers
 			JLabel label;
@@ -123,119 +124,158 @@ public class RelativePhaseMap implements RelativePhaseListener{
 			borderPanel.add(jsp,BorderLayout.WEST);
 			borderPanel.add(colorImgLabel,BorderLayout.EAST);
 			frame.add(borderPanel);
-			frame.setMinimumSize(new Dimension(WINDOWS_WIDTH+COLOR_WINDOW_WIDTH+50, 500));
+			frame.setMinimumSize(new Dimension(WINDOWS_WIDTH+COLOR_WINDOW_WIDTH+50, WINDOWS_HEIGHT));
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		    frame.pack();
 		    frame.setVisible(true);
+		    
+		    paint = new PaintThread(otherNode);
+		    paint.start();
 		}
 		
-		public void addElement(double relativePhase, double period, int status, int rx1, int rx2, int slotId) {
-			String str = rx1 + "," + rx2;
-			if(phaseMap.get(str).size() >= MAXSAMPLE) {
-				saveDataToPicture(phaseMap, periodMap);
-				for(Entry<String, ArrayList<StoreType>> entry : phaseMap.entrySet())
-					entry.setValue(new ArrayList<StoreType>());
-				for(Entry<String, ArrayList<StoreType>> entry : periodMap.entrySet())
-					entry.setValue(new ArrayList<StoreType>());
+		public void addElement(double relativePhase, double period, int status, int reference, int other, int slotId) {
+			if( currentLine.containsKey(other) ){ //new line 
+				synchronized (paint) {
+					data.add(currentLine);
+					if( data.size() >= MAXSAMPLE )
+						paint.notify();
+				}
+				currentLine = new HashMap<Integer, StoreType>();
 			}
-			phaseMap.get(str).add(new StoreType(status, relativePhase));
-			periodMap.get(str).add(new StoreType(status, period));
+			StoreType value = new StoreType(status, period, relativePhase);
+			currentLine.put(other, value);
 		}
-
-		public void saveDataToPicture(LinkedHashMap<String, ArrayList<StoreType>> phase, LinkedHashMap<String, ArrayList<StoreType>> period){
-	        BufferedImage img = new BufferedImage(WINDOWS_WIDTH, WINDOWS_HEIGHT, BufferedImage.TYPE_INT_RGB);
-	        Graphics2D g = img.createGraphics();
-	        g.fillRect(0, 0, img.getWidth(), img.getHeight());
-	    	int i = 0;
-	    	int j = MAXSAMPLE-1;
-	        double avg = 0.0;
-	        int avg_num = 0;
-	        for(Entry<String, ArrayList<StoreType>> entry : phase.entrySet()) {
-	        	ArrayList<StoreType> node = entry.getValue();
-	        	if(summarizeData) {
-			        avg = 0.0;
-			        avg_num = 0;
-		        	for(StoreType relPhase : node) {
-		        		if(relPhase.status == RelativePhaseCalculator.STATUS_OK) {
-		        			avg += relPhase.data/PI2;
-		        			avg_num++;
-		        		}
-		        	}
-		        	if(avg_num != 0 || avg != 0.0) {
-		        		avg /= avg_num;
-						g.setColor(new Color((float)avg, (float)avg, (float)avg));
-		        	}
-		        	else
-						g.setColor(Color.RED);
-					g.fillRect(i*xScale, 0, xScale, WINDOWS_HEIGHT);
-		        	i++;
-	        	} else {
-	        		for(StoreType relPhase : node) {
-	        			if(relPhase.status == RelativePhaseCalculator.STATUS_OK) {
-	        				double colorScale = relPhase.data/PI2;
-		        			g.setColor(new Color((float)colorScale, (float)colorScale, (float)colorScale));
-	        			} else {
-        					Color c = setColor(relPhase.status);
-	        				g.setColor(c);
-        				}
-		        		g.fillRect(i*xScale, j*yScale, xScale, yScale);
-		        		j--;
-		        	}
-		        	j = MAXSAMPLE-1;
-		        	i++;
-	        	}	        		
-	        }
-	        i = 0;
-	        for(Entry<String, ArrayList<StoreType>> entry : period.entrySet()) {
-				ArrayList<StoreType> node = entry.getValue();
-	        	if(summarizeData) {
-		        	avg = 0.0;
-					avg_num = 0;
-					for(StoreType p : node) {
-						if(p.status == RelativePhaseCalculator.STATUS_OK) {
-							avg += (p.data*PERIODSCALE)/255;
-							avg_num++;
-						}
-					}
-		        	if(avg_num != 0  || avg != 0.0) {
-		        		avg /= avg_num;
-						g.setColor(new Color((float)avg, (float)avg, (float)avg));
-		        	}
-		        	else
-						g.setColor(Color.RED);
-	        		g.fillRect(phase.size()*xScale + i*xScale + DIVIDE_WIDTH, 0, xScale, WINDOWS_HEIGHT);
-					i++;
-	        	} else {
-	        		for(StoreType p : node) {
-						if(p.status == RelativePhaseCalculator.STATUS_OK) {
-							double colorScale = (p.data*PERIODSCALE)/255;
-		            		g.setColor(new Color((float)colorScale, (float)colorScale, (float)colorScale));
-						} else {
-							Color c = setColor(p.status);
-		        			g.setColor(c);
-						}
-		        		g.fillRect(phase.size()*xScale + i*xScale + DIVIDE_WIDTH, j*yScale, xScale, yScale);
-		        		j--;
-		        	}
-		        	j = MAXSAMPLE-1;
-		        	i++;
-	        	}
-	        }
-			g.dispose();
-			try {
-				if(listModel.size()>=STORE_LAST_N_MAXSAMPLE) {
-					listModel.removeElementAt(STORE_LAST_N_MAXSAMPLE-1);
-					listModel.add(0,new ImageIcon(img));
-				} else
-					listModel.add(0,new ImageIcon(img));
-				frame.repaint();
+		
+		public class PaintThread extends Thread	{
+			
+			
+			private int[] measuredNodes;
+			private int periodOffset;
+	        
+			public PaintThread(int[] measuredNodes){
+				this.measuredNodes = measuredNodes;
+				this.periodOffset = measuredNodes.length*xScale + DIVIDE_WIDTH;
+			}
+			
+			LinkedList<ImageIcon> icons = new LinkedList<>();
+			
+			private void saveImage(Graphics2D g, BufferedImage img) {
+				g.dispose();
+				synchronized(icons){
+					icons.add(new ImageIcon(img));
+				}
+				
+				Runnable addList = new Runnable() {
+					public void run() {
+						synchronized(icons){
+							while(icons.size() > 0){
+				    			listModel.add(0, icons.getFirst());
+				    			icons.removeFirst();
+				    		}
+				    	}
+				        while(listModel.size()>STORE_LAST_N_MAXSAMPLE){
+				        	listModel.remove(listModel.size()-1);
+				        }
+				    }
+				};
+				SwingUtilities.invokeLater(addList);
+				
 				if(saveToFile) {
-					ImageIO.write(img, "jpg", new File(path + pictureCnt + ".picture.jpg"));
+					try {
+						ImageIO.write(img, "jpg", new File(path + pictureCnt + ".picture.jpg"));
+					} catch(IOException e) {
+						e.printStackTrace();
+					}
 					pictureCnt++;
 				}
-			} catch(IOException e) {
-				e.printStackTrace();
 			}
+			
+			@SuppressWarnings("unchecked")
+			@Override
+		    public void run()
+		    {
+				ArrayList<HashMap<Integer,StoreType>> dataClone;
+				while(true){
+					synchronized (this) {
+						dataClone =  (ArrayList<HashMap<Integer,RelativePhaseMap.PictureSave.StoreType>>) data.clone();
+						data = new ArrayList<HashMap<Integer, StoreType>>();
+					}
+			        
+			        if ( summarizeData ){
+			        	BufferedImage img = new BufferedImage(WINDOWS_WIDTH, yScale, BufferedImage.TYPE_INT_RGB);
+						Graphics2D g = img.createGraphics();
+						g.fillRect(0, 0, img.getWidth(), img.getHeight());
+				        double avgPeriod[] = new double[measuredNodes.length];
+				        double avgPhase[] = new double[measuredNodes.length];
+				        int avg_num[] = new int[measuredNodes.length];
+				        for(int i=0;i<measuredNodes.length;i++){
+				        	avgPeriod[i] = 0.0;
+				        	avgPhase[i] = 0.0;
+				        	avg_num[i] = 0;
+				        }
+				        for(HashMap<Integer, StoreType> line:dataClone){
+				        	for(int i=0;i<measuredNodes.length;i++){
+				        		StoreType element = line.get(measuredNodes[i]);
+				        		if( element.status == RelativePhaseCalculator.STATUS_OK ){
+				        			avgPeriod[i]+=element.period;
+				        			avgPhase[i]+=element.phase;
+				        			avg_num[i]++;
+				        		}
+				        	}
+				        }
+				        for(int i=0;i<measuredNodes.length;i++){
+				        	if(avg_num[i] != 0 || avgPeriod[i] != 0.0) {
+				        		avgPeriod[i] /= avg_num[i];
+				        		avgPhase[i] /= avg_num[i];
+				        		avgPeriod[i] /= PERIODSCALE; //scale them to 0-1 interval
+				        		avgPhase[i] /= Math.PI*2;
+				        		g.setColor(new Color((float)avgPhase[i], (float)avgPhase[i], (float)avgPhase[i]));
+				        		g.fillRect(i*xScale, 0, xScale, img.getHeight());
+								g.setColor(new Color((float)avgPeriod[i], (float)avgPeriod[i], (float)avgPeriod[i]));
+								g.fillRect(periodOffset + i*xScale, 0, xScale, img.getHeight());
+				        	} else {
+								g.setColor(Color.RED);
+								g.fillRect(i*xScale, 0, xScale, img.getHeight());
+								g.fillRect(periodOffset + i*xScale, 0, xScale, img.getHeight());
+				        	}
+				        }
+				        saveImage(g, img);
+			        } else {
+			        	for(HashMap<Integer, StoreType> line:dataClone){
+			        		BufferedImage img = new BufferedImage(WINDOWS_WIDTH, yScale, BufferedImage.TYPE_INT_RGB);
+							Graphics2D g = img.createGraphics();
+							g.fillRect(0, 0, img.getWidth(), img.getHeight());
+				        	for(int i=0;i<measuredNodes.length;i++){
+				        		StoreType element = line.get(measuredNodes[i]);
+				        		if( element != null && element.status == RelativePhaseCalculator.STATUS_OK ){
+				        			float colorScale = (float) (element.phase / (Math.PI*2));
+				        			g.setColor(new Color(colorScale, colorScale, colorScale));
+				        			g.fillRect(i*xScale, 0, xScale, img.getHeight());
+				        			colorScale = (float) (element.period / PERIODSCALE);
+				        			g.setColor(new Color(colorScale, colorScale, colorScale));
+				        			g.fillRect(periodOffset + i*xScale, 0, xScale, img.getHeight());
+			        			} else {
+		        					Color c = setColor(element.status);
+			        				g.setColor(c);
+			        				g.fillRect(i*xScale, 0, xScale, yScale);
+									g.fillRect(periodOffset + i*xScale, 0, xScale, yScale);
+		        				}
+				        	}    
+				        	saveImage(g, img);
+				        }
+					}
+					
+					try {
+						synchronized (this) {
+							this.wait();
+						}
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+		    }
+			
 		}
 		
 		public Color setColor(int status) {
@@ -310,8 +350,8 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		ps.initalize(refNode, otherNode);
 	}
 
-	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, int status, int slotId, int rx1, int rx2) {
-		ps.addElement(relativePhase, avgPeriod, status, rx1, rx2, slotId);	
+	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, int status, int slotId, int reference, int other) {
+		ps.addElement(relativePhase, avgPeriod, status, reference, other, slotId);	
 	}
 
 }
