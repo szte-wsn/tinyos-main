@@ -13,15 +13,15 @@ public class RelativePhaseCalculator implements SlotListener {
 	private MoteSettings ms;
 	private SuperFrameMerger sfm;	
 	private ArrayList<RelativePhaseListener> listeners;
-	private int rx1, rx2;
+	private int reference, other;
 	private int tx1, tx2;
 	
 
-	public RelativePhaseCalculator(MoteSettings ms, SuperFrameMerger sfm, int rx1, int rx2, int tx1, int tx2) {
+	public RelativePhaseCalculator(MoteSettings ms, SuperFrameMerger sfm, int reference, int other, int tx1, int tx2) {
 		this.ms = ms;
 		this.sfm = sfm;
-		this.rx1 = rx1;
-		this.rx2 = rx2;
+		this.reference = reference;
+		this.other = other;
 		this.tx1 = tx1;
 		this.tx2 = tx2;
 		listeners = new ArrayList<RelativePhaseListener>();
@@ -33,10 +33,10 @@ public class RelativePhaseCalculator implements SlotListener {
 //		System.out.println("In registerSlots");
 		ArrayList<Integer> tx1slots = ms.getSlotNumbers(tx1, MoteSettings.TX1);
 		ArrayList<Integer> tx2slots = ms.getSlotNumbers(tx2, MoteSettings.TX2);
-		ArrayList<Integer> rx1slots = ms.getSlotNumbers(rx1, MoteSettings.RX);
-		ArrayList<Integer> rx2slots = ms.getSlotNumbers(rx2, MoteSettings.RX);
+		ArrayList<Integer> refslots = ms.getSlotNumbers(reference, MoteSettings.RX);
+		ArrayList<Integer> otherslots = ms.getSlotNumbers(other, MoteSettings.RX);
 		for(int slot:tx1slots){
-			if( tx2slots.contains(slot) && rx1slots.contains(slot) && rx2slots.contains(slot)){
+			if( tx2slots.contains(slot) && refslots.contains(slot) && otherslots.contains(slot)){
 //				System.out.println("registered");
 				registeredSlots.add(slot);
 				sfm.registerListener(this,slot);
@@ -72,17 +72,17 @@ public class RelativePhaseCalculator implements SlotListener {
 		ArrayList<SlotMeasurement> slotMeasures = receivedSlot.measurements;
 		
 		for(int i=0; i<slotMeasures.size(); i++){
-			if(slotMeasures.get(i).nodeid == rx1)
+			if(slotMeasures.get(i).nodeid == reference)
 				referenceNode = slotMeasures.get(i);
-			if(slotMeasures.get(i).nodeid == rx2)
+			if(slotMeasures.get(i).nodeid == other)
 				otherNode = slotMeasures.get(i);
 		}
 		if( otherNode == null ){
 			for(RelativePhaseListener listener : listeners)
-				listener.relativePhaseReceived(0, 0, STATUS_NO_DATA, receivedSlot.slotId, rx1, rx2);
+				listener.relativePhaseReceived(0, 0, STATUS_NO_DATA, receivedSlot.slotId, reference, other);
 		} else if( referenceNode == null ){
 			for(RelativePhaseListener listener : listeners)
-				listener.relativePhaseReceived(0, 0, STATUS_NO_REFERENCE, receivedSlot.slotId, rx1, rx2);
+				listener.relativePhaseReceived(0, 0, STATUS_NO_REFERENCE, receivedSlot.slotId, reference, other);
 		} else {
 			if( referenceNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
 				status = referenceNode.getErrorCode();
@@ -98,7 +98,7 @@ public class RelativePhaseCalculator implements SlotListener {
 				relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
 			}		
 			for(RelativePhaseListener listener : listeners)
-				listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, rx1, rx2);
+				listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, reference, other);
 		}
 	}
 	
