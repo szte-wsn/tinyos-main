@@ -5,7 +5,7 @@ import net.tinyos.packet.BuildSource;
 import net.tinyos.packet.PhoenixSource;
 import net.tinyos.util.PrintStreamMessenger;
 
-public class RelativePhaseTester implements SlotListener {
+public class RelativePhaseTester  {
 	
 	public static final String RELATIVEPHASEPATH = "relativePhases/";
 	public static final String IMAGEPATH = "images/";
@@ -39,7 +39,6 @@ public class RelativePhaseTester implements SlotListener {
 		ewtc = new ErrorsWriteToConsole();
 		for(int i=0; i<moteSettings.getNumberOfSlots();i++){
 			if(moteSettings.hasMeasurements(i)){
-				sfm.registerListener(this, i);
 				sfm.registerListener(ewtc, i);
 			}
 		}   
@@ -61,11 +60,6 @@ public class RelativePhaseTester implements SlotListener {
 		}; 
     	
 
-	}
-
-	@Override
-	public void slotReceived(Slot receivedSlot) {
-		//receivedSlot.print();
 	}
 
 	public static void usage() {
