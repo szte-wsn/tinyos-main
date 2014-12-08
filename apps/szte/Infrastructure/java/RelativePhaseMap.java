@@ -19,6 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 
 public class RelativePhaseMap implements RelativePhaseListener{
@@ -30,7 +31,7 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		public static final int WINDOWS_HEIGHT = 800;
 		private static final int COLOR_WINDOW_WIDTH = 300;
 		private static final int COLOR_WINDOW_HEIGHT = 350;
-		public static final int DIVIDE_WIDTH = 200;
+		public static final int DIVIDE_WIDTH = 100;
 		public static final int PERIODSCALE = 80;
 		private static final int FONT_SIZE = 10;
 		private static final int LINE_PER_FILE=100;
@@ -84,7 +85,9 @@ public class RelativePhaseMap implements RelativePhaseListener{
 			lsm = new JList<ImageIcon>(listModel);
 			lsm.setFixedCellHeight(yScale);
 			jsp = new JScrollPane(lsm);
-			jsp.setPreferredSize(new Dimension(WINDOWS_WIDTH,WINDOWS_HEIGHT));
+			jsp.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+			jsp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+			jsp.setPreferredSize(new Dimension(WINDOWS_WIDTH+20,WINDOWS_HEIGHT));
 			frame = new JFrame("PhaseMap");
 			borderPanel = new JPanel(new BorderLayout());
 		//write mote numbers
