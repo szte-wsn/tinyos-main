@@ -7,6 +7,7 @@ import java.awt.GridLayout;
 import java.awt.Paint;
 import java.awt.Shape;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import javax.swing.JPanel;
 
@@ -69,6 +70,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 		}
 		
 		public XYLineAndShapeRenderer getTransparencyRenderer() {
+			@SuppressWarnings("serial")
 			XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(){
 		        @Override
 		        public Paint getItemPaint(int row, int col) {
@@ -90,6 +92,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 			        	return (Color) getSeriesPaint(row);
 			    }
 		
+				@SuppressWarnings("deprecation")
 				@Override
 			    protected void drawFirstPassShape(Graphics2D g2, int pass, int series,
 					int item, Shape shape) {
@@ -107,7 +110,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	}
 	
 	class Chart {	
-		static final int DRAW_LAST_N_VALUE = 80;
+		static final int DRAW_LAST_N_VALUE = 150;
 		static final double PI = Math.PI;
 		static final double PI2 = 2*Math.PI;
 		
@@ -121,13 +124,13 @@ public class DrawRelativePhase implements RelativePhaseListener{
 			series = new ArrayList<String>();
 			dataSet = new XYSeriesCollection();
 			renderer = new RendererSelect(dataSet);
-	        JFreeChart chart = createChart(chartTitle, xAxis, yAxis);
+	        JFreeChart chart = createChart(chartTitle, xAxis, yAxis, dataSet);
 	        chartPanel = new ChartPanel(chart); 
 	        chartPanel.setPreferredSize(new java.awt.Dimension(500, 270));
 	        appframe.addChartPanel(chartPanel);
 		}
 		
-	    private JFreeChart createChart(String chartTitle, String xAxis, String yAxis) {
+	    protected JFreeChart createChart(String chartTitle, String xAxis, String yAxis, XYSeriesCollection dataSet) {
 	    	chart = ChartFactory.createXYLineChart(
 				chartTitle,
 				xAxis,
@@ -153,7 +156,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 			}		
 			else
 				xys.add(dataSet.getDomainUpperBound(false), data);	
-			series.add(seriesId);
+			series.add(seriesId);			
 		}
 		
 	    public void refreshChart(double data, String seriesId) {
@@ -164,61 +167,73 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	
 	class UnwrapChart extends Chart {
 		
+		HashMap<String, Double> lastRelativePhase;	//stored the series last relative phases
+		HashMap<String, Integer> overflowCounter; 
+		
 		public UnwrapChart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
 			super(chartTitle,appframe, xAxis, yAxis);
+			lastRelativePhase = new HashMap<String, Double>();
+			overflowCounter = new HashMap<String, Integer>();
+		}
+		
+		public void register(String seriesId, double data) {		//create new curve in chart
+			super.register(seriesId, data);
+			lastRelativePhase.put(seriesId, PI);	//add initial value to not jump +-2PI at the start point
+			overflowCounter.put(seriesId,0);
 		}
 		
 		public void refreshChart(double relativePhase, String seriesId, double avgPeriod) {
 			XYSeries xys = dataSet.getSeries(series.indexOf(seriesId));
-			double prev = xys.getDataItem(xys.getItemCount()-1).getYValue();
+			double lastRF = lastRelativePhase.get(seriesId);
 			if(avgPeriod == 0.0) {
-				xys.add(xys.getMaxX()+1, prev);
+				xys.add(xys.getMaxX()+1, lastRF);
 			} else {
-				if( prev - relativePhase > PI) {
-					relativePhase += PI2;
-				} else if( relativePhase - prev > PI) {
-					relativePhase -= PI2;
-				}
-				xys.add(xys.getMaxX()+1, relativePhase);
+				lastRelativePhase.put(seriesId, relativePhase);
+				if( lastRF - relativePhase > PI) {
+					overflowCounter.put(seriesId, (overflowCounter.get(seriesId)+1));
+				} else if( relativePhase - lastRF > PI) {
+					overflowCounter.put(seriesId, (overflowCounter.get(seriesId)-1));
+				} 
+				xys.add(xys.getMaxX()+1, relativePhase + (overflowCounter.get(seriesId)*PI2));
 			}
-					
-		}		
+		}
 	}
 
 	AppFrame appFrame;
 	Chart drwRelativePhase;
 	Chart drwPeriod;
 	UnwrapChart drwUnwrapPhase;
-	ArrayList<String> slots;	//String = "slotid,rx1,rx2"
 
-	public DrawRelativePhase(String appTitle, String chartTitle) {	//chartTitle is the reference node id
+	public DrawRelativePhase(String appTitle, String chartTitle, int[] otherNode) {	//chartTitle is the reference node id
 		appFrame = new AppFrame(appTitle);
 		drwRelativePhase = new Chart("Relative Phase",appFrame, "Sample", "Radian");
 		drwPeriod = new Chart("Period",appFrame,"Sample", "Sample");
 		drwUnwrapPhase = new UnwrapChart("Unwrap Phase",appFrame, "Sample", "Radian");
 		drwRelativePhase.chart.getXYPlot().getRangeAxis().setRange(0.00,2*Math.PI);
-		slots = new ArrayList<String>();
 		appFrame.setAllChartRenderer();
 		appFrame.pack( );          
 		RefineryUtilities.centerFrameOnScreen(appFrame);          
 		appFrame.setVisible(true);
+		addSeriesToChart(otherNode);
+	}
+	
+	private void addSeriesToChart(int[] otherNode) {
+		for(int i : otherNode) {
+			drwRelativePhase.register(i+"", 0.0);
+			drwPeriod.register(i+"", 0.0);
+			drwUnwrapPhase.register(i+"", 0.0); 	
+		}
 	}
 
 	public void relativePhaseReceived(final double relativePhase, final double avgPeriod, final int status, int slotId, int rx1, int rx2) {
-		final String str = slotId + ":" + rx1 + "," + rx2;
+		final String str = rx2+"";
 		newDataComing(relativePhase, avgPeriod, status, str);
 	}
 	
 	public void newDataComing(final double relativePhase, final double avgPeriod, int status, final String seriesId) {
-		if(!slots.contains(seriesId)) {	//if not exists in the chart
-			slots.add(seriesId);
-			drwRelativePhase.register(seriesId, relativePhase);
-			drwPeriod.register(seriesId, avgPeriod);
-			drwUnwrapPhase.register(seriesId, relativePhase);
-		} else {
-			drwRelativePhase.refreshChart(relativePhase, seriesId);
-			drwPeriod.refreshChart(avgPeriod, seriesId);
-			drwUnwrapPhase.refreshChart(relativePhase, seriesId,avgPeriod);
-		}
+		drwRelativePhase.refreshChart(relativePhase, seriesId);
+		drwPeriod.refreshChart(avgPeriod, seriesId);
+		drwUnwrapPhase.refreshChart(relativePhase, seriesId,avgPeriod);
 	}
+	
 }
