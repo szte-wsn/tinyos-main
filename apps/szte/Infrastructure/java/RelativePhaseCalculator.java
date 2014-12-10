@@ -95,6 +95,8 @@ public class RelativePhaseCalculator implements SlotListener {
 				relativePhase = (referenceNode.phase - otherNode.phase);
 				if(relativePhase < 0)
 					relativePhase += avgPeriod;
+				if(relativePhase >= avgPeriod)
+					relativePhase -= avgPeriod;
 				relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
 			}		
 			for(RelativePhaseListener listener : listeners)
