@@ -15,7 +15,7 @@ public class RelativePhaseTester  {
 	static int tx1;
 	static int tx2;
 	static boolean saveToFile;
-	static boolean summarizeData;
+	static int summarizeData;
 		
 	static MoteIF moteInterface;
 	SuperFrameMerger sfm;
@@ -43,7 +43,7 @@ public class RelativePhaseTester  {
 			}
 		}   
 		
-		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase");
+		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase", otherNode);
 		rpm = new RelativePhaseMap(IMAGEPATH, refNode, otherNode, saveToFile, summarizeData);
 
 		if(saveToFile) {
@@ -69,7 +69,7 @@ public class RelativePhaseTester  {
 	
 	private static int[] initalize(String[] args) {
 		saveToFile = (args[0].equals("true"));
-		summarizeData = (args[1].equals("true"));
+		summarizeData = Integer.parseInt(args[1]);
 		tx1 = Integer.parseInt(args[2]);
 		tx2 = Integer.parseInt(args[3]);
 		reference = Integer.parseInt(args[4]);

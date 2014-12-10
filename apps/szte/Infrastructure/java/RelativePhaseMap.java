@@ -25,7 +25,7 @@ import javax.swing.SwingUtilities;
 public class RelativePhaseMap implements RelativePhaseListener{
 	
 	class PictureSave {	
-		public static final int MAXSAMPLE = 3;	//the max value of the time domain (y axis)
+		public static final int MAXSAMPLE = 2;	//display this many samples at once
 		private static final int STORE_LAST_N_MAXSAMPLE = 300; //displayed number of maxsample block
 		public static final int WINDOWS_WIDTH = 1000;
 		public static final int WINDOWS_HEIGHT = 800;
@@ -64,13 +64,13 @@ public class RelativePhaseMap implements RelativePhaseListener{
 		JList<ImageIcon> lsm;
 		int[] otherNode; 
 		boolean saveToFile;	//create picture or not
-		boolean summarizeData;	//summarize data or not
+		int summarizeData;	//summarize data or not
 		boolean rx1isReference;
 		
 		PaintThread paint;
 		
 		
-		public PictureSave(String path, boolean saveToFile, boolean summarizeData) {
+		public PictureSave(String path, boolean saveToFile, int summarizeData) {
 			if(saveToFile) 
 				this.path = path;
 			this.saveToFile = saveToFile;
@@ -141,8 +141,13 @@ public class RelativePhaseMap implements RelativePhaseListener{
 			if( currentLine.containsKey(other) ){ //new line 
 				synchronized (paint) {
 					data.add(currentLine);
-					if( data.size() >= MAXSAMPLE )
-						paint.notify();
+					if( summarizeData > 1){
+						if( data.size() >= summarizeData )
+							paint.notify();
+					} else {
+						if( data.size() >= MAXSAMPLE )
+							paint.notify();
+					}
 				}
 				currentLine = new HashMap<Integer, StoreType>();
 			}
@@ -221,7 +226,7 @@ public class RelativePhaseMap implements RelativePhaseListener{
 						data = new ArrayList<HashMap<Integer, StoreType>>();
 					}
 			        
-			        if ( summarizeData ){
+			        if ( summarizeData > 1 ){
 			        	BufferedImage img = new BufferedImage(WINDOWS_WIDTH, yScale, BufferedImage.TYPE_INT_RGB);
 						Graphics2D g = img.createGraphics();
 						g.fillRect(0, 0, img.getWidth(), img.getHeight());
@@ -275,7 +280,11 @@ public class RelativePhaseMap implements RelativePhaseListener{
 				        			g.setColor(new Color(colorScale, colorScale, colorScale));
 				        			g.fillRect(periodOffset + i*xScale, 0, xScale, img.getHeight());
 			        			} else {
-		        					Color c = setColor(element.status);
+			        				Color c;
+			        				if( element == null )
+			        					c = setColor(SlotMeasurement.ERR_NO_MEASUREMENT);
+			        				else
+			        					c = setColor(element.status);
 			        				g.setColor(c);
 			        				g.fillRect(i*xScale, 0, xScale, yScale);
 									g.fillRect(periodOffset + i*xScale, 0, xScale, yScale);
@@ -352,7 +361,7 @@ public class RelativePhaseMap implements RelativePhaseListener{
 	
 	private PictureSave ps;
 
-	public RelativePhaseMap(String path, int refNode, int[] otherNode, boolean saveToFile, boolean summarizeData) {
+	public RelativePhaseMap(String path, int refNode, int[] otherNode, boolean saveToFile, int summarizeData) {
 		if(saveToFile) {
 			File dir = new File(path);
 			dir.mkdirs();
