@@ -97,11 +97,6 @@ public class RelativePhaseCalculator implements SlotListener {
 				relativePhase = referencePhase - otherPhase;
 				if(relativePhase < 0)
 					relativePhase += 2*Math.PI;
-				if( relativePhase > 2*Math.PI || relativePhase<0 ){
-					System.out.println("R: "+referencePhase + " " + referenceNode.phase);
-					System.out.println("O: "+otherPhase + " " + otherNode.phase);
-					System.out.println("r: "+relativePhase);
-				}
 			}		
 			for(RelativePhaseListener listener : listeners)
 				listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, reference, other);
