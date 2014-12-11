@@ -63,9 +63,6 @@ public class RelativePhaseCalculator implements SlotListener {
 	}
 
 	private void calculateRelativePhases(Slot receivedSlot) {
-		double relativePhase = 0.0;
-		double avgPeriod = 0.0;
-		int status = STATUS_OK;
 		SlotMeasurement referenceNode = null;
 		SlotMeasurement otherNode = null;
 
@@ -84,6 +81,9 @@ public class RelativePhaseCalculator implements SlotListener {
 			for(RelativePhaseListener listener : listeners)
 				listener.relativePhaseReceived(0, 0, STATUS_NO_REFERENCE, receivedSlot.slotId, reference, other);
 		} else {
+			double relativePhase = 0.0;
+			double avgPeriod = 0.0;
+			int status = STATUS_OK;
 			if( referenceNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
 				status = referenceNode.getErrorCode();
 			} else if( otherNode.getErrorCode() != SlotMeasurement.NO_ERROR ){
@@ -91,13 +91,17 @@ public class RelativePhaseCalculator implements SlotListener {
 			} else if(Math.abs(referenceNode.period - otherNode.period) > referenceNode.period*PERIOD_DIFF) {
 				status = STATUS_PERIOD_DIFF_LARGE;
 			} else {
+				double referencePhase = 2*Math.PI * referenceNode.phase / referenceNode.period;
+				double otherPhase = 2*Math.PI * otherNode.phase / otherNode.period;
 				avgPeriod = (referenceNode.period + otherNode.period)/2;
-				relativePhase = (referenceNode.phase - otherNode.phase);
+				relativePhase = referencePhase - otherPhase;
 				if(relativePhase < 0)
-					relativePhase += avgPeriod;
-				if(relativePhase >= avgPeriod)
-					relativePhase -= avgPeriod;
-				relativePhase = (2*Math.PI * relativePhase) / avgPeriod;
+					relativePhase += 2*Math.PI;
+				if( relativePhase > 2*Math.PI || relativePhase<0 ){
+					System.out.println("R: "+referencePhase + " " + referenceNode.phase);
+					System.out.println("O: "+otherPhase + " " + otherNode.phase);
+					System.out.println("r: "+relativePhase);
+				}
 			}		
 			for(RelativePhaseListener listener : listeners)
 				listener.relativePhaseReceived(relativePhase, avgPeriod, status, receivedSlot.slotId, reference, other);
