@@ -39,95 +39,51 @@ public class DrawRelativePhase implements RelativePhaseListener{
 			this.setContentPane(panel);
 			panel.add(chart);
 		}
-		
-		//connect all chart renderer to period's chart
-		public void setAllChartRenderer() {	
-			ChartPanel refCp = null;
-			for(Component cp : panel.getComponents()) {	//find the period chart
-				if(((ChartPanel)cp).getChart().getTitle().getText().equals("Period")) {
-					refCp = (ChartPanel) cp;
-					break;
-				}
-			}
-			if(refCp != null)  {
-				for(Component cp : panel.getComponents()) {	//add all chart renderer to period's chart renderer
-					((ChartPanel)cp).getChart().getXYPlot().setRenderer(new RendererSelect((XYSeriesCollection) refCp.getChart().getXYPlot().getDataset()).getTransparencyRenderer());				
-				}
-			}
-		}
 	}
 	
-	class RendererSelect {
-		XYSeriesCollection dataSet;
+	class Chart{
 		
-		public RendererSelect(XYSeriesCollection dataSet) {
-			this.dataSet = dataSet;
-		}
-		
-		public XYLineAndShapeRenderer getNormalRenderer() {
-			XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer();
-			return renderer; 
-		}
-		
-		public XYLineAndShapeRenderer getTransparencyRenderer() {
-			@SuppressWarnings("serial")
-			XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(){
-		        @Override
-		        public Paint getItemPaint(int row, int col) {
-		            Paint cpaint = getItemColor(row, col);
-		            if (cpaint == null) {
-		                cpaint = super.getItemPaint(row, col);
-		            }
-		            return cpaint;
-		        }
-
-			    public Color getItemColor(int row, int col) {
-			        double y = dataSet.getYValue(row, col);	//row - series id, col - col-th element of the series
-			        double y2 = 1;
-			        if(col > 0)
-			        	y2 = dataSet.getYValue(row, col-1);
-			        if(y == 0 || y2 == 0) 
-			        	return new Color(0,0,255,0);
-			    	else 
-			        	return (Color) getSeriesPaint(row);
-			    }
-		
-				@SuppressWarnings("deprecation")
-				@Override
-			    protected void drawFirstPassShape(Graphics2D g2, int pass, int series,
-					int item, Shape shape) {
-			    	g2.setStroke(new BasicStroke(2));
-					Color c1 = getItemColor(series, item);
-					Color c2 = getItemColor(series, item - 1);
-					GradientPaint linePaint = new GradientPaint(0, 0, c1, 0, 0, c2);
-					g2.setPaint(linePaint);
-					this.setShapesVisible(false);
-					g2.draw(shape);
-			    }
-			};
-			return renderer;
-		}
-	}
-	
-	class Chart {	
+		static final int MAXSAMPLES = 1;
 		static final int DRAW_LAST_N_VALUE = 150;
 		static final double PI = Math.PI;
 		static final double PI2 = 2*Math.PI;
 		
-		private ChartPanel chartPanel;
+		protected class StoreType {
+			public double phase;
+			public double period;
+			public int status;
+			public StoreType(double period, double phase, int status) {
+				this.period = period;
+				this.phase = phase;
+				this.status = status;
+			}
+		}
+		
+		protected ChartPanel chartPanel;
 		public JFreeChart chart;
-		public XYSeriesCollection dataSet; 
-		public ArrayList<String> series;	//store the curves dataset index. String = "slotId:rx1,rx2"
-		public RendererSelect renderer;
-
+		protected XYSeriesCollection dataSet; 
+		protected ArrayList<String> series;	//store the curves dataset index. String = "slotId:rx1,rx2"
+		protected HashMap<String,StoreType> currentLine;
+		protected ArrayList<HashMap<String,StoreType>> data;
+		protected PaintThread paint;
+		protected String tit; 
+		
 		public Chart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
 			series = new ArrayList<String>();
 			dataSet = new XYSeriesCollection();
-			renderer = new RendererSelect(dataSet);
 	        JFreeChart chart = createChart(chartTitle, xAxis, yAxis, dataSet);
 	        chartPanel = new ChartPanel(chart); 
 	        chartPanel.setPreferredSize(new java.awt.Dimension(500, 270));
 	        appframe.addChartPanel(chartPanel);
+	        tit = chartTitle;
+	        currentLine = new HashMap<String, StoreType>();
+	        data = new ArrayList<HashMap<String,StoreType>>();
+		}
+		
+		public void initalize() {
+	        paint = new PaintThread();
+	        paint.setName(tit);
+	        paint.start();
 		}
 		
 	    protected JFreeChart createChart(String chartTitle, String xAxis, String yAxis, XYSeriesCollection dataSet) {
@@ -156,47 +112,199 @@ public class DrawRelativePhase implements RelativePhaseListener{
 			}		
 			else
 				xys.add(dataSet.getDomainUpperBound(false), data);	
-			series.add(seriesId);			
+			series.add(seriesId);
 		}
 		
-	    public void refreshChart(double data, String seriesId) {
-	    	XYSeries xys = dataSet.getSeries(series.indexOf(seriesId));
-	   		xys.add(xys.getMaxX()+1, data);
+		public void addElement(double relativePhase, double avgPeriod, String seriesId, int status) {
+	    	if(currentLine.containsKey(seriesId)) {
+	    		synchronized (paint) {
+			    	data.add(currentLine);
+			    	if(data.size() >= MAXSAMPLES) 
+			    		paint.notify();
+				}
+				currentLine = new HashMap<String, StoreType>();
+	    	}
+	    	currentLine.put(seriesId, new StoreType(avgPeriod, relativePhase, status));			
+		}
+	    
+	    class PaintThread extends Thread {
+	    	
+	    	public void run() {
+				ArrayList<HashMap<String,StoreType>> dataClone;
+	    		while(true) {
+	    			synchronized (this) {
+						try {
+							this.wait();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						data = new ArrayList<HashMap<String, StoreType>>();
+					}
+					
+					for(HashMap<String,StoreType> line : dataClone) {
+						for(String key : line.keySet()) {
+							StoreType value = line.get(key);
+					    	XYSeries xys = dataSet.getSeries(series.indexOf(key));
+							if(value.status != RelativePhaseCalculator.STATUS_OK) 
+					   			xys.add(xys.getMaxX()+1, null);
+							else 
+								xys.add(xys.getMaxX()+1, value.phase);
+						}
+					}
+	    		}
+	    	}
+	    }
+	}
+	
+	class PeriodChart extends Chart {
+		
+		PaintThread paint;
+
+		public PeriodChart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
+			super(chartTitle, appframe, xAxis, yAxis);
+		}
+		
+		public void initalize() {
+	        paint = new PaintThread();
+			paint.setName(tit);
+	        paint.start();
+		}
+		
+		public void addElement(double relativePhase, double avgPeriod, String seriesId, int status) {
+	    	if(currentLine.containsKey(seriesId)) {
+	    		synchronized (paint) {
+			    	data.add(currentLine);
+			    	if(data.size() >= MAXSAMPLES) 
+			    		this.paint.notify();
+				}
+				currentLine = new HashMap<String, StoreType>();
+	    	}
+	    	currentLine.put(seriesId, new StoreType(avgPeriod, relativePhase, status));			
+		}
+		
+		class PaintThread extends Thread {
+	    	
+	    	public void run() {
+				ArrayList<HashMap<String,StoreType>> dataClone;
+	    		while(true) {
+	    			synchronized (this) {
+						try {
+							this.wait();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						data = new ArrayList<HashMap<String, StoreType>>();
+					}
+					
+					for(HashMap<String,StoreType> line : dataClone) {
+						for(String key : line.keySet()) {
+							StoreType value = line.get(key);
+					    	XYSeries xys = dataSet.getSeries(series.indexOf(key));
+							if(value.status != RelativePhaseCalculator.STATUS_OK) 
+					   			xys.add(xys.getMaxX()+1, null);
+							else 
+								xys.add(xys.getMaxX()+1, value.period);
+						}
+					}
+	    		}
+	    	}
 	    }
 	}
 	
 	class UnwrapChart extends Chart {
 		
+		HashMap<String, ArrayList<Double>> avgPhase;
 		HashMap<String, Double> lastRelativePhase;	//stored the series last relative phases
 		HashMap<String, Integer> overflowCounter; 
+		PaintThread paint;
 		
 		public UnwrapChart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
 			super(chartTitle,appframe, xAxis, yAxis);
 			lastRelativePhase = new HashMap<String, Double>();
 			overflowCounter = new HashMap<String, Integer>();
+			avgPhase = new HashMap<String, ArrayList<Double>>();
+		}
+		
+		public void initalize() {
+	        paint = new PaintThread();
+	        paint.setName(tit);
+	        paint.start();
+		}
+		
+		public void addElement(double relativePhase, double avgPeriod, String seriesId, int status) {
+	    	if(currentLine.containsKey(seriesId)) {
+	    		synchronized (paint) {
+			    	data.add(currentLine);
+			    	if(data.size() >= MAXSAMPLES) 
+			    		this.paint.notify();
+				}
+				currentLine = new HashMap<String, StoreType>();
+	    	}
+	    	currentLine.put(seriesId, new StoreType(avgPeriod, relativePhase, status));			
 		}
 		
 		public void register(String seriesId, double data) {		//create new curve in chart
-			super.register(seriesId, data);
+			super.register(seriesId, PI);
 			lastRelativePhase.put(seriesId, PI);	//add initial value to not jump +-2PI at the start point
 			overflowCounter.put(seriesId,0);
+			avgPhase.put(seriesId, new ArrayList<Double>());
 		}
-		
-		public void refreshChart(double relativePhase, String seriesId, double avgPeriod) {
-			XYSeries xys = dataSet.getSeries(series.indexOf(seriesId));
-			double lastRF = lastRelativePhase.get(seriesId);
-			if(avgPeriod == 0.0) {
-				xys.add(xys.getMaxX()+1, lastRF);
-			} else {
-				lastRelativePhase.put(seriesId, relativePhase);
-				if( lastRF - relativePhase > PI) {
-					overflowCounter.put(seriesId, (overflowCounter.get(seriesId)+1));
-				} else if( relativePhase - lastRF > PI) {
-					overflowCounter.put(seriesId, (overflowCounter.get(seriesId)-1));
-				} 
-				xys.add(xys.getMaxX()+1, relativePhase + (overflowCounter.get(seriesId)*PI2));
-			}
-		}
+
+	    class PaintThread extends Thread {
+	    	
+	    	public void run() {
+				ArrayList<HashMap<String,StoreType>> dataClone;
+				double lastRF;
+	    		while(true) {
+	    			synchronized (this) {
+						try {
+							this.wait();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						data = new ArrayList<HashMap<String, StoreType>>();
+					}
+	    			
+	    			HashMap<String, Double> phaseMap = new HashMap<String,Double>();
+	    			for(String key : series) 
+	    				phaseMap.put(key, 0.0);
+	    			
+	    			double avgPhase = 0;
+	    						
+					for(HashMap<String,StoreType> line : dataClone) {
+						for(String key : series) {
+							StoreType value = line.get(key);
+							if(value.status == RelativePhaseCalculator.STATUS_OK) {
+								lastRF = lastRelativePhase.get(key);
+								lastRelativePhase.put(key, value.phase);
+		    					if( lastRF - value.phase > PI) {
+									overflowCounter.put(key, (overflowCounter.get(key)+1));
+								} else if( value.phase - lastRF > PI) {
+									overflowCounter.put(key, (overflowCounter.get(key)-1));
+								} 
+								phaseMap.put(key, phaseMap.get(key) + value.phase + (overflowCounter.get(key)*PI2));
+							}
+						}
+					}
+					
+	    			for(String key : series) {
+	    				avgPhase = phaseMap.get(key)/dataClone.size();
+	    				XYSeries xys = dataSet.getSeries(series.indexOf(key));
+	    				if(avgPhase == 0)
+							xys.add(xys.getMaxX()+1, null);
+	    				else {
+							xys.add(xys.getMaxX()+1, avgPhase);
+						}
+	    			}
+	    		}
+	    	}
+	    }
 	}
 
 	AppFrame appFrame;
@@ -207,10 +315,12 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	public DrawRelativePhase(String appTitle, String chartTitle, int[] otherNode) {	//chartTitle is the reference node id
 		appFrame = new AppFrame(appTitle);
 		drwRelativePhase = new Chart("Relative Phase",appFrame, "Sample", "Radian");
-		drwPeriod = new Chart("Period",appFrame,"Sample", "Sample");
+		drwRelativePhase.initalize();
+		drwPeriod = new PeriodChart("Period",appFrame,"Sample", "Sample");
+		drwPeriod.initalize();
 		drwUnwrapPhase = new UnwrapChart("Unwrap Phase",appFrame, "Sample", "Radian");
+		drwUnwrapPhase.initalize();
 		drwRelativePhase.chart.getXYPlot().getRangeAxis().setRange(0.00,2*Math.PI);
-		appFrame.setAllChartRenderer();
 		appFrame.pack( );          
 		RefineryUtilities.centerFrameOnScreen(appFrame);          
 		appFrame.setVisible(true);
@@ -231,9 +341,9 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	}
 	
 	public void newDataComing(final double relativePhase, final double avgPeriod, int status, final String seriesId) {
-		drwRelativePhase.refreshChart(relativePhase, seriesId);
-		drwPeriod.refreshChart(avgPeriod, seriesId);
-		drwUnwrapPhase.refreshChart(relativePhase, seriesId,avgPeriod);
+		drwPeriod.addElement(relativePhase, avgPeriod, seriesId, status);
+		drwRelativePhase.addElement(relativePhase, avgPeriod, seriesId, status);
+		drwUnwrapPhase.addElement(relativePhase, avgPeriod, seriesId, status);
 	}
 	
 }
