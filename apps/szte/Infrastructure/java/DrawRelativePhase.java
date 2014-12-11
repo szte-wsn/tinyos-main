@@ -279,9 +279,9 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	    			
 	    				speed = phase - lastPhase;
 	    				if (speed > Math.PI)
-	    					speed -= Math.PI;
+	    					speed -= 2*Math.PI;
 	    				else if (speed < -Math.PI)
-	    					speed += Math.PI;
+	    					speed += 2*Math.PI;
 	    			}
 
 	    			Double unwrappedPhaseObj = unwrappedPhaseMap.get(seriesId);
