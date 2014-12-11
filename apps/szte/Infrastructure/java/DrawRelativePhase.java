@@ -8,6 +8,7 @@ import java.awt.Paint;
 import java.awt.Shape;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.swing.JPanel;
 
@@ -256,6 +257,45 @@ public class DrawRelativePhase implements RelativePhaseListener{
 
 	    class PaintThread extends Thread {
 	    	
+	    	public HashMap<String, Double> lastPhaseMap = new HashMap<String, Double>();
+	    	public HashMap<String, Double> unwrappedPhaseMap = new HashMap<String, Double>();
+	    	
+	    	public HashMap<String, Double> unwrap(HashMap<String, StoreType> line) {
+	    		HashMap<String, Double> phaseMap = new HashMap<String, Double>();
+
+	    		for (Map.Entry<String, StoreType> entry : line.entrySet()) {
+	    			String seriesId = entry.getKey();
+	    			StoreType store = entry.getValue();
+
+	    			double speed = 0.0;
+	    			
+	    			if (store.status == RelativePhaseCalculator.STATUS_OK) {
+	    				double phase = store.phase;
+	    				assert (0.0 <= phase && phase < Math.PI * 2);
+	    			
+	    				Double lastPhaseObj = lastPhaseMap.get(seriesId);
+	    				double lastPhase = lastPhaseObj == null ? 0.0 : lastPhaseObj.doubleValue();
+	    				lastPhaseMap.put(seriesId, phase);
+	    			
+	    				speed = phase - lastPhase;
+	    				if (speed > Math.PI)
+	    					speed -= Math.PI;
+	    				else if (speed < -Math.PI)
+	    					speed += Math.PI;
+	    			}
+
+	    			Double unwrappedPhaseObj = unwrappedPhaseMap.get(seriesId);
+	    			double unwrappedPhase = unwrappedPhaseObj == null ? 0.0 : unwrappedPhaseObj.doubleValue();
+	    			
+	    			unwrappedPhase += speed;
+	    			unwrappedPhaseMap.put(seriesId, unwrappedPhase);
+	    			
+	    			phaseMap.put(seriesId, unwrappedPhase);
+	    		}
+	    		
+	    		return phaseMap;
+	    	}
+	    	
 	    	public void run() {
 				ArrayList<HashMap<String,StoreType>> dataClone;
 				double lastRF;
@@ -267,16 +307,14 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						dataClone =  data;
 						data = new ArrayList<HashMap<String, StoreType>>();
 					}
-	    			
+/*	    			
 	    			HashMap<String, Double> phaseMap = new HashMap<String,Double>();
 	    			for(String key : series) 
 	    				phaseMap.put(key, 0.0);
 	    			
-	    			double avgPhase = 0;
-	    						
 					for(HashMap<String,StoreType> line : dataClone) {
 						for(String key : series) {
 							StoreType value = line.get(key);
@@ -294,7 +332,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 					}
 					
 	    			for(String key : series) {
-	    				avgPhase = phaseMap.get(key)/dataClone.size();
+	    				double avgPhase = phaseMap.get(key)/dataClone.size();
 	    				XYSeries xys = dataSet.getSeries(series.indexOf(key));
 	    				if(avgPhase == 0)
 							xys.add(xys.getMaxX()+1, null);
@@ -302,6 +340,18 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							xys.add(xys.getMaxX()+1, avgPhase);
 						}
 	    			}
+*/
+					for(HashMap<String, StoreType> line : dataClone) {
+						HashMap<String, Double> phaseMap = unwrap(line);
+						for(String key : series) {
+		    				XYSeries xys = dataSet.getSeries(series.indexOf(key));
+		    				Double phase = phaseMap.get(key);
+		    				if(phase == null)
+								xys.add(xys.getMaxX()+1, null);
+		    				else
+								xys.add(xys.getMaxX()+1, (double) phase);
+						}
+					}
 	    		}
 	    	}
 	    }
