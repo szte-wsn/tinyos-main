@@ -16,6 +16,7 @@ public class SuperFrameMerger implements MessageListener{
 	LinkedList<ArrayList<Slot>> superFrames = new LinkedList<ArrayList<Slot>>();
 	int lastSlot;
 	private MoteIF moteInterface;
+	private int sfcounter=0;
 	
 	public ArrayList<Slot> replaceSuperFrame(boolean init){
 		ArrayList<Slot> superFrameSkeleton = new ArrayList<Slot>();
@@ -89,9 +90,10 @@ public class SuperFrameMerger implements MessageListener{
 					ArrayList<Slot> signalData = replaceSuperFrame(false);
 					for(int slotid:new TreeSet<>(listeners.keySet())){
 						for(SlotListener listener:listeners.get(slotid)){
-							listener.slotReceived(signalData.get(slotid));
+							listener.slotReceived(signalData.get(slotid), sfcounter);
 						}
 					}
+					sfcounter++;
 				} 
 				ArrayList<Integer> activeSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
 				for(int i=0;i<msg.getSettingsNum();i++){

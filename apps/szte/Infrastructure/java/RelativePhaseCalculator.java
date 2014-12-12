@@ -58,7 +58,8 @@ public class RelativePhaseCalculator implements SlotListener {
 			sfm.deregisterListener(this,i);
 	}
 	
-	public void slotReceived(Slot receivedSlot) {
+	@Override
+	public void slotReceived(Slot receivedSlot, int sfcounter) {
 		calculateRelativePhases(receivedSlot);
 	}
 

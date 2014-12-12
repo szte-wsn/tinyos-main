@@ -43,7 +43,7 @@ public class WaveformPlotterTester implements SlotListener {
 	}
 
 	@Override
-	public void slotReceived(Slot receivedSlot) {
+	public void slotReceived(Slot receivedSlot, int sfcounter) {
 		if(mode == 'S'){
 			for(SlotMeasurement meas:receivedSlot.measurements){
 				if( meas.hasWaveForm )
@@ -60,7 +60,7 @@ public class WaveformPlotterTester implements SlotListener {
 	}
 
 	public static void usage() {
-		System.err.println("Usage: WaveformPlotterTester [-comm <source>]  [-Mx / -Rx |  x mote / slot number] ");
+		System.err.println("Usage: WaveformPlotterTester [-comm <source>]  [-Mx / -Sx |  x mote / slot number] ");
 		System.exit(1);
 	}
 
