@@ -1,14 +1,6 @@
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.GradientPaint;
-import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.Paint;
-import java.awt.Shape;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
 import javax.swing.JPanel;
 
@@ -18,12 +10,10 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
-
 
 public class DrawRelativePhase implements RelativePhaseListener{
 
@@ -140,7 +130,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						dataClone = data;
 						data = new ArrayList<HashMap<String, StoreType>>();
 					}
 					
@@ -197,7 +187,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						dataClone = data;
 						data = new ArrayList<HashMap<String, StoreType>>();
 					}
 					
@@ -217,17 +207,13 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	}
 	
 	class UnwrapChart extends Chart {
-		
-		HashMap<String, ArrayList<Double>> avgPhase;
-		HashMap<String, Double> lastRelativePhase;	//stored the series last relative phases
-		HashMap<String, Integer> overflowCounter; 
+		protected HashMap<String, PhaseUnwrapper> unwrappers = new HashMap<String, PhaseUnwrapper>();
+		protected HashMap<String, Double> dataLine = new HashMap<String, Double>();
+		protected ArrayList<HashMap<String, Double>> dataLines = new ArrayList<HashMap<String, Double>>();
 		PaintThread paint;
 		
 		public UnwrapChart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
-			super(chartTitle,appframe, xAxis, yAxis);
-			lastRelativePhase = new HashMap<String, Double>();
-			overflowCounter = new HashMap<String, Integer>();
-			avgPhase = new HashMap<String, ArrayList<Double>>();
+			super(chartTitle, appframe, xAxis, yAxis);
 		}
 		
 		public void initalize() {
@@ -237,68 +223,28 @@ public class DrawRelativePhase implements RelativePhaseListener{
 		}
 		
 		public void addElement(double relativePhase, double avgPeriod, String seriesId, int status) {
-	    	if(currentLine.containsKey(seriesId)) {
+	    	if(dataLine.containsKey(seriesId)) {
 	    		synchronized (paint) {
-			    	data.add(currentLine);
-			    	if(data.size() >= MAXSAMPLES) 
-			    		this.paint.notify();
+			    	dataLines.add(dataLine);
+			    	if(dataLines.size() >= MAXSAMPLES) 
+			    		paint.notify();
 				}
-				currentLine = new HashMap<String, StoreType>();
+				dataLine = new HashMap<String, Double>();
 	    	}
-	    	currentLine.put(seriesId, new StoreType(avgPeriod, relativePhase, status));			
+	    	
+	    	PhaseUnwrapper unwrapper = unwrappers.get(seriesId);
+	    	double unwrappedPhase = unwrapper.unwrap(relativePhase);
+	    	dataLine.put(seriesId, unwrappedPhase);
 		}
 		
-		public void register(String seriesId, double data) {		//create new curve in chart
+		public void register(String seriesId, double data) {
 			super.register(seriesId, PI);
-			lastRelativePhase.put(seriesId, PI);	//add initial value to not jump +-2PI at the start point
-			overflowCounter.put(seriesId,0);
-			avgPhase.put(seriesId, new ArrayList<Double>());
+			unwrappers.put(seriesId, new PhaseUnwrapper(seriesId));
 		}
 
 	    class PaintThread extends Thread {
-	    	
-	    	public HashMap<String, Double> lastPhaseMap = new HashMap<String, Double>();
-	    	public HashMap<String, Double> unwrappedPhaseMap = new HashMap<String, Double>();
-	    	
-	    	public HashMap<String, Double> unwrap(HashMap<String, StoreType> line) {
-	    		HashMap<String, Double> phaseMap = new HashMap<String, Double>();
-
-	    		for (Map.Entry<String, StoreType> entry : line.entrySet()) {
-	    			String seriesId = entry.getKey();
-	    			StoreType store = entry.getValue();
-
-	    			double speed = 0.0;
-	    			
-	    			if (store.status == RelativePhaseCalculator.STATUS_OK) {
-	    				double phase = store.phase;
-	    				assert (0.0 <= phase && phase < Math.PI * 2);
-	    			
-	    				Double lastPhaseObj = lastPhaseMap.get(seriesId);
-	    				double lastPhase = lastPhaseObj == null ? 0.0 : lastPhaseObj.doubleValue();
-	    				lastPhaseMap.put(seriesId, phase);
-	    			
-	    				speed = phase - lastPhase;
-	    				if (speed > Math.PI)
-	    					speed -= 2*Math.PI;
-	    				else if (speed < -Math.PI)
-	    					speed += 2*Math.PI;
-	    			}
-
-	    			Double unwrappedPhaseObj = unwrappedPhaseMap.get(seriesId);
-	    			double unwrappedPhase = unwrappedPhaseObj == null ? 0.0 : unwrappedPhaseObj.doubleValue();
-	    			
-	    			unwrappedPhase += speed;
-	    			unwrappedPhaseMap.put(seriesId, unwrappedPhase);
-	    			
-	    			phaseMap.put(seriesId, unwrappedPhase);
-	    		}
-	    		
-	    		return phaseMap;
-	    	}
-	    	
 	    	public void run() {
-				ArrayList<HashMap<String,StoreType>> dataClone;
-				double lastRF;
+				ArrayList<HashMap<String, Double>> lines;
 	    		while(true) {
 	    			synchronized (this) {
 						try {
@@ -307,49 +253,19 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						dataClone =  data;
-						data = new ArrayList<HashMap<String, StoreType>>();
+						lines =  dataLines;
+						dataLines = new ArrayList<HashMap<String, Double>>();
 					}
-/*	    			
-	    			HashMap<String, Double> phaseMap = new HashMap<String,Double>();
-	    			for(String key : series) 
-	    				phaseMap.put(key, 0.0);
-	    			
-					for(HashMap<String,StoreType> line : dataClone) {
-						for(String key : series) {
-							StoreType value = line.get(key);
-							if(value.status == RelativePhaseCalculator.STATUS_OK) {
-								lastRF = lastRelativePhase.get(key);
-								lastRelativePhase.put(key, value.phase);
-		    					if( lastRF - value.phase > PI) {
-									overflowCounter.put(key, (overflowCounter.get(key)+1));
-								} else if( value.phase - lastRF > PI) {
-									overflowCounter.put(key, (overflowCounter.get(key)-1));
-								} 
-								phaseMap.put(key, phaseMap.get(key) + value.phase + (overflowCounter.get(key)*PI2));
-							}
-						}
-					}
-					
-	    			for(String key : series) {
-	    				double avgPhase = phaseMap.get(key)/dataClone.size();
-	    				XYSeries xys = dataSet.getSeries(series.indexOf(key));
-	    				if(avgPhase == 0)
-							xys.add(xys.getMaxX()+1, null);
-	    				else {
-							xys.add(xys.getMaxX()+1, avgPhase);
-						}
-	    			}
-*/
-					for(HashMap<String, StoreType> line : dataClone) {
-						HashMap<String, Double> phaseMap = unwrap(line);
-						for(String key : series) {
-		    				XYSeries xys = dataSet.getSeries(series.indexOf(key));
-		    				Double phase = phaseMap.get(key);
-		    				if(phase == null)
+
+	    			for(HashMap<String, Double> line : lines) {
+						for(int index = 0; index < series.size(); index++) {
+							String key = series.get(index);
+		    				Double data = line.get(key);
+		    				XYSeries xys = dataSet.getSeries(index);
+		    				if(data == null)
 								xys.add(xys.getMaxX()+1, null);
 		    				else
-								xys.add(xys.getMaxX()+1, (double) phase);
+								xys.add(xys.getMaxX()+1, data.doubleValue());
 						}
 					}
 	    		}
@@ -395,5 +311,4 @@ public class DrawRelativePhase implements RelativePhaseListener{
 		drwRelativePhase.addElement(relativePhase, avgPeriod, seriesId, status);
 		drwUnwrapPhase.addElement(relativePhase, avgPeriod, seriesId, status);
 	}
-	
 }

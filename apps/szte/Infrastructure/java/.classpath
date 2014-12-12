@@ -3,7 +3,8 @@
 	<classpathentry kind="src" path=""/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/tinyos"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/jfreechart"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/jfreechartcommon"/>
+	<classpathentry kind="lib" path="jcommon-1.0.23.jar"/>
+	<classpathentry kind="lib" path="/home/mmaroti/tinyos-main/support/sdk/java/tinyos.jar"/>
+	<classpathentry kind="lib" path="jfreechart-1.0.19.jar"/>
 	<classpathentry kind="output" path=""/>
 </classpath>
