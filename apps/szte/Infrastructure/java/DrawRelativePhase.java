@@ -231,10 +231,12 @@ public class DrawRelativePhase implements RelativePhaseListener{
 				}
 				dataLine = new HashMap<String, Double>();
 	    	}
-	    	
-	    	PhaseUnwrapper unwrapper = unwrappers.get(seriesId);
-	    	double unwrappedPhase = unwrapper.unwrap(relativePhase);
-	    	dataLine.put(seriesId, unwrappedPhase);
+	 
+	    	if (status == RelativePhaseCalculator.STATUS_OK) {
+	    		PhaseUnwrapper unwrapper = unwrappers.get(seriesId);
+	    		double unwrappedPhase = unwrapper.unwrap(relativePhase);
+	    		dataLine.put(seriesId, unwrappedPhase);
+	    	}
 		}
 		
 		public void register(String seriesId, double data) {
