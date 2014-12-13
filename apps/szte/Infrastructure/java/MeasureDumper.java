@@ -38,7 +38,7 @@ public class MeasureDumper implements SlotListener {
 	}
 
 	@Override
-	public void slotReceived(Slot receivedSlot) {
+	public void slotReceived(Slot receivedSlot, int sfcounter) {
 		if(receivedSlot.slotId <= lastId)
 			superframecounter++;
 		lastId=receivedSlot.slotId;
