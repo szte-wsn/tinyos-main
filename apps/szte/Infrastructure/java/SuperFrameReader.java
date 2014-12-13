@@ -33,13 +33,8 @@ public class SuperFrameReader {
 		}
 	}
 
-	public SuperFrameReader(String directory) {
-		try {
-			ms = new MoteSettings("settings.ini");
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	public SuperFrameReader(String directory, MoteSettings ms) {
+		this.ms = ms;
 		File baseDir = new File(directory);
 		String files[] = baseDir.list();
 		Arrays.sort(files);
@@ -135,7 +130,7 @@ public class SuperFrameReader {
 
 	}
 	
-	private void read(double speed) {
+	public void read(double speed) {
 		new ReadClass(speed).start();
 	}
 	
@@ -155,8 +150,17 @@ public class SuperFrameReader {
 			System.out.println("Usage: SuperFrameReader directory speed");
 			System.exit(1);
 		}
+		MoteSettings moteSettings = null;
 		
-		SuperFrameReader reader = new SuperFrameReader(args[0]);
+		try {
+			moteSettings = new MoteSettings("settings.ini");
+		} catch (Exception e) {
+			System.err.println("Error: setting.ini is not readable");
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		SuperFrameReader reader = new SuperFrameReader(args[0], moteSettings);
 		Receiver rec = new Receiver();
 		
 		for(int i=0; i<reader.ms.getNumberOfSlots();i++){

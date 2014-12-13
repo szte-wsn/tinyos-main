@@ -11,7 +11,8 @@ public class RelativePhaseCalculator implements SlotListener {
 	
 	private ArrayList<Integer> registeredSlots;		
 	private MoteSettings ms;
-	private SuperFrameMerger sfm;	
+	private SuperFrameMerger sfm;
+	private SuperFrameReader sfr;
 	private ArrayList<RelativePhaseListener> listeners;
 	private int reference, other;
 	private int tx1, tx2;
@@ -20,6 +21,7 @@ public class RelativePhaseCalculator implements SlotListener {
 	public RelativePhaseCalculator(MoteSettings ms, SuperFrameMerger sfm, int reference, int other, int tx1, int tx2) {
 		this.ms = ms;
 		this.sfm = sfm;
+		this.sfr = null;
 		this.reference = reference;
 		this.other = other;
 		this.tx1 = tx1;
@@ -29,6 +31,19 @@ public class RelativePhaseCalculator implements SlotListener {
 		registerSlots();		
 	}
 	
+	public RelativePhaseCalculator(MoteSettings ms, SuperFrameReader sfr, int reference, int other, int tx1, int tx2) {
+		this.ms = ms;
+		this.sfr = sfr;
+		this.sfm = null;
+		this.reference = reference;
+		this.other = other;
+		this.tx1 = tx1;
+		this.tx2 = tx2;
+		listeners = new ArrayList<RelativePhaseListener>();
+		registeredSlots = new ArrayList<Integer>();
+		registerSlots();		
+	}
+
 	private void registerSlots() {
 //		System.out.println("In registerSlots");
 		ArrayList<Integer> tx1slots = ms.getSlotNumbers(tx1, MoteSettings.TX1);
@@ -39,7 +54,10 @@ public class RelativePhaseCalculator implements SlotListener {
 			if( tx2slots.contains(slot) && refslots.contains(slot) && otherslots.contains(slot)){
 //				System.out.println("registered");
 				registeredSlots.add(slot);
-				sfm.registerListener(this,slot);
+				if( sfm != null)
+					sfm.registerListener(this,slot);
+				else
+					sfr.registerListener(this,slot);
 			}
 		}
 	}
