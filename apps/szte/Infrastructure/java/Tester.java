@@ -32,7 +32,8 @@ public class Tester implements SlotListener {
 	}
 
 	@Override
-	public void slotReceived(Slot receivedSlot) {
+	public void slotReceived(Slot receivedSlot, int sfcounter) {
+		System.out.println(sfcounter);
 		receivedSlot.print();
 	}
 

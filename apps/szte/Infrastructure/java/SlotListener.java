@@ -1,4 +1,4 @@
 
 public interface SlotListener {
-	void slotReceived(Slot receivedSlot);
+	void slotReceived(Slot receivedSlot, int sfcounter);
 }

@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 
-class Slot {
+class Slot{
 	public int tx1, tx2, slotId;
 	public ArrayList<Integer> receivers;
 	public ArrayList<SlotMeasurement> measurements;
@@ -36,6 +36,17 @@ class Slot {
 		}
 		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
 		meas.setMeasurement(period, phase);
+		measurements.add(meas);
+		return false;
+	}
+	
+	public boolean addMeasurement(SlotMeasurement meas) {
+		for(int i=0;i<measurements.size();i++){
+			if( measurements.get(i).nodeid == meas.nodeid ){
+				measurements.set(i, meas);
+				return true;
+			}
+		}
 		measurements.add(meas);
 		return false;
 	}
