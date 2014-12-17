@@ -34,14 +34,20 @@
 
 #include "block.hpp"
 #include "serial.hpp"
+#include "compat.hpp"
 #include <chrono>
 
-int main() {
-	SerialBase serial("/dev/ttyACM0", 57600);
+int main(int argc, char *argv[]) {
+	const char *tty = "/dev/ttyACM0";
+	if (argc == 2)
+		tty = argv[1];
+
+	SerialBase serial(tty, 57600);
 	Printer<std::vector<unsigned char>> printer;
 	serial.connect(printer);
 
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	//std::this_thread::sleep_for(std::chrono::seconds(5));
+	wait_for_sigint();
 	serial.disconnect_all();
 
 //	std::cout << "Start\n";

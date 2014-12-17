@@ -32,38 +32,9 @@
  * Author: Miklos Maroti
  */
 
-#ifndef __SERIAL_HPP__
-#define __SERIAL_HPP__
+#ifndef __COMPAT_HPP__
+#define __COMPAT_HPP__
 
-#include "block.hpp"
-#include <vector>
+void wait_for_sigint();
 
-class SerialBase : public Producer<std::vector<unsigned char>>, public Consumer<std::vector<unsigned char>> {
-public:
-	SerialBase(const char *devicename, int baudrate);
-	~SerialBase();
-
-	virtual void work(const std::vector<unsigned char> &data);
-
-private:
-	enum {
-		HDLC_FLAG = 126,
-		HDLC_ESCAPE = 125,
-		HDLC_XOR = 32,
-
-		READ_BUFFER = 1024,
-		READ_MAXLEN = 255,
-	};
-
-	int serial_fd;
-	std::mutex write_mutex;
-
-	std::unique_ptr<std::thread> reader_thread;
-	unsigned char read_buffer[READ_BUFFER];
-	int pipe_fds[2];
-
-	void pump();
-	void error(const char *msg, int err);
-};
-
-#endif//__SERIAL_HPP__
+#endif//__COMPAT_HPP__

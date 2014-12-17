@@ -32,38 +32,30 @@
  * Author: Miklos Maroti
  */
 
-#ifndef __SERIAL_HPP__
-#define __SERIAL_HPP__
+#include "compat.hpp"
+#include <csignal>
+#include <mutex>
+#include <condition_variable>
+#include <iostream>
+#include <cstring>
 
-#include "block.hpp"
-#include <vector>
+std::condition_variable sigint_condvar;
 
-class SerialBase : public Producer<std::vector<unsigned char>>, public Consumer<std::vector<unsigned char>> {
-public:
-	SerialBase(const char *devicename, int baudrate);
-	~SerialBase();
+void sigint_handler(int param) {
+	sigint_condvar.notify_all();
+}
 
-	virtual void work(const std::vector<unsigned char> &data);
+void wait_for_sigint() {
+	void (*old_handler)(int);
+	old_handler = signal(SIGINT, sigint_handler);
+	if (old_handler == SIG_ERR)
+		throw std::runtime_error(std::string("Could not register SIGINT handler: ") + std::strerror(errno));
 
-private:
-	enum {
-		HDLC_FLAG = 126,
-		HDLC_ESCAPE = 125,
-		HDLC_XOR = 32,
+	std::mutex mutex;
+	std::unique_lock<std::mutex> lock(mutex);
+	sigint_condvar.wait(lock);
 
-		READ_BUFFER = 1024,
-		READ_MAXLEN = 255,
-	};
+	std::cout << "SIGINT received\n";
 
-	int serial_fd;
-	std::mutex write_mutex;
-
-	std::unique_ptr<std::thread> reader_thread;
-	unsigned char read_buffer[READ_BUFFER];
-	int pipe_fds[2];
-
-	void pump();
-	void error(const char *msg, int err);
+	signal(SIGINT, old_handler);
 };
-
-#endif//__SERIAL_HPP__
