@@ -38,12 +38,13 @@
 #include "block.hpp"
 #include <vector>
 
-class SerialBase : public Producer<std::vector<unsigned char>>, public Consumer<std::vector<unsigned char>> {
+class SerialBase : public Block {
 public:
+	Input<std::vector<unsigned char>> in;
+	Output<std::vector<unsigned char>> out;
+
 	SerialBase(const char *devicename, int baudrate);
 	~SerialBase();
-
-	virtual void work(const std::vector<unsigned char> &data);
 
 private:
 	enum {
@@ -55,6 +56,7 @@ private:
 		READ_MAXLEN = 255,
 	};
 
+	std::string devicename;
 	int serial_fd;
 	std::mutex write_mutex;
 
@@ -62,6 +64,7 @@ private:
 	unsigned char read_buffer[READ_BUFFER];
 	int pipe_fds[2];
 
+	void work(const std::vector<unsigned char> &data);
 	void pump();
 	void error(const char *msg, int err);
 };

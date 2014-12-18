@@ -43,7 +43,7 @@
 #include <poll.h>
 
 SerialBase::SerialBase(const char *devicename, int baudrate)
-	: Consumer<std::vector<unsigned char>>(devicename) {
+	: in(bind(&SerialBase::work, this)), devicename(devicename) {
 	serial_fd = -1;
 	pipe_fds[0] = -1;
 	pipe_fds[1] = -1;
@@ -68,7 +68,7 @@ SerialBase::SerialBase(const char *devicename, int baudrate)
 			error("Set baudrate", errno);
 
 		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialBase::pump, this));
-		std::cerr << "Opened " << get_name() << " with baudrate " << baudrate << std::endl;
+		std::cerr << "Opened " << devicename << " with baudrate " << baudrate << std::endl;
 	}
 	catch(const std::exception &e) {
 		if (serial_fd >= 0)
@@ -93,7 +93,7 @@ SerialBase::~SerialBase() {
 	close(pipe_fds[0]);
 	close(pipe_fds[1]);
 
-	std::cerr << "Closed " << get_name() << std::endl;
+	std::cerr << "Closed " << devicename << std::endl;
 }
 
 void SerialBase::work(const std::vector<unsigned char> &packet) {
@@ -144,13 +144,15 @@ void SerialBase::pump() {
 			ssize_t n = read(serial_fd, read_buffer, READ_BUFFER);
 			if (n < 0)
 				error("Read", errno);
+			else if (n == 0)	// TODO: implement auto reconnect
+				throw std::runtime_error("Disconnected " + devicename);
 
 			for (int i = 0; i < n; ++i) {
 				unsigned char c = read_buffer[i];
 
 				if (c == HDLC_FLAG) {
 					if (!synchronize && packet.size() > 0) {
-						send(packet);
+						out.send(packet);
 						packet.clear();
 					}
 
@@ -163,7 +165,7 @@ void SerialBase::pump() {
 					escaped = true;
 				else {
 					if (packet.size() >= READ_MAXLEN) {
-						std::cerr << "Synchronizing " << get_name() << std::endl;
+						std::cerr << "Synchronizing " << devicename << std::endl;
 						synchronize = true;
 					}
 					else {
@@ -182,5 +184,5 @@ void SerialBase::pump() {
 }
 
 void SerialBase::error(const char *msg, int err) {
-	throw std::runtime_error(std::string(msg) + " failed for " + get_name() + ": " + std::strerror(err));
+	throw std::runtime_error(std::string(msg) + " failed for " + devicename + ": " + std::strerror(err));
 }

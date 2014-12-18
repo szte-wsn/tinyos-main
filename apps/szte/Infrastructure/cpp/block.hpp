@@ -45,110 +45,123 @@
 #include <thread>
 #include <atomic>
 #include <string>
+#include <functional>
 
-template <typename DATA> class Producer;
-
-template <typename DATA> class Consumer {
+class Block {
 public:
-	Consumer(const char *name) : name(name), conn_count(0) {
+	template <typename CLASS, typename DATA>
+	std::function<void (const DATA&)> bind(void (CLASS::*handler)(const DATA&), CLASS *that) {
+		return std::bind(handler, that, std::placeholders::_1);
 	}
 
-	~Consumer() {
-		if (conn_count != 0)
-			throw std::runtime_error(name + " block is not disconnected");
-	}
+	template <typename DATA> class Output;
 
-	const std::string &get_name() const {
-		return name;
-	}
+	template <typename DATA>
+	class Input final {
+	public:
+		Input(const std::function<void (const DATA&)> &h) : handler(h), refcount(0) {
+		}
 
-	virtual void work(const DATA &data) = 0;
+		~Input() {
+			if (refcount != 0)
+				throw std::runtime_error("Input is not disconnected");
+		}
 
-private:
-	std::string name;
-	std::atomic<int> conn_count;
+	private:
+		std::function<void (const DATA&h)> handler;
+		std::atomic<int> refcount;
+		std::mutex mutex;
 
-private:
-	friend class Producer<DATA>;
+		friend class Output<DATA>;
 
-	void connected() {
-		assert(conn_count >= 0);
-		conn_count++;
-	}
+		void work(const DATA &data) {
+			std::lock_guard<std::mutex> lock(mutex);
+			handler(data);
+		}
 
-	void disconnected() {
-		assert(conn_count > 0);
-		conn_count--;
-	}
+		void addref() {
+			assert(refcount >= 0);
+			refcount++;
+		}
+
+		void release() {
+			assert(refcount > 0);
+			refcount--;
+		}
+	};
+
+	template <typename DATA>
+	class Output final {
+	public:
+		~Output() {
+			disconnect_all();
+		}
+
+		void send(const DATA &data) {
+			std::lock_guard<std::mutex> lock(mutex);
+			for(Input<DATA> *input : inputs)
+				input->work(data);
+		}
+
+		void connect(Input<DATA> &input) {
+			std::lock_guard<std::mutex> lock(mutex);
+			inputs.push_back(&input);
+			input.addref();
+		}
+
+		void disconnect(Input<DATA> &input) {
+			std::lock_guard<std::mutex> lock(mutex);
+
+			auto it = std::find(inputs.begin(), inputs.end(), &input);
+			if (it == inputs.end())
+				throw std::invalid_argument("Input not found");
+
+			*it = inputs.back();
+			inputs.pop_back();
+
+			input.release();
+		}
+
+		void disconnect_all() {
+			std::lock_guard<std::mutex> lock(mutex);
+			for(Input<DATA> *input : inputs)
+				input->release();
+
+			inputs.clear();
+		}
+
+	private:
+		std::mutex mutex;
+		std::vector<Input<DATA>*> inputs;
+	};
 };
 
-template <typename DATA> class Printer: public Consumer<DATA> {
+template <typename DATA>
+void connect(Block::Output<DATA> &output, Block::Input<DATA> &input) {
+	output.connect(input);
+}
+
+template <typename DATA> class Printer: public Block {
 public:
-	Printer(const char *name = "Printer")
-		: Consumer<DATA>(name) {
+	Input<DATA> in;
+
+	Printer() : in(bind(&Printer::work, this)) {
 	}
 
-	virtual void work(const DATA &data) {
-		std::lock_guard<std::mutex> lock(printer_mutex);
+	void work(const DATA &data) {
 		std::cout << data << std::endl;
 	}
-
-private:
-	std::mutex printer_mutex;
 };
 
 std::ostream& operator <<(std::ostream& output, const std::vector<unsigned char> &vector);
 
-template <typename DATA> class Producer {
+template <typename DATA> class Buffer : Block {
 public:
-	~Producer() {
-		disconnect_all();
-	}
+	Input<DATA> in;
+	Output<DATA> out;
 
-	void send(const DATA &data) {
-		std::lock_guard<std::mutex> lock(producer_mutex);
-		for(Consumer<DATA> *c : consumers)
-			c->work(data);
-	}
-
-	void connect(Consumer<DATA> &c) {
-		std::lock_guard<std::mutex> lock(producer_mutex);
-		consumers.push_back(&c);
-		c.connected();
-	}
-
-	void disconnect(Consumer<DATA> &c) {
-		std::lock_guard<std::mutex> lock(producer_mutex);
-
-		auto it = std::find(consumers.begin(), consumers.end(), &c);
-		if (it == consumers.end())
-			throw std::invalid_argument("Consumer not found");
-
-		*it = consumers.back();
-		consumers.pop_back();
-
-		c.disconnected();
-	}
-
-	void disconnect_all() {
-		std::lock_guard<std::mutex> lock(producer_mutex);
-		for(Consumer<DATA> *c : consumers)
-			c->disconnected();
-
-		consumers.clear();
-	}
-
-private:
-	std::vector<Consumer<DATA>*> consumers;
-
-	std::mutex producer_mutex;
-};
-
-template <typename DATA> class Buffer: public Consumer<DATA>, public Producer<DATA> {
-public:
-	Buffer(const char *name = "Buffer")
-		: Consumer<DATA>(name),
-		buffer_thread(&Buffer<DATA>::pump, this) {
+	Buffer() : buffer_thread(&Buffer<DATA>::pump, this),
+		in(bind(&Buffer<DATA>::work, this)) {
 	}
 
 	~Buffer() {
@@ -160,12 +173,6 @@ public:
 		buffer_thread.join();
 	}
 
-	void work(const DATA &data) {
-		std::lock_guard<std::mutex> lock(buffer_mutex);
-		queue.push_back(data);
-		buffer_cond.notify_one();
-	}
-
 private:
 	std::deque<DATA> queue;
 
@@ -174,7 +181,6 @@ private:
 	std::condition_variable buffer_cond;
 	std::thread buffer_thread;
 
-private:
 	void pump() {
 		for (;;) {
 			std::unique_lock<std::mutex> lock(buffer_mutex);
@@ -194,12 +200,15 @@ private:
 
 			lock.unlock();
 
-			this->send(data);
+			out.send(data);
 		}
 	};
-};
 
-template <typename INPUT, typename OUTPUT> class Block: public Consumer<INPUT>, public Producer<OUTPUT> {
+	void work(const DATA &data) {
+		std::lock_guard<std::mutex> lock(buffer_mutex);
+		queue.push_back(data);
+		buffer_cond.notify_one();
+	}
 };
 
 #endif//__BLOCK_HPP__
