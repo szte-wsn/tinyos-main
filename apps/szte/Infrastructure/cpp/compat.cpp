@@ -55,7 +55,7 @@ void wait_for_sigint() {
 	std::unique_lock<std::mutex> lock(mutex);
 	sigint_condvar.wait(lock);
 
-	std::cout << "*** SIGINT received ***\n";
+	std::cerr << "*** SIGINT received ***\n";
 
 	signal(SIGINT, old_handler);
 };
