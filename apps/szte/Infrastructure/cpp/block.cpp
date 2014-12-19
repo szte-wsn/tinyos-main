@@ -35,10 +35,40 @@
 #include "block.hpp"
 #include <iomanip>
 
-std::ostream& operator <<(std::ostream& output, const std::vector<unsigned char> &vector) {
-	output << "[" << std::hex << std::setfill('0');
+std::ostream& operator <<(std::ostream& stream, const std::vector<unsigned char> &vector) {
+	stream << "[" << std::hex << std::setfill('0');
 	for (unsigned char a : vector)
-		output << " " << std::setw(2) << (int) a;
-	output << " ]";
-	return output;
+		stream << " " << std::setw(2) << (int) a;
+	stream << " ]";
+	return stream;
+}
+
+std::istream& operator >>(std::istream& stream, std::vector<unsigned char> &vector) {
+	stream >> std::ws;
+	if (stream.peek() != '[') {
+		stream.setstate(std::istream::failbit);
+	}
+	else {
+		stream.get();
+		vector.clear();
+
+		for (;;) {
+			stream >> std::ws;
+			if (stream.peek() == ']') {
+				stream.get();
+				break;
+			}
+
+			int a;
+			stream >> std::hex >> a;
+			if (stream.fail() || a < 0 || a > 255) {
+				stream.setstate(std::istream::failbit);
+				break;
+			}
+
+			vector.push_back(a);
+		}
+	}
+
+	return stream;
 }

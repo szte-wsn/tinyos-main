@@ -37,20 +37,25 @@
 #include "compat.hpp"
 #include <chrono>
 
-void test(int argc, char *argv[]) {
-}
-
-int main(int argc, char *argv[]) {
+int main1(int argc, char *argv[]) {
 	const char *tty = "/dev/ttyACM0";
 	if (argc == 2)
 		tty = argv[1];
 
-	Printer<std::vector<unsigned char>> printer;
+	Writer<std::vector<unsigned char>> writer;
 	Buffer<std::vector<unsigned char>> buffer;
 	SerialBase serial(tty, 57600);
 
 	connect(serial.out, buffer.in);
-	connect(buffer.out, printer.in);
+	connect(buffer.out, writer.in);
 
 	wait_for_sigint();
+}
+
+int main(int argc, char *argv[]) {
+	Writer<std::vector<unsigned char>> writer;
+	Reader<std::vector<unsigned char>> reader;
+
+	connect(reader.out, writer.in);
+	reader.start();
 }

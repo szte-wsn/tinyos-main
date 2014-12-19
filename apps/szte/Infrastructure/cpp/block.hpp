@@ -70,12 +70,10 @@ public:
 	private:
 		std::function<void (const DATA&h)> handler;
 		std::atomic<int> refcount;
-		std::mutex mutex;
 
 		friend class Output<DATA>;
 
 		void work(const DATA &data) {
-			std::lock_guard<std::mutex> lock(mutex);
 			handler(data);
 		}
 
@@ -141,57 +139,103 @@ void connect(Block::Output<DATA> &output, Block::Input<DATA> &input) {
 	output.connect(input);
 }
 
-template <typename DATA> class Printer: public Block {
+template <typename DATA> class Writer : public Block {
 public:
 	Input<DATA> in;
 
-	Printer() : in(bind(&Printer::work, this)) {
+	Writer(std::ostream &stream = std::cout) : in(bind(&Writer::work, this)), stream(stream) {
 	}
 
+private:
+	std::ostream &stream;
+	std::mutex mutex;
+
 	void work(const DATA &data) {
-		std::cout << data << std::endl;
+		std::lock_guard<std::mutex> lock(mutex);
+		stream << data << std::endl;
 	}
 };
 
-std::ostream& operator <<(std::ostream& output, const std::vector<unsigned char> &vector);
+template <typename DATA> class Reader : Block {
+public:
+	Output<DATA> out;
+
+	Reader(std::istream &stream = std::cin) : stream(stream) {
+	}
+
+	void start() {
+		if (thread == NULL)
+			thread = std::unique_ptr<std::thread>(new std::thread(&Reader<DATA>::pump, this));
+	}
+
+	~Reader() {
+		if (thread != NULL)
+			thread->join();
+	}
+
+private:
+	std::istream &stream;
+	std::unique_ptr<std::thread> thread;
+
+	void pump() {
+		stream.clear();
+		while (stream.good()) {
+			DATA data;
+			stream >> data;
+			if (!stream.fail())
+				out.send(data);
+			else if (!stream.eof()) {
+				stream.clear();
+
+				std::string s;
+				stream >> s;
+				std::cerr << "Unexpected token: " << s << std::endl;
+				break;
+			}
+		}
+	};
+};
+
+std::ostream& operator <<(std::ostream& stream, const std::vector<unsigned char> &vector);
+std::istream& operator >>(std::istream& stream, std::vector<unsigned char> &vector);
 
 template <typename DATA> class Buffer : Block {
 public:
 	Input<DATA> in;
 	Output<DATA> out;
 
-	Buffer() : buffer_thread(&Buffer<DATA>::pump, this),
+	Buffer() : thread(&Buffer<DATA>::pump, this),
 		in(bind(&Buffer<DATA>::work, this)) {
 	}
 
 	~Buffer() {
 		{
-			std::lock_guard<std::mutex> lock(buffer_mutex);
-			buffer_exit = true;
-			buffer_cond.notify_one();
+			std::lock_guard<std::mutex> lock(mutex);
+			exitflag = true;
+			condvar.notify_one();
 		}
-		buffer_thread.join();
+		thread.join();
 	}
 
 private:
 	std::deque<DATA> queue;
 
-	std::mutex buffer_mutex;
-	bool buffer_exit = false;
-	std::condition_variable buffer_cond;
-	std::thread buffer_thread;
+	std::mutex mutex;
+	bool exitflag = false;
+	std::condition_variable condvar;
+	std::thread thread;
 
 	void pump() {
 		for (;;) {
-			std::unique_lock<std::mutex> lock(buffer_mutex);
+			std::unique_lock<std::mutex> lock(mutex);
 
 			if (queue.empty()) {
-				if (buffer_exit)
+				if (exitflag)
 					break;
 
-				buffer_cond.wait(lock);
+				condvar.wait(lock);
 
-				if (buffer_exit)
+				if (exitflag)
 					break;
 			}
 
@@ -205,9 +249,9 @@ private:
 	};
 
 	void work(const DATA &data) {
-		std::lock_guard<std::mutex> lock(buffer_mutex);
+		std::lock_guard<std::mutex> lock(mutex);
 		queue.push_back(data);
-		buffer_cond.notify_one();
+		condvar.notify_one();
 	}
 };
 

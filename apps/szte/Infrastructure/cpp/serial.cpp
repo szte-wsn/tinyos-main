@@ -67,8 +67,8 @@ SerialBase::SerialBase(const char *devicename, int baudrate)
 		if (tcflush(serial_fd, TCIFLUSH) < 0 || tcsetattr(serial_fd, TCSANOW, &newtio) < 0)
 			error("Set baudrate", errno);
 
-		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialBase::pump, this));
 		std::cerr << "Opened " << devicename << " with baudrate " << baudrate << std::endl;
+		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialBase::pump, this));
 	}
 	catch(const std::exception &e) {
 		if (serial_fd >= 0)
