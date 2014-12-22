@@ -84,7 +84,8 @@ SerialBase::SerialBase(const char *devicename, int baudrate)
 
 SerialBase::~SerialBase() {
 	unsigned char data = 0;
-	write(pipe_fds[1], &data, 1);
+	ssize_t ignore = write(pipe_fds[1], &data, 1);
+	(void) ignore;
 
 	if (reader_thread != NULL)
 		reader_thread->join();
@@ -111,7 +112,7 @@ void SerialBase::work(const std::vector<unsigned char> &packet) {
 
 	std::lock_guard<std::mutex> lock(write_mutex);
 
-	int sent = 0;
+	unsigned int sent = 0;
 	do {
 		int n = write(serial_fd, encoded.data() + sent, encoded.size() - sent);
 		if (n < 0)

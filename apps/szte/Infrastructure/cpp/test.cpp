@@ -50,6 +50,7 @@ int main1(int argc, char *argv[]) {
 	connect(buffer.out, writer.in);
 
 	wait_for_sigint();
+	return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -58,4 +59,5 @@ int main(int argc, char *argv[]) {
 
 	connect(reader.out, writer.in);
 	reader.start();
+	return 0;
 }

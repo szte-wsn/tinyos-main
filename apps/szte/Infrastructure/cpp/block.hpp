@@ -204,8 +204,8 @@ public:
 	Input<DATA> in;
 	Output<DATA> out;
 
-	Buffer() : thread(&Buffer<DATA>::pump, this),
-		in(bind(&Buffer<DATA>::work, this)) {
+	Buffer() : in(bind(&Buffer<DATA>::work, this)),
+		thread(&Buffer<DATA>::pump, this) {
 	}
 
 	~Buffer() {
