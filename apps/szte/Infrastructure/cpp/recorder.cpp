@@ -35,13 +35,34 @@
 #include "block.hpp"
 #include "serial.hpp"
 #include "compat.hpp"
-#include <chrono>
+#include <algorithm>
+
+bool parse_flag(int argc, char *argv[], const std::string &flag) {
+	return std::find(argv + 1, argv + argc, flag) != (argv + argc);
+}
+
+const char *parse_arg(int argc, char *argv[], const std::string &flag, const char *def) {
+	char **end = argv + argc;
+	char **itr = std::find(argv + 1, end, flag) + 1;
+	return itr < end ? *itr : def;
+}
 
 int main(int argc, char *argv[]) {
-	Writer<std::vector<unsigned char>> writer;
-	Reader<std::vector<unsigned char>> reader;
+	if (parse_flag(argc, argv, "-h") || parse_flag(argc, argv, "--help")) {
+		std::cerr << "Usage: recorder [-h] [-d device] [-b baudrate]\n";
+		return 1;
+	}
 
-	connect(reader.out, writer.in);
-	reader.start();
+	const char *device = parse_arg(argc, argv, "-d", "/dev/ttyACM0");
+	int baudrate = std::stoi(parse_arg(argc, argv, "-b", "115200"));
+
+	Writer<std::vector<unsigned char>> writer;
+	Buffer<std::vector<unsigned char>> buffer;
+	SerialDev serial(device, baudrate);
+
+	connect(serial.out, buffer.in);
+	connect(buffer.out, writer.in);
+
+	wait_for_sigint();
 	return 0;
 }

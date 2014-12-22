@@ -42,8 +42,8 @@
 #include <termios.h>
 #include <poll.h>
 
-SerialBase::SerialBase(const char *devicename, int baudrate)
-	: in(bind(&SerialBase::work, this)), devicename(devicename) {
+SerialDev::SerialDev(const char *devicename, int baudrate)
+	: in(bind(&SerialDev::work, this)), devicename(devicename) {
 	serial_fd = -1;
 	pipe_fds[0] = -1;
 	pipe_fds[1] = -1;
@@ -68,7 +68,7 @@ SerialBase::SerialBase(const char *devicename, int baudrate)
 			error("Set baudrate", errno);
 
 		std::cerr << "Opened " << devicename << " with baudrate " << baudrate << std::endl;
-		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialBase::pump, this));
+		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialDev::pump, this));
 	}
 	catch(const std::exception &e) {
 		if (serial_fd >= 0)
@@ -82,7 +82,7 @@ SerialBase::SerialBase(const char *devicename, int baudrate)
 	}
 }
 
-SerialBase::~SerialBase() {
+SerialDev::~SerialDev() {
 	unsigned char data = 0;
 	ssize_t ignore = write(pipe_fds[1], &data, 1);
 	(void) ignore;
@@ -97,7 +97,7 @@ SerialBase::~SerialBase() {
 	std::cerr << "Closed " << devicename << std::endl;
 }
 
-void SerialBase::work(const std::vector<unsigned char> &packet) {
+void SerialDev::work(const std::vector<unsigned char> &packet) {
 	std::vector<unsigned char> encoded;
 
 	encoded.push_back(HDLC_FLAG);
@@ -122,7 +122,7 @@ void SerialBase::work(const std::vector<unsigned char> &packet) {
 	} while (sent < encoded.size());
 }
 
-void SerialBase::pump() {
+void SerialDev::pump() {
 	struct pollfd fds[2];
 	fds[0].fd = pipe_fds[0];
 	fds[0].events = POLLIN | POLLPRI;
@@ -184,6 +184,11 @@ void SerialBase::pump() {
 	}
 }
 
-void SerialBase::error(const char *msg, int err) {
+void SerialDev::error(const char *msg, int err) {
 	throw std::runtime_error(std::string(msg) + " failed for " + devicename + ": " + std::strerror(err));
 }
+/*
+Serial::Serial(const char *devicename, int baudrate)
+	: in(bind(&Serial::send, this)), device(devicename, baudrate) {
+}
+*/

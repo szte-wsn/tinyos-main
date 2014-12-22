@@ -38,13 +38,13 @@
 #include "block.hpp"
 #include <vector>
 
-class SerialBase : public Block {
+class SerialDev : public Block {
 public:
 	Input<std::vector<unsigned char>> in;
 	Output<std::vector<unsigned char>> out;
 
-	SerialBase(const char *devicename, int baudrate);
-	~SerialBase();
+	SerialDev(const char *devicename, int baudrate);
+	~SerialDev();
 
 private:
 	enum {
@@ -69,4 +69,20 @@ private:
 	void error(const char *msg, int err);
 };
 
+/*
+class Serial : public Block {
+public:
+	Input<std::vector<unsigned char>> in;
+	Output<std::vector<unsigned char>> out;
+
+	Serial(const char *devicename, int baudrate);
+	~Serial();
+
+private:
+	SerialDev device;
+
+	void send(const std::vector<unsigned char> &tos_packet);
+	void recv(const std::vector<unsigned char> &raw_packet);
+};
+*/
 #endif//__SERIAL_HPP__
