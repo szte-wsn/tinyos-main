@@ -44,6 +44,7 @@
 
 SerialDev::SerialDev(const char *devicename, int baudrate)
 	: in(bind(&SerialDev::work, this)), devicename(devicename) {
+
 	serial_fd = -1;
 	pipe_fds[0] = -1;
 	pipe_fds[1] = -1;
@@ -98,28 +99,16 @@ SerialDev::~SerialDev() {
 }
 
 void SerialDev::work(const std::vector<unsigned char> &packet) {
-	std::vector<unsigned char> encoded;
-
-	encoded.push_back(HDLC_FLAG);
-	for (unsigned char c : packet) {
-		if (c == HDLC_FLAG || c == HDLC_ESCAPE) {
-			encoded.push_back(HDLC_ESCAPE);
-			c ^= HDLC_XOR;
-		}
-		encoded.push_back(c);
-	}
-	encoded.push_back(HDLC_FLAG);
-
 	std::lock_guard<std::mutex> lock(write_mutex);
 
 	unsigned int sent = 0;
 	do {
-		int n = write(serial_fd, encoded.data() + sent, encoded.size() - sent);
+		int n = write(serial_fd, packet.data() + sent, packet.size() - sent);
 		if (n < 0)
 			error("Write", errno);
 		else
 			sent += n;
-	} while (sent < encoded.size());
+	} while (sent < packet.size());
 }
 
 void SerialDev::pump() {
@@ -130,9 +119,6 @@ void SerialDev::pump() {
 	fds[1].events = POLLIN | POLLPRI;
 
 	std::vector<unsigned char> packet;
-	packet.reserve(READ_MAXLEN);
-	bool synchronize = true;
-	bool escaped;
 
 	for(;;) {
 		int a = poll(fds, 2, -1);
@@ -142,43 +128,16 @@ void SerialDev::pump() {
 		if ((fds[0].revents & (POLLIN | POLLPRI)) != 0)
 			return;
 		else if ((fds[1].revents & (POLLIN | POLLPRI)) != 0) {
-			ssize_t n = read(serial_fd, read_buffer, READ_BUFFER);
-			if (n < 0)
+
+			packet.resize(READ_BUFFER);
+			ssize_t n = read(serial_fd, &packet[0], READ_BUFFER);
+			if (n < 0 || n > READ_BUFFER)
 				error("Read", errno);
 			else if (n == 0)	// TODO: implement auto reconnect
 				throw std::runtime_error("Disconnected " + devicename);
 
-			for (int i = 0; i < n; ++i) {
-				unsigned char c = read_buffer[i];
-
-				if (c == HDLC_FLAG) {
-					if (!synchronize && packet.size() > 0) {
-						out.send(packet);
-						packet.clear();
-					}
-
-					synchronize = false;
-					escaped = false;
-				}
-				else if (synchronize)
-					;
-				else if (c == HDLC_ESCAPE)
-					escaped = true;
-				else {
-					if (packet.size() >= READ_MAXLEN) {
-						std::cerr << "Synchronizing " << devicename << std::endl;
-						synchronize = true;
-					}
-					else {
-						if (escaped) {
-							c ^= HDLC_XOR;
-							escaped = false;
-						}
-
-						packet.push_back(c);
-					}
-				}
-			}
+			packet.resize(n);
+			out.send(packet);
 		}
 
 	}
@@ -187,8 +146,136 @@ void SerialDev::pump() {
 void SerialDev::error(const char *msg, int err) {
 	throw std::runtime_error(std::string(msg) + " failed for " + devicename + ": " + std::strerror(err));
 }
-/*
-Serial::Serial(const char *devicename, int baudrate)
-	: in(bind(&Serial::send, this)), device(devicename, baudrate) {
+
+SerialFrm::SerialFrm()
+	: dev_in(bind(&SerialFrm::recv_frame, this)), tos_in(bind(&SerialFrm::send_packet, this)) {
 }
-*/
+
+void SerialFrm::recv_frame(const std::vector<unsigned char> &encoded) {
+	for (unsigned char c : encoded) {
+		if (c == HDLC_FLAG) {
+			if (synchronized && packet.size() > 0) {
+				if (packet.size() < 4)
+					std::cerr << "Dropping packet, length too short\n";
+				else {
+					uint16_t crc = 0;
+					for (unsigned int i = 0; i < packet.size() - 2; i++)
+						crc = calc_crc(crc, packet[i]);
+
+					uint16_t d = static_cast<uint16_t>(packet[packet.size() - 1]) << 8;
+					d += static_cast<uint16_t>(packet[packet.size() - 2]);
+
+					if (crc != d)
+						std::cerr << "Dropping packet, incorrect CRC\n";
+					else {
+						unsigned char address = packet[0];
+						unsigned char control = packet[1];
+						packet.resize(packet.size() - 2);
+						packet.erase(packet.begin(), packet.begin() + 2);
+
+						recv_packet(address, control, packet);
+					}
+				}
+
+				packet.clear();
+			}
+			else
+				synchronized = true;
+
+			escaped = false;
+		}
+		else if (!synchronized)
+			;
+		else if (c == HDLC_ESCAPE)
+			escaped = true;
+		else {
+			if (packet.size() >= FRAME_MAXLEN) {
+				std::cerr << "Packet too long, resynchronizing\n";
+
+				packet.clear();
+				synchronized = false;
+			}
+			else {
+				if (escaped) {
+					c ^= HDLC_XOR;
+					escaped = false;
+				}
+
+				packet.push_back(c);
+			}
+		}
+	}
+}
+
+void SerialFrm::recv_packet(unsigned char address, unsigned char control, const std::vector<unsigned char> &packet) {
+	if (address == PROTO_PACKET_ACK || address == PROTO_PACKET_NOACK) {
+		tos_out.send(packet);
+
+		if (address == PROTO_PACKET_ACK) {
+			std::vector<unsigned char> ack;
+			send_frame(PROTO_ACK, control, ack);
+		}
+	}
+	else if (address == PROTO_ACK && packet.size() == 0) // TODO: check ACKs
+		;
+	else
+		std::cerr << "Dropping packet, invalid protocol\n";
+}
+
+void SerialFrm::send_packet(const std::vector<unsigned char> &packet) {
+	// TODO: use PROTO_PACKET_ACK
+	send_frame(PROTO_PACKET_NOACK, 0, packet);
+}
+
+void SerialFrm::send_frame(uint8_t address, uint8_t control, const std::vector<unsigned char> &packet) {
+	std::vector<unsigned char> encoded;
+	encoded.reserve(packet.size() + 50);
+
+	encoded.push_back(HDLC_FLAG);
+
+	uint16_t crc = calc_crc(0, address);
+	encode_byte(address, encoded);
+
+	crc = calc_crc(crc, control);
+	encode_byte(control, encoded);
+
+	for (unsigned char data : packet) {
+		crc = calc_crc(crc, data);
+		encode_byte(data, encoded);
+	}
+
+	encoded.push_back(HDLC_FLAG);
+
+	dev_out.send(encoded);
+}
+
+void SerialFrm::encode_byte(unsigned char data, std::vector<unsigned char> &packet) {
+	if (data == HDLC_FLAG || data == HDLC_ESCAPE) {
+		packet.push_back(HDLC_ESCAPE);
+		data ^= HDLC_XOR;
+	}
+	packet.push_back(data);
+}
+
+uint16_t SerialFrm::calc_crc(uint16_t crc, unsigned char data) {
+      crc ^= static_cast<uint16_t>(data) << 8;
+
+      for (int i = 0; i < 8; i++) {
+	if (static_cast<int16_t>(crc) < 0)
+	  crc = (crc << 1) ^ 0x1021;
+	else
+	  crc = crc << 1;
+      }
+
+      return crc;
+}
+
+Serial::Serial(const char *devicename, int baudrate) : in(framer.tos_in), out(framer.tos_out), device(devicename, baudrate) {
+	connect(framer.dev_out, device.in);
+	connect(device.out, framer.dev_in);
+}
+
+Serial::~Serial() {
+	disconnect(framer.dev_out, device.in);
+	disconnect(device.out, framer.dev_in);
+}

@@ -54,11 +54,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	const char *device = parse_arg(argc, argv, "-d", "/dev/ttyACM0");
-	int baudrate = std::stoi(parse_arg(argc, argv, "-b", "115200"));
+	int baudrate = std::stoi(parse_arg(argc, argv, "-b", "57600"));
 
 	Writer<std::vector<unsigned char>> writer;
 	Buffer<std::vector<unsigned char>> buffer;
-	SerialDev serial(device, baudrate);
+	Serial serial(device, baudrate);
 
 	connect(serial.out, buffer.in);
 	connect(buffer.out, writer.in);

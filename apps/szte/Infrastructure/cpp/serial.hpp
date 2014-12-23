@@ -48,12 +48,7 @@ public:
 
 private:
 	enum {
-		HDLC_FLAG = 126,
-		HDLC_ESCAPE = 125,
-		HDLC_XOR = 32,
-
 		READ_BUFFER = 1024,
-		READ_MAXLEN = 255,
 	};
 
 	std::string devicename;
@@ -61,7 +56,6 @@ private:
 	std::mutex write_mutex;
 
 	std::unique_ptr<std::thread> reader_thread;
-	unsigned char read_buffer[READ_BUFFER];
 	int pipe_fds[2];
 
 	void work(const std::vector<unsigned char> &data);
@@ -69,20 +63,51 @@ private:
 	void error(const char *msg, int err);
 };
 
-/*
+class SerialFrm : public Block {
+public:
+	Input<std::vector<unsigned char>> dev_in;
+	Output<std::vector<unsigned char>> dev_out;
+
+	Input<std::vector<unsigned char>> tos_in;
+	Output<std::vector<unsigned char>> tos_out;
+
+	SerialFrm();
+
+private:
+	enum {
+		HDLC_FLAG = 126,
+		HDLC_ESCAPE = 125,
+		HDLC_XOR = 32,
+
+		FRAME_MAXLEN = 255,
+
+		PROTO_ACK = 67,
+		PROTO_PACKET_ACK = 68,
+		PROTO_PACKET_NOACK = 69,
+	};
+
+	bool synchronized = false, escaped;
+	std::vector<unsigned char> packet;
+	void recv_frame(const std::vector<unsigned char> &encoded);
+	void recv_packet(unsigned char address, unsigned char control, const std::vector<unsigned char> &packet);
+
+	static void encode_byte(unsigned char data, std::vector<unsigned char> &packet);
+	static uint16_t calc_crc(uint16_t crc, unsigned char data);
+	void send_packet(const std::vector<unsigned char> &packet);
+	void send_frame(unsigned char address, unsigned char control, const std::vector<unsigned char> &packet);
+};
+
 class Serial : public Block {
 public:
-	Input<std::vector<unsigned char>> in;
-	Output<std::vector<unsigned char>> out;
+	Input<std::vector<unsigned char>> &in;
+	Output<std::vector<unsigned char>> &out;
 
 	Serial(const char *devicename, int baudrate);
 	~Serial();
 
 private:
 	SerialDev device;
-
-	void send(const std::vector<unsigned char> &tos_packet);
-	void recv(const std::vector<unsigned char> &raw_packet);
+	SerialFrm framer;
 };
-*/
+
 #endif//__SERIAL_HPP__

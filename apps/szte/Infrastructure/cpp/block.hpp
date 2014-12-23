@@ -139,6 +139,11 @@ void connect(Block::Output<DATA> &output, Block::Input<DATA> &input) {
 	output.connect(input);
 }
 
+template <typename DATA>
+void disconnect(Block::Output<DATA> &output, Block::Input<DATA> &input) {
+	output.disconnect(input);
+}
+
 template <typename DATA> class Writer : public Block {
 public:
 	Input<DATA> in;
