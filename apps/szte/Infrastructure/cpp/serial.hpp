@@ -89,12 +89,12 @@ private:
 	bool synchronized = false, escaped;
 	std::vector<unsigned char> packet;
 	void recv_frame(const std::vector<unsigned char> &encoded);
-	void recv_packet(unsigned char address, unsigned char control, const std::vector<unsigned char> &packet);
+	void recv_packet(const std::vector<unsigned char> &encoded);
 
 	static void encode_byte(unsigned char data, std::vector<unsigned char> &packet);
 	static uint16_t calc_crc(uint16_t crc, unsigned char data);
 	void send_packet(const std::vector<unsigned char> &packet);
-	void send_frame(unsigned char address, unsigned char control, const std::vector<unsigned char> &packet);
+	void send_frame(const std::vector<unsigned char> &packet);
 };
 
 class Serial : public Block {

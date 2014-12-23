@@ -155,7 +155,7 @@ void SerialFrm::recv_frame(const std::vector<unsigned char> &encoded) {
 	for (unsigned char c : encoded) {
 		if (c == HDLC_FLAG) {
 			if (synchronized && packet.size() > 0) {
-				if (packet.size() < 4)
+				if (packet.size() < 3)
 					std::cerr << "Dropping packet, length too short\n";
 				else {
 					uint16_t crc = 0;
@@ -168,12 +168,8 @@ void SerialFrm::recv_frame(const std::vector<unsigned char> &encoded) {
 					if (crc != d)
 						std::cerr << "Dropping packet, incorrect CRC\n";
 					else {
-						unsigned char address = packet[0];
-						unsigned char control = packet[1];
 						packet.resize(packet.size() - 2);
-						packet.erase(packet.begin(), packet.begin() + 2);
-
-						recv_packet(address, control, packet);
+						recv_packet(packet);
 					}
 				}
 
@@ -207,42 +203,51 @@ void SerialFrm::recv_frame(const std::vector<unsigned char> &encoded) {
 	}
 }
 
-void SerialFrm::recv_packet(unsigned char address, unsigned char control, const std::vector<unsigned char> &packet) {
-	if (address == PROTO_PACKET_ACK || address == PROTO_PACKET_NOACK) {
+void SerialFrm::recv_packet(const std::vector<unsigned char> &encoded) {
+	if (encoded.size() >= 1 && encoded[0] == PROTO_PACKET_NOACK) {
+		std::vector<unsigned char> packet(encoded.begin() + 1, encoded.end());
+		tos_out.send(packet);
+	}
+	else if (encoded.size() >= 2 && encoded[0] == PROTO_PACKET_ACK) {
+		std::vector<unsigned char> packet(encoded.begin() + 2, encoded.end());
 		tos_out.send(packet);
 
-		if (address == PROTO_PACKET_ACK) {
-			std::vector<unsigned char> ack;
-			send_frame(PROTO_ACK, control, ack);
-		}
+		packet.clear();
+		packet.push_back(PROTO_ACK);
+		packet.push_back(encoded[1]);
+		send_frame(packet);
 	}
-	else if (address == PROTO_ACK && packet.size() == 0) // TODO: check ACKs
-		;
+	else if (encoded.size() == 2 && encoded[0] == PROTO_ACK)
+		;  // TODO: check ACKs
 	else
 		std::cerr << "Dropping packet, invalid protocol\n";
 }
 
 void SerialFrm::send_packet(const std::vector<unsigned char> &packet) {
+	std::vector<unsigned char> encoded;
+	encoded.reserve(packet.size() + 1);
+
 	// TODO: use PROTO_PACKET_ACK
-	send_frame(PROTO_PACKET_NOACK, 0, packet);
+	encoded.push_back(PROTO_PACKET_NOACK);
+	encoded.insert(encoded.end(), packet.begin(), packet.end());
+	send_frame(encoded);
 }
 
-void SerialFrm::send_frame(uint8_t address, uint8_t control, const std::vector<unsigned char> &packet) {
+void SerialFrm::send_frame(const std::vector<unsigned char> &packet) {
 	std::vector<unsigned char> encoded;
 	encoded.reserve(packet.size() + 50);
 
 	encoded.push_back(HDLC_FLAG);
 
-	uint16_t crc = calc_crc(0, address);
-	encode_byte(address, encoded);
-
-	crc = calc_crc(crc, control);
-	encode_byte(control, encoded);
+	uint16_t crc = 0;
 
 	for (unsigned char data : packet) {
 		crc = calc_crc(crc, data);
 		encode_byte(data, encoded);
 	}
+
+	encode_byte(static_cast<unsigned char>(crc), encoded);
+	encode_byte(static_cast<unsigned char>(crc >> 8), encoded);
 
 	encoded.push_back(HDLC_FLAG);
 
