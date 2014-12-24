@@ -39,6 +39,13 @@
 #include <iostream>
 #include <cstring>
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#include <poll.h>
+
+// ------- SIGINT
+
 std::condition_variable sigint_condvar;
 
 void sigint_handler(int param) {
@@ -59,3 +66,111 @@ void wait_for_sigint() {
 
 	signal(SIGINT, old_handler);
 };
+
+// ------- SerialDev
+
+SerialDev::SerialDev(const char *devicename, int baudrate)
+	: in(bind(&SerialDev::work, this)), devicename(devicename) {
+
+	serial_fd = -1;
+	pipe_fds[0] = -1;
+	pipe_fds[1] = -1;
+
+	try {
+		int a = pipe2(pipe_fds, O_NONBLOCK);
+		if (a < 0)
+			error("Creating pipe", errno);
+
+		serial_fd = open(devicename, O_RDWR | O_NOCTTY);
+		if (serial_fd < 0)
+			error("Open", errno);
+
+		struct termios newtio;
+		memset(&newtio, 0, sizeof(newtio));
+		newtio.c_cflag = CS8 | CLOCAL | CREAD;
+		newtio.c_iflag = IGNPAR | IGNBRK;
+		newtio.c_oflag = 0;
+		cfsetspeed(&newtio, baudrate);
+
+		if (tcflush(serial_fd, TCIFLUSH) < 0 || tcsetattr(serial_fd, TCSANOW, &newtio) < 0)
+			error("Set baudrate", errno);
+
+		std::cerr << "Opened " << devicename << " with baudrate " << baudrate << std::endl;
+		reader_thread = std::unique_ptr<std::thread>(new std::thread(&SerialDev::pump, this));
+	}
+	catch(const std::exception &e) {
+		if (serial_fd >= 0)
+			close(serial_fd);
+		if (pipe_fds[0] >= 0)
+			close(pipe_fds[0]);
+		if (pipe_fds[1] >= 0)
+			close(pipe_fds[1]);
+
+		throw;
+	}
+}
+
+SerialDev::~SerialDev() {
+	unsigned char data = 0;
+	ssize_t ignore = write(pipe_fds[1], &data, 1);
+	(void) ignore;
+
+	if (reader_thread != NULL)
+		reader_thread->join();
+
+	close(serial_fd);
+	close(pipe_fds[0]);
+	close(pipe_fds[1]);
+
+	std::cerr << "Closed " << devicename << std::endl;
+}
+
+void SerialDev::work(const std::vector<unsigned char> &packet) {
+	std::lock_guard<std::mutex> lock(write_mutex);
+
+	unsigned int sent = 0;
+	do {
+		int n = write(serial_fd, packet.data() + sent, packet.size() - sent);
+		if (n < 0)
+			error("Write", errno);
+		else
+			sent += n;
+	} while (sent < packet.size());
+}
+
+void SerialDev::pump() {
+	struct pollfd fds[2];
+	fds[0].fd = pipe_fds[0];
+	fds[0].events = POLLIN | POLLPRI;
+	fds[1].fd = serial_fd;
+	fds[1].events = POLLIN | POLLPRI;
+
+	std::vector<unsigned char> packet;
+
+	for(;;) {
+		int a = poll(fds, 2, -1);
+		if (a < 0)
+			error("Poll", errno);
+
+		if ((fds[0].revents & (POLLIN | POLLPRI)) != 0)
+			return;
+		else if ((fds[1].revents & (POLLIN | POLLPRI)) != 0) {
+
+			packet.resize(READ_BUFFER);
+			ssize_t n = read(serial_fd, &packet[0], READ_BUFFER);
+			if (n < 0 || n > READ_BUFFER)
+				error("Read", errno);
+			else if (n == 0)	// TODO: implement auto reconnect
+				throw std::runtime_error("Disconnected " + devicename);
+
+			packet.resize(n);
+			out.send(packet);
+		}
+
+	}
+}
+
+void SerialDev::error(const char *msg, int err) {
+	throw std::runtime_error(std::string(msg) + " failed for " + devicename + ": " + std::strerror(err));
+}
+
