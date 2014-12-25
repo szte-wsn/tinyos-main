@@ -1,6 +1,6 @@
 import java.util.ArrayList;
 
-class Slot{
+class Slot {
 	public int tx1, tx2, slotId;
 	public ArrayList<Integer> receivers;
 	public ArrayList<SlotMeasurement> measurements;
@@ -25,6 +25,25 @@ class Slot{
 			m.print();
 		}
 	}
+	
+	public int printtoFile(int superframeNumber) {
+		String line = String.format("%6d %5d %5d ", superframeNumber, tx1, tx2);
+		for(Integer rx:receivers){
+			line+=String.format("%5d ",rx);
+			for(SlotMeasurement m:measurements){
+				if(m.nodeid == rx){
+					if(m.getErrorCode() != SlotMeasurement.NO_ERROR){
+						return superframeNumber;
+					}
+					line+=String.format("%5d  ",m.period);
+					line+=String.format("%5d  ",m.phase);
+				}
+			}
+		}
+		System.out.println(line);
+		return superframeNumber+1;
+	}
+	
 
 	public boolean addMeasurement(int dataSource, int period, short phase) {
 		
@@ -36,17 +55,6 @@ class Slot{
 		}
 		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
 		meas.setMeasurement(period, phase);
-		measurements.add(meas);
-		return false;
-	}
-	
-	public boolean addMeasurement(SlotMeasurement meas) {
-		for(int i=0;i<measurements.size();i++){
-			if( measurements.get(i).nodeid == meas.nodeid ){
-				measurements.set(i, meas);
-				return true;
-			}
-		}
 		measurements.add(meas);
 		return false;
 	}

@@ -1,4 +1,11 @@
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.GradientPaint;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
+import java.awt.Paint;
+import java.awt.Shape;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -10,10 +17,12 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.ui.ApplicationFrame;
 import org.jfree.ui.RefineryUtilities;
+
 
 public class DrawRelativePhase implements RelativePhaseListener{
 
@@ -130,7 +139,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						dataClone = data;
+						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
 						data = new ArrayList<HashMap<String, StoreType>>();
 					}
 					
@@ -187,7 +196,7 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						dataClone = data;
+						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
 						data = new ArrayList<HashMap<String, StoreType>>();
 					}
 					
@@ -207,13 +216,17 @@ public class DrawRelativePhase implements RelativePhaseListener{
 	}
 	
 	class UnwrapChart extends Chart {
-		protected HashMap<String, PhaseUnwrapper> unwrappers = new HashMap<String, PhaseUnwrapper>();
-		protected HashMap<String, Double> dataLine = new HashMap<String, Double>();
-		protected ArrayList<HashMap<String, Double>> dataLines = new ArrayList<HashMap<String, Double>>();
+		
+		HashMap<String, ArrayList<Double>> avgPhase;
+		HashMap<String, Double> lastRelativePhase;	//stored the series last relative phases
+		HashMap<String, Integer> overflowCounter; 
 		PaintThread paint;
 		
 		public UnwrapChart(String chartTitle, AppFrame appframe, String xAxis, String yAxis) {
-			super(chartTitle, appframe, xAxis, yAxis);
+			super(chartTitle,appframe, xAxis, yAxis);
+			lastRelativePhase = new HashMap<String, Double>();
+			overflowCounter = new HashMap<String, Integer>();
+			avgPhase = new HashMap<String, ArrayList<Double>>();
 		}
 		
 		public void initalize() {
@@ -223,30 +236,29 @@ public class DrawRelativePhase implements RelativePhaseListener{
 		}
 		
 		public void addElement(double relativePhase, double avgPeriod, String seriesId, int status) {
-	    	if(dataLine.containsKey(seriesId)) {
+	    	if(currentLine.containsKey(seriesId)) {
 	    		synchronized (paint) {
-			    	dataLines.add(dataLine);
-			    	if(dataLines.size() >= MAXSAMPLES) 
-			    		paint.notify();
+			    	data.add(currentLine);
+			    	if(data.size() >= MAXSAMPLES) 
+			    		this.paint.notify();
 				}
-				dataLine = new HashMap<String, Double>();
+				currentLine = new HashMap<String, StoreType>();
 	    	}
-	 
-	    	if (status == RelativePhaseCalculator.STATUS_OK) {
-	    		PhaseUnwrapper unwrapper = unwrappers.get(seriesId);
-	    		double unwrappedPhase = unwrapper.unwrap(relativePhase);
-	    		dataLine.put(seriesId, unwrappedPhase);
-	    	}
+	    	currentLine.put(seriesId, new StoreType(avgPeriod, relativePhase, status));			
 		}
 		
-		public void register(String seriesId, double data) {
+		public void register(String seriesId, double data) {		//create new curve in chart
 			super.register(seriesId, PI);
-			unwrappers.put(seriesId, new PhaseUnwrapper(seriesId));
+			lastRelativePhase.put(seriesId, PI);	//add initial value to not jump +-2PI at the start point
+			overflowCounter.put(seriesId,0);
+			avgPhase.put(seriesId, new ArrayList<Double>());
 		}
 
 	    class PaintThread extends Thread {
+	    	
 	    	public void run() {
-				ArrayList<HashMap<String, Double>> lines;
+				ArrayList<HashMap<String,StoreType>> dataClone;
+				double lastRF;
 	    		while(true) {
 	    			synchronized (this) {
 						try {
@@ -255,21 +267,41 @@ public class DrawRelativePhase implements RelativePhaseListener{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						lines =  dataLines;
-						dataLines = new ArrayList<HashMap<String, Double>>();
+						dataClone =  (ArrayList<HashMap<String,StoreType>>) data.clone();
+						data = new ArrayList<HashMap<String, StoreType>>();
 					}
-
-	    			for(HashMap<String, Double> line : lines) {
-						for(int index = 0; index < series.size(); index++) {
-							String key = series.get(index);
-		    				Double data = line.get(key);
-		    				XYSeries xys = dataSet.getSeries(index);
-		    				if(data == null)
-								xys.add(xys.getMaxX()+1, null);
-		    				else
-								xys.add(xys.getMaxX()+1, data.doubleValue());
+	    			
+	    			HashMap<String, Double> phaseMap = new HashMap<String,Double>();
+	    			for(String key : series) 
+	    				phaseMap.put(key, 0.0);
+	    			
+	    			double avgPhase = 0;
+	    						
+					for(HashMap<String,StoreType> line : dataClone) {
+						for(String key : series) {
+							StoreType value = line.get(key);
+							if(value.status == RelativePhaseCalculator.STATUS_OK) {
+								lastRF = lastRelativePhase.get(key);
+								lastRelativePhase.put(key, value.phase);
+		    					if( lastRF - value.phase > PI) {
+									overflowCounter.put(key, (overflowCounter.get(key)+1));
+								} else if( value.phase - lastRF > PI) {
+									overflowCounter.put(key, (overflowCounter.get(key)-1));
+								} 
+								phaseMap.put(key, phaseMap.get(key) + value.phase + (overflowCounter.get(key)*PI2));
+							}
 						}
 					}
+					
+	    			for(String key : series) {
+	    				avgPhase = phaseMap.get(key)/dataClone.size();
+	    				XYSeries xys = dataSet.getSeries(series.indexOf(key));
+	    				if(avgPhase == 0)
+							xys.add(xys.getMaxX()+1, null);
+	    				else {
+							xys.add(xys.getMaxX()+1, avgPhase);
+						}
+	    			}
 	    		}
 	    	}
 	    }
@@ -313,4 +345,5 @@ public class DrawRelativePhase implements RelativePhaseListener{
 		drwRelativePhase.addElement(relativePhase, avgPeriod, seriesId, status);
 		drwUnwrapPhase.addElement(relativePhase, avgPeriod, seriesId, status);
 	}
+	
 }

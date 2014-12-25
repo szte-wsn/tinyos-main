@@ -14,6 +14,7 @@ public class Tester implements SlotListener {
 	SuperFrameMerger sfm;
 	MoteSettings moteSettings;
 	static PhoenixSource phoenix;
+	static int superframeCounter = 0;
 
 	public Tester(String settingsPath) {
 		try {
@@ -32,9 +33,8 @@ public class Tester implements SlotListener {
 	}
 
 	@Override
-	public void slotReceived(Slot receivedSlot, int sfcounter) {
-		System.out.println(sfcounter);
-		receivedSlot.print();
+	public void slotReceived(Slot receivedSlot) {
+		superframeCounter = receivedSlot.printtoFile(superframeCounter);
 	}
 
 	public static void usage() {

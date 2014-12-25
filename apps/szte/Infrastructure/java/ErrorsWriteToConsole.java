@@ -61,7 +61,7 @@ public class ErrorsWriteToConsole  implements SlotListener{
 	}
 
 	@Override
-	public void slotReceived(Slot receivedSlot, int sfcounter) {
+	public void slotReceived(Slot receivedSlot) {
 		for(SlotMeasurement meas: receivedSlot.measurements){
 			int err = meas.getErrorCode();
 			if( err!= SlotMeasurement.NO_ERROR ){

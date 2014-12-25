@@ -1,8 +1,6 @@
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,15 +26,8 @@ class SlotMeasurement {
 	
 	private ArrayList<Short> waveForm = new ArrayList<Short>();
 	private Slot inSlot;
-	public long timestamp = 0;
+	private long timestamp = 0;
 	
-	private SlotMeasurement(Slot inSlot){
-		hasMeasurement = false;
-		hasWaveForm = false;
-		hasLocalMeasurement = false;
-		this.nodeid = 65535;
-		this.inSlot = inSlot;
-	}
 	
 	public SlotMeasurement(int nodeid, Slot inSlot){
 		hasMeasurement = false;
@@ -148,32 +139,5 @@ class SlotMeasurement {
 		}
 		dos.close();
 		Files.write(path, bos.toByteArray()); //creates, overwrites
-	}
-	
-	public static SlotMeasurement readSlotMeasurement(File file, Slot inSlot) throws IOException{
-		DataInputStream dis;
-		dis = new DataInputStream(new FileInputStream(file));
-		SlotMeasurement ret = new SlotMeasurement(inSlot);
-		int waveLength = dis.readInt();
-		if ( waveLength > 0 ){
-			ret.hasWaveForm = true;
-			for(int i=0;i<waveLength;i++){
-				ret.waveForm.add((short) dis.readByte());
-			}
-		}
-		short fileVersion = dis.readShort();
-		if( fileVersion == SlotMeasurement.FILEVERSION){
-			ret.nodeid = dis.readInt();
-			dis.readInt();//TX1
-			dis.readInt();//TX2
-			dis.readShort();//slotId
-			ret.timestamp = dis.readLong();
-			ret.period = dis.readShort();
-			ret.phase = dis.readShort();
-			if( ret.phase != -1 && ret.period != -1 )
-				ret.hasMeasurement = true;
-		}
-		dis.close();
-		return ret;
 	}
 }
