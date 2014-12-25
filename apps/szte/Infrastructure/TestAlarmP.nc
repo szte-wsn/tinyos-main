@@ -41,8 +41,8 @@ implementation{
 
 	enum {
     CHANNEL = 17,
-		TRIM1 = 2,
-		TRIM2 = 5,
+		TRIM1 = 3,
+		TRIM2 = 4,
   };
   
   enum {

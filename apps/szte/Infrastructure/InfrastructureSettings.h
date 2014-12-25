@@ -26,6 +26,7 @@ enum {
 #define FOURTEEN_MOTE_WF 8
 #define PHASEMAP_TEST_6 9
 #define PHASEMAP_TEST_12 10
+#define PHASEMAP_TEST_5 11
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
@@ -145,13 +146,26 @@ enum {
 	};
 #elif MEASURE_TYPE == PHASEMAP_TEST_4
 	#define  NUMBER_OF_INFRAST_NODES 4
-	#define NUMBER_OF_SLOTS 7
+	#define NUMBER_OF_SLOTS 4
 	#define NUMBER_OF_RX 1
-	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {	
-		{ DSYN, TX1, W100, RSYN, NDEB, RSYN, NDEB},
-		{ RSYN, TX2, W100, RSYN, NDEB, RSYN, NDEB},
-		{ RSYN,  RX, W100, SSYN,  DEB, RSYN, NDEB},
-		{ RSYN,  RX, W100, RSYN, NDEB, SSYN,  DEB}
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+		//   0     1     2     3     4     5
+		{ RSYN,  TX1,  W10, RSYN},
+		{ RSYN,  TX2,  W10, RSYN},
+		{ SSYN,   RX,  W10, RSYN},
+		{ RSYN,   RX,  W10, SSYN}
+	};
+#elif MEASURE_TYPE == PHASEMAP_TEST_5
+	#define  NUMBER_OF_INFRAST_NODES 5
+	#define NUMBER_OF_SLOTS 5
+	#define NUMBER_OF_RX 1
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+		//   0     1     2     3     4     5
+		{ RSYN,  TX1,  W10, RSYN, RSYN},
+		{ RSYN,  TX2,  W10, RSYN, RSYN},
+		{ SSYN,   RX,  W10, RSYN, RSYN},
+		{ RSYN,   RX,  W10, SSYN, RSYN},
+		{ RSYN,   RX,  W10, RSYN, SSYN}
 	};
 #elif MEASURE_TYPE == PROCESSING_DEBUG
 	//for processing debug it falls out of sync!
