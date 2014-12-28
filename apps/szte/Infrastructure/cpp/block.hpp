@@ -168,7 +168,7 @@ public:
 	Reader(std::istream &stream = std::cin) : stream(stream) {
 	}
 
-	void start() {
+	void run() {
 		if (thread == NULL)
 			thread = std::unique_ptr<std::thread>(new std::thread(&Reader<DATA>::pump, this));
 	}

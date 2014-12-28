@@ -6,7 +6,7 @@ DEPENDS = ${SOURCES:.cpp=.d}
 
 all: recorder test
 
-test: test.o block.o serial.o
+test: test.o block.o serial.o packet.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 recorder: recorder.o block.o serial.o

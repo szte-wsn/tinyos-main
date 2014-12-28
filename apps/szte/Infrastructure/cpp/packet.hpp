@@ -32,98 +32,86 @@
  * Author: Miklos Maroti
  */
 
-#ifndef __SERIAL_HPP__
-#define __SERIAL_HPP__
+#ifndef __PACKET_HPP__
+#define __PACKET_HPP__
 
 #include "block.hpp"
+#include <vector>
 
-class SerialDev : public Block {
+uint16_t read_uint16(std::vector<unsigned char>::const_iterator pos);
+uint32_t read_uint32(std::vector<unsigned char>::const_iterator pos);
+
+inline uint8_t read_uint8(std::vector<unsigned char>::const_iterator pos) {
+	return *pos;
+}
+
+inline int8_t read_int8(std::vector<unsigned char>::const_iterator pos) {
+	return read_uint8(pos);
+}
+
+inline int16_t read_int16(std::vector<unsigned char>::const_iterator pos) {
+	return read_uint16(pos);
+}
+
+inline int32_t read_int32(std::vector<unsigned char>::const_iterator pos) {
+	return read_uint32(pos);
+}
+
+class SerialTos : public Block {
 public:
-	Input<std::vector<unsigned char>> in;
-	Output<std::vector<unsigned char>> out;
-
-	SerialDev(const char *devicename, int baudrate);
-	~SerialDev();
-
-private:
-	enum {
-		READ_BUFFER = 1024,
+	struct Packet {
+		uint16_t dest;
+		uint16_t src;
+		uint8_t group;
+		uint8_t type;
+		std::vector<unsigned char> payload;
 	};
 
-	std::string devicename;
-	int serial_fd;
-	std::mutex write_mutex;
-
-	std::unique_ptr<std::thread> reader_thread;
-	int pipe_fds[2];
-
-	void work(const std::vector<unsigned char> &data);
-	void pump();
-	void error(const char *msg, int err);
-};
-
-class SerialFrm : public Block {
-public:
 	Input<std::vector<unsigned char>> sub_in;
 	Output<std::vector<unsigned char>> sub_out;
 
-	Input<std::vector<unsigned char>> in;
-	Output<std::vector<unsigned char>> out;
+	Input<Packet> in;
+	Output<Packet> out;
 
-	SerialFrm();
-
-private:
-	enum {
-		HDLC_FLAG = 126,
-		HDLC_ESCAPE = 125,
-		HDLC_XOR = 32,
-		FRAME_MAXLEN = 255,
-	};
-
-	bool synchronized = false, escaped;
-	std::vector<unsigned char> decoded;
-	void decode(const std::vector<unsigned char> &packet);
-
-	static void encode_byte(unsigned char data, std::vector<unsigned char> &packet);
-	static uint16_t calc_crc(uint16_t crc, unsigned char data);
-	void encode(const std::vector<unsigned char> &packet);
-};
-
-class SerialAck : public Block {
-public:
-	Input<std::vector<unsigned char>> sub_in;
-	Output<std::vector<unsigned char>> sub_out;
-
-	Input<std::vector<unsigned char>> in;
-	Output<std::vector<unsigned char>> out;
-
-	SerialAck();
+	SerialTos(bool ignore = true);
 
 private:
+	bool ignore;
+
 	enum {
-		SERIAL_PROTO_ACK = 67,
-		SERIAL_PROTO_PACKET_ACK = 68,
-		SERIAL_PROTO_PACKET_NOACK = 69,
+		TOS_SERIAL_ACTIVE_MESSAGE_ID = 0,
 	};
 
 	void decode(const std::vector<unsigned char> &packet);
-	void encode(const std::vector<unsigned char> &packet);
+	void encode(const Packet &packet);
+
+	void error(const char *what, const std::vector<unsigned char> &packet);
 };
 
-class Serial : public Block {
-public:
-	Input<std::vector<unsigned char>> &in;
-	Output<std::vector<unsigned char>> &out;
+std::ostream& operator <<(std::ostream& stream, const SerialTos::Packet &packet);
 
-	Serial(const char *devicename, int baudrate);
-	~Serial();
+struct SyncMsg {
+	struct Measurement {
+		uint8_t freq;
+		uint8_t phase;
+	};
+
+	uint16_t sender;
+	uint8_t frame;
+	std::vector<Measurement> measurements;
+};
+
+std::ostream& operator <<(std::ostream& stream, const SyncMsg &msg);
+
+class SyncMsgParser : public Block {
+public:
+	Input<std::vector<unsigned char>> in;
+	Output<SyncMsg> out;
+
+	SyncMsgParser();
 
 private:
-	SerialDev device;
-	SerialFrm framer;
-	SerialAck proto;
+	void decode(const std::vector<unsigned char> &packet);
 };
 
-void wait_for_sigint();
-
-#endif//__SERIAL_HPP__
+#endif//__PACKET_HPP__

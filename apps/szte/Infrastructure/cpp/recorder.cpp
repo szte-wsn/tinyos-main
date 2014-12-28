@@ -34,7 +34,6 @@
 
 #include "block.hpp"
 #include "serial.hpp"
-#include "compat.hpp"
 #include <algorithm>
 
 bool parse_flag(int argc, char *argv[], const std::string &flag) {

@@ -34,14 +34,15 @@
 
 #include "block.hpp"
 #include "serial.hpp"
-#include "compat.hpp"
-#include <chrono>
+#include "packet.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<std::vector<unsigned char>> writer;
+	Writer<SerialTos::Packet> writer;
+	SerialTos tos;
 	Reader<std::vector<unsigned char>> reader;
 
-	connect(reader.out, writer.in);
-	reader.start();
+	connect(reader.out, tos.sub_in);
+	connect(tos.out, writer.in);
+	reader.run();
 	return 0;
 }
