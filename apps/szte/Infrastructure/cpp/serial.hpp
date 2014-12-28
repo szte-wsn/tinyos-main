@@ -38,6 +38,31 @@
 #include "block.hpp"
 #include "compat.hpp"
 
+class SerialDev : public Block {
+public:
+	Input<std::vector<unsigned char>> in;
+	Output<std::vector<unsigned char>> out;
+
+	SerialDev(const char *devicename, int baudrate);
+	~SerialDev();
+
+private:
+	enum {
+		READ_BUFFER = 1024,
+	};
+
+	std::string devicename;
+	int serial_fd;
+	std::mutex write_mutex;
+
+	std::unique_ptr<std::thread> reader_thread;
+	int pipe_fds[2];
+
+	void work(const std::vector<unsigned char> &data);
+	void pump();
+	void error(const char *msg, int err);
+};
+
 class SerialFrm : public Block {
 public:
 	Input<std::vector<unsigned char>> sub_in;
@@ -99,5 +124,7 @@ private:
 	SerialFrm framer;
 	SerialAck proto;
 };
+
+void wait_for_sigint();
 
 #endif//__SERIAL_HPP__

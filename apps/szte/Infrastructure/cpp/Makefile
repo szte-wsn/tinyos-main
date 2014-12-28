@@ -6,10 +6,10 @@ DEPENDS = ${SOURCES:.cpp=.d}
 
 all: recorder test
 
-test: test.o block.o serial.o compat.o
+test: test.o block.o serial.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-recorder: recorder.o block.o serial.o compat.o
+recorder: recorder.o block.o serial.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 .PHONY: clean socat
