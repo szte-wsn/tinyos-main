@@ -37,6 +37,7 @@
 
 #include "block.hpp"
 #include <vector>
+#include <sstream>
 
 uint16_t read_uint16(std::vector<unsigned char>::const_iterator pos);
 uint32_t read_uint32(std::vector<unsigned char>::const_iterator pos);
@@ -57,13 +58,22 @@ inline int32_t read_int32(std::vector<unsigned char>::const_iterator pos) {
 	return read_uint32(pos);
 }
 
-class SerialTos : public Block {
+template <typename PACKET>
+void runtime_error(const char *what, const PACKET &packet) {
+	std::ostringstream buffer;
+	buffer << what << ": " << packet;
+	throw std::runtime_error(buffer.str());
+}
+
+class TosMsg : public Block {
 public:
 	struct Packet {
-		uint16_t dest;
+		uint16_t dst;
 		uint16_t src;
 		uint8_t group;
 		uint8_t type;
+		bool ts_valid;		// timesync message
+		int32_t ts_offset;	// embedded offset
 		std::vector<unsigned char> payload;
 	};
 
@@ -73,45 +83,40 @@ public:
 	Input<Packet> in;
 	Output<Packet> out;
 
-	SerialTos(bool ignore = true);
+	TosMsg(bool ignore = true);
 
 private:
 	bool ignore;
 
-	enum {
-		TOS_SERIAL_ACTIVE_MESSAGE_ID = 0,
-	};
-
-	void decode(const std::vector<unsigned char> &packet);
-	void encode(const Packet &packet);
-
-	void error(const char *what, const std::vector<unsigned char> &packet);
+	void decode(const std::vector<unsigned char> &raw);
+	void encode(const Packet &tos);
 };
 
-std::ostream& operator <<(std::ostream& stream, const SerialTos::Packet &packet);
+std::ostream& operator <<(std::ostream& stream, const TosMsg::Packet &packet);
 
-struct SyncMsg {
+class RipsMsg : public Block {
+public:
 	struct Measurement {
 		uint8_t freq;
 		uint8_t phase;
 	};
 
-	uint16_t sender;
-	uint8_t frame;
-	std::vector<Measurement> measurements;
-};
+	struct Packet {
+		uint16_t moteid;
+		uint8_t frame;
+		std::vector<Measurement> measurements;
+	};
 
-std::ostream& operator <<(std::ostream& stream, const SyncMsg &msg);
+	Input<TosMsg::Packet> sub_in;
+	Output<Packet> out;
 
-class SyncMsgParser : public Block {
-public:
-	Input<std::vector<unsigned char>> in;
-	Output<SyncMsg> out;
-
-	SyncMsgParser();
+	RipsMsg();
 
 private:
-	void decode(const std::vector<unsigned char> &packet);
+	void decode(const TosMsg::Packet &tos);
+	void error(const char *what, const TosMsg::Packet &tos);
 };
+
+std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet);
 
 #endif//__PACKET_HPP__

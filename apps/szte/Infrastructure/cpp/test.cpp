@@ -37,12 +37,14 @@
 #include "packet.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<SerialTos::Packet> writer;
-	SerialTos tos;
+	Writer<RipsMsg::Packet> writer;
+	RipsMsg ripsmsg;
+	TosMsg tosmsg;
 	Reader<std::vector<unsigned char>> reader;
 
-	connect(reader.out, tos.sub_in);
-	connect(tos.out, writer.in);
+	connect(reader.out, tosmsg.sub_in);
+	connect(tosmsg.out, ripsmsg.sub_in);
+	connect(ripsmsg.out, writer.in);
 	reader.run();
 	return 0;
 }
