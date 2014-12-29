@@ -37,14 +37,16 @@
 #include "packet.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<RipsMsg::Packet> writer;
+	Writer<RipsDat::Packet> writer;
+	RipsDat ripsdat("PHASEMAP_TEST_5");
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
 	Reader<std::vector<unsigned char>> reader;
 
 	connect(reader.out, tosmsg.sub_in);
 	connect(tosmsg.out, ripsmsg.sub_in);
-	connect(ripsmsg.out, writer.in);
+	connect(ripsmsg.out, ripsdat.sub_in);
+	connect(ripsdat.out, writer.in);
 	reader.run();
 	return 0;
 }

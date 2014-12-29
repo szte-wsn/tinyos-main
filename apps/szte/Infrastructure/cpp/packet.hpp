@@ -37,6 +37,7 @@
 
 #include "block.hpp"
 #include <vector>
+#include <utility>
 #include <sstream>
 
 uint16_t read_uint16(std::vector<unsigned char>::const_iterator pos);
@@ -97,13 +98,13 @@ std::ostream& operator <<(std::ostream& stream, const TosMsg::Packet &packet);
 class RipsMsg : public Block {
 public:
 	struct Measurement {
-		uint8_t freq;
-		uint8_t phase;
+		int freq;
+		int phase;
 	};
 
 	struct Packet {
-		uint16_t moteid;
-		uint8_t frame;
+		uint nodeid;
+		uint slot;
 		std::vector<Measurement> measurements;
 	};
 
@@ -118,5 +119,69 @@ private:
 };
 
 std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet);
+
+class RipsDat : public Block {
+public:
+	struct Measurement {
+		uint nodeid;
+		int freq;
+		int phase;
+	};
+
+	struct Packet {
+		ulong frame;
+		uint slot;
+		uint sender1;
+		uint sender2;
+		std::vector<Measurement> measurements;
+	};
+
+	Input<RipsMsg::Packet> sub_in;
+	Output<Packet> out;
+
+	RipsDat(const std::vector<std::vector<uint8_t>> &schedule);
+	RipsDat(const char *schedule);
+
+private:
+	enum {
+		TX1 = 0, //sendWave 1
+		TX2 = 1, //sendWave 2
+		RX = 2, //sampleRSSI
+		SSYN=3, //sends sync message
+		RSYN=4, //waits for sync message
+		DEB = 5,
+		NTRX = 6,
+		NDEB = 7,
+		W1 = 8,
+		W10 = 9,
+		W100 = 10,
+		DSYN = 11,
+		WCAL = 12,
+	};
+
+	static std::vector<std::vector<uint8_t>> FOUR_MOTE;
+	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_4;
+	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_5;
+	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_6;
+	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_12;
+	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_18;
+
+	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
+	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
+	const std::vector<std::vector<uint8_t>> &schedule;
+
+	void analize_schedule();
+	uint node_count;
+	uint slot_count;
+
+	std::vector<Packet> history;
+	std::vector<std::vector<uint>> rx_indices;
+
+	uint current_slot = 0;
+	uint current_index = 0;
+	void decode(const RipsMsg::Packet &rips);
+};
+
+std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet);
 
 #endif//__PACKET_HPP__

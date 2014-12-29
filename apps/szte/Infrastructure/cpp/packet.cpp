@@ -130,8 +130,8 @@ void RipsMsg::decode(const TosMsg::Packet &tos) {
 		runtime_error("Invalid RipsMsg length", tos);
 
 	Packet packet;
-	packet.moteid = tos.src;
-	packet.frame = read_uint8(tos.payload.begin());
+	packet.nodeid = tos.src;
+	packet.slot = read_uint8(tos.payload.begin());
 	for (unsigned int i = 1; i < tos.payload.size(); i += 2) {
 		Measurement mnt;
 		mnt.freq = read_uint8(tos.payload.begin() + i);
@@ -144,11 +144,221 @@ void RipsMsg::decode(const TosMsg::Packet &tos) {
 
 std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet) {
 	stream << std::dec;
-	stream << "mid=" << static_cast<int>(packet.moteid);
-	stream << " frm=" << static_cast<int>(packet.frame);
+	stream << "nid=" << packet.nodeid;
+	stream << " slt=" << packet.slot;
 	stream << " [";
 	for (RipsMsg::Measurement mnt : packet.measurements)
-		stream << " " << static_cast<int>(mnt.phase) << "/" << static_cast<int>(mnt.freq);
+		stream << " " << mnt.phase << "/" << mnt.freq;
 	stream << " ]";
 	return stream;
 }
+
+// ------- RipsDat
+
+std::vector<std::vector<uint8_t>> RipsDat::FOUR_MOTE = {
+	//  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15
+	{SSYN,  TX1,   RX,   RX, RSYN,  TX1,   RX,   RX, RSYN,  TX1,   RX,   RX, RSYN,  TX1,  TX1,  TX1},
+	{RSYN,  TX2,  TX1,  TX1, SSYN,   RX,  TX1,   RX, RSYN,   RX,  TX1,   RX, RSYN,  TX2,   RX,   RX},
+	{RSYN,   RX,  TX2,   RX, RSYN,  TX2 , TX2 , TX1, SSYN,   RX,   RX,  TX1, RSYN,   RX,  TX2,   RX},
+	{RSYN,   RX,   RX,  TX2, RSYN,   RX,   RX,  TX2, RSYN,  TX2,  TX2,  TX2, SSYN,   RX,   RX,  TX2}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_4 = {
+	//   0     1     2     3     4     5
+	{ RSYN,  TX1,  W10, RSYN},
+	{ RSYN,  TX2,  W10, RSYN},
+	{ SSYN,   RX,  W10, RSYN},
+	{ RSYN,   RX,  W10, SSYN}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_5 = {
+	//   0     1     2     3     4     5
+	{ RSYN,  TX1,  W10, RSYN, RSYN},
+	{ RSYN,  TX2,  W10, RSYN, RSYN},
+	{ SSYN,   RX,  W10, RSYN, RSYN},
+	{ RSYN,   RX,  W10, SSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, SSYN}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_6 = {
+	//   0     1     2     3     4     5
+	{ RSYN,  TX1,  W10, RSYN, RSYN, RSYN},
+	{ RSYN,  TX2,  W10, RSYN, RSYN, RSYN},
+	{ SSYN,   RX,  W10, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, SSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, SSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, SSYN}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_12 = {
+	//   0     1     2     3     4     5     6     7     8     9    10    11
+	{ RSYN,  TX1,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,  TX2,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ SSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_18 = {
+	//   0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17
+	{ RSYN,  TX1,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,  TX2,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ SSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN, RSYN},
+	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN}
+};
+
+std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
+	{"FOUR_MOTE", FOUR_MOTE},
+	{"PHASEMAP_TEST_4", PHASEMAP_TEST_4},
+	{"PHASEMAP_TEST_5", PHASEMAP_TEST_5},
+	{"PHASEMAP_TEST_6", PHASEMAP_TEST_6},
+	{"PHASEMAP_TEST_12", PHASEMAP_TEST_12},
+	{"PHASEMAP_TEST_18", PHASEMAP_TEST_18},
+};
+
+const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
+	for (uint i = 0; i < NAMES.size(); i++) {
+		if (strcmp(schedule, NAMES[i].first) == 0)
+			return NAMES[i].second;
+	}
+
+	std::string msg = "Unknown schedule: ";
+	msg += schedule;
+	throw std::invalid_argument(msg);
+}
+
+RipsDat::RipsDat(const std::vector<std::vector<uint8_t>> &schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(schedule) {
+	analize_schedule();
+}
+
+RipsDat::RipsDat(const char *schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(get_schedule(schedule)) {
+	analize_schedule();
+}
+
+void RipsDat::analize_schedule() {
+	if (schedule.size() < 4)
+		throw std::invalid_argument("RipsDat schedule: not enough nodes");
+
+	node_count = schedule.size();
+	rx_indices.resize(node_count);
+
+	slot_count = schedule[0].size();
+	for (uint i = 1; i < node_count; i++)
+		if (schedule[i].size() != slot_count)
+			throw std::invalid_argument("RipsDat schedule: non-uniform slots");
+
+	for (uint j = 0; j < slot_count; j++) {
+		Packet packet;
+
+		packet.frame = 0;
+		packet.slot = j;
+		packet.sender1 = 0;
+		packet.sender2 = 0;
+
+		for (uint i = 0; i < node_count; i++) {
+			uint8_t s = schedule[i][j];
+			if (s == TX1)
+				packet.sender1 += 1;
+			else if (s == TX2)
+				packet.sender2 += 1;
+		}
+
+		if (packet.sender1 == 0 && packet.sender2 == 0)
+			continue;
+		if (packet.sender1 != 1 || packet.sender2 != 1)
+			throw std::invalid_argument("RipsDat schedule: incorrect number of TXs");
+
+		for (uint i = 0; i < node_count; i++) {
+			uint8_t s = schedule[i][j];
+			if (s == TX1)
+				packet.sender1 = i + 1;
+			else if (s == TX2)
+				packet.sender2 = i + 1;
+			else if (s == RX)
+				rx_indices[i].push_back(history.size());
+		}
+
+		history.push_back(packet);
+	}
+}
+
+void RipsDat::decode(const RipsMsg::Packet &rips) {
+	if (rips.nodeid < 1 || rips.nodeid > node_count)
+		std::cerr << "Schedule mismatch: node id\n";
+	else if (rips.slot >= slot_count)
+		std::cerr << "Schedule mismatch: slot number\n";
+	else if (rx_indices[rips.nodeid - 1].size() != rips.measurements.size())
+		std::cerr << "Schedule mismatch: measurement count\n";
+	else {
+		uint n = rips.nodeid - 1;
+		uint s = (rips.slot + slot_count - 1) % slot_count;
+
+		if (schedule[n][s] != SSYN)
+			std::cerr << "Schedule mismatch: send sync slot\n";
+		else {
+			// send out old packets
+			do {
+				if (history[current_index].slot == current_slot) {
+					Packet &packet = history[current_index];
+					if (packet.measurements.size() != 0)
+						out.send(packet);
+
+					packet.frame += 1;
+					packet.measurements.clear();
+
+					current_index = (current_index + 1) % history.size();
+				}
+
+				current_slot = (current_slot + 1) % slot_count;
+			} while (current_slot != s);
+
+			for (uint i = 0; i < rips.measurements.size(); i++) {
+				Packet &packet = history[rx_indices[n][i]];
+
+				for (Measurement m : packet.measurements)
+					assert (m.nodeid != rips.nodeid);
+
+				Measurement m;
+				m.nodeid = rips.nodeid;
+				m.freq = rips.measurements[i].freq;
+				m.phase = rips.measurements[i].phase;
+				packet.measurements.push_back(m);
+			}
+		}
+	}
+}
+
+std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
+	stream << std::dec;
+	stream << "frm=" << packet.frame;
+	stream << " slt=" << packet.slot;
+	stream << " tx1=" << packet.sender1;
+	stream << " tx2=" << packet.sender2;
+	stream << " [";
+	for (RipsDat::Measurement mnt : packet.measurements)
+		stream << " " << mnt.nodeid << ":" << mnt.phase << "/" << mnt.freq;
+	stream << " ]";
+	return stream;
+}
+
