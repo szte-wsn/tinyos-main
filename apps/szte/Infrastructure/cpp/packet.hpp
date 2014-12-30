@@ -141,6 +141,7 @@ public:
 
 	RipsDat(const std::vector<std::vector<uint8_t>> &schedule);
 	RipsDat(const char *schedule);
+	RipsDat(); // find the matching schedule automatically
 
 private:
 	enum {
@@ -169,7 +170,8 @@ private:
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
-	const std::vector<std::vector<uint8_t>> &schedule;
+
+	const std::vector<std::vector<uint8_t>> *schedule;
 
 	void analize_schedule();
 	uint node_count;
@@ -181,6 +183,11 @@ private:
 	uint current_slot = 0;
 	uint current_index = 0;
 	void decode(const RipsMsg::Packet &rips);
+
+	void search(const RipsMsg::Packet &rips);
+	std::vector<RipsMsg::Packet> backlog;
+	std::vector<uint> possibilities;
+	static bool contradicts(const RipsMsg::Packet &rips, const std::vector<std::vector<uint8_t>> &schedule);
 };
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet);

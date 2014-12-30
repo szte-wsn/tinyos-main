@@ -259,24 +259,31 @@ const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *sched
 	throw std::invalid_argument(msg);
 }
 
-RipsDat::RipsDat(const std::vector<std::vector<uint8_t>> &schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(schedule) {
+RipsDat::RipsDat(const std::vector<std::vector<uint8_t>> &schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(&schedule) {
 	analize_schedule();
 }
 
-RipsDat::RipsDat(const char *schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(get_schedule(schedule)) {
+RipsDat::RipsDat(const char *schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(&get_schedule(schedule)) {
 	analize_schedule();
+}
+
+RipsDat::RipsDat() : sub_in(bind(&RipsDat::search, this)), schedule(NULL) {
+	for (uint i = 0; i < NAMES.size(); i++)
+		possibilities.push_back(i);
 }
 
 void RipsDat::analize_schedule() {
-	if (schedule.size() < 4)
+	assert (schedule != NULL);
+
+	if (schedule->size() < 4)
 		throw std::invalid_argument("RipsDat schedule: not enough nodes");
 
-	node_count = schedule.size();
+	node_count = schedule->size();
 	rx_indices.resize(node_count);
 
-	slot_count = schedule[0].size();
+	slot_count = (*schedule)[0].size();
 	for (uint i = 1; i < node_count; i++)
-		if (schedule[i].size() != slot_count)
+		if ((*schedule)[i].size() != slot_count)
 			throw std::invalid_argument("RipsDat schedule: non-uniform slots");
 
 	for (uint j = 0; j < slot_count; j++) {
@@ -288,7 +295,7 @@ void RipsDat::analize_schedule() {
 		packet.sender2 = 0;
 
 		for (uint i = 0; i < node_count; i++) {
-			uint8_t s = schedule[i][j];
+			uint8_t s = (*schedule)[i][j];
 			if (s == TX1)
 				packet.sender1 += 1;
 			else if (s == TX2)
@@ -301,7 +308,7 @@ void RipsDat::analize_schedule() {
 			throw std::invalid_argument("RipsDat schedule: incorrect number of TXs");
 
 		for (uint i = 0; i < node_count; i++) {
-			uint8_t s = schedule[i][j];
+			uint8_t s = (*schedule)[i][j];
 			if (s == TX1)
 				packet.sender1 = i + 1;
 			else if (s == TX2)
@@ -325,7 +332,7 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 		uint n = rips.nodeid - 1;
 		uint s = (rips.slot + slot_count - 1) % slot_count;
 
-		if (schedule[n][s] != SSYN)
+		if ((*schedule)[n][s] != SSYN)
 			std::cerr << "Schedule mismatch: send sync slot\n";
 		else {
 			// send out old packets
@@ -360,6 +367,57 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 	}
 }
 
+void RipsDat::search(const RipsMsg::Packet &rips) {
+	if (schedule != NULL) {
+		decode(rips);
+		return;
+	}
+
+	backlog.push_back(rips);
+
+	std::vector<uint>::iterator pos = possibilities.begin();
+	while (pos != possibilities.end()) {
+		if (contradicts(rips, NAMES[*pos].second))
+			pos = possibilities.erase(pos);
+		else
+			pos++;
+	}
+
+	if (possibilities.size() < 0)
+		throw std::runtime_error("RipsDat input contradicts all schedules");
+	else if (possibilities.size() == 1 || backlog.size() >= 100) {
+		uint n = possibilities.front();
+
+		const char *what = possibilities.size() == 1 ? "detecting" : "guessing";
+		std::cerr << "RipsDat " << what << " " << NAMES[n].first << " schedule\n";
+
+		schedule = &(NAMES[n].second);
+		analize_schedule();
+
+		for (uint i = 0; i < backlog.size(); i++)
+			decode(backlog[i]);
+
+		backlog.clear();
+	}
+}
+
+bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::vector<uint8_t>> &schedule) {
+	uint node_count = schedule.size();
+	if (node_count == 0 || rips.nodeid < 1 || rips.nodeid > node_count)
+		return true;
+
+	uint slot_count = schedule[0].size();
+	if (rips.slot < 0 || rips.slot >= slot_count)
+		return true;
+
+	uint n = rips.nodeid - 1;
+	uint s = (rips.slot + slot_count - 1) % slot_count;
+	if (schedule[n].size() != slot_count || schedule[n][s] != SSYN)
+		return true;
+
+	return false;
+}
+
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
 	stream << std::dec;
 	stream << "frm=" << packet.frame;
@@ -372,4 +430,3 @@ std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
 	stream << " ]";
 	return stream;
 }
-
