@@ -27,6 +27,7 @@ enum {
 #define PHASEMAP_TEST_6 9
 #define PHASEMAP_TEST_12 10
 #define PHASEMAP_TEST_5 11
+#define SIX_MOTE 12
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
@@ -53,6 +54,19 @@ enum {
 		{RSYN,  TX2,  TX1,  TX1, SSYN,   RX,  TX1,   RX, RSYN,   RX,  TX1,   RX, RSYN,  TX2,   RX,   RX, RSYN, NDEB, DSYN,  DEB, RSYN, NDEB, RSYN, NDEB},
 		{RSYN,   RX,  TX2,   RX, RSYN,  TX2 , TX2 , TX1, SSYN,   RX,   RX,  TX1, RSYN,   RX,  TX2,   RX, RSYN, NDEB, RSYN, NDEB, DSYN,  DEB, RSYN, NDEB},
 		{RSYN,   RX,   RX,  TX2, RSYN,   RX,   RX,  TX2, RSYN,  TX2,  TX2,  TX2, SSYN,   RX,   RX,  TX2, RSYN, NDEB, RSYN, NDEB, RSYN, NDEB, DSYN,  DEB}
+	};
+#elif MEASURE_TYPE == SIX_MOTE
+	#define NUMBER_OF_INFRAST_NODES 6
+	#define NUMBER_OF_SLOTS 36
+	#define NUMBER_OF_RX 20
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+		//    0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24    25    26    27    28    29    30    31    32    33    34    35
+		{  SSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX2,  TX2,  TX2,  TX2,  TX2},
+		{  RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX},
+		{  RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,  TX1,   RX,   RX,   RX},
+		{  RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,  TX1,   RX,   RX},
+		{  RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,  TX1,   RX},
+		{  RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,   RX,  TX1}
 	};
 #elif MEASURE_TYPE == SIX_MOTE_WF
 	#define NUMBER_OF_INFRAST_NODES 6
