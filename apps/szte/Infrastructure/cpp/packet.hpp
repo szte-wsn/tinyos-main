@@ -160,6 +160,7 @@ private:
 	};
 
 	static std::vector<std::vector<uint8_t>> FOUR_MOTE;
+	static std::vector<std::vector<uint8_t>> SIX_MOTE;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_4;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_5;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_6;

@@ -163,6 +163,16 @@ std::vector<std::vector<uint8_t>> RipsDat::FOUR_MOTE = {
 	{RSYN,   RX,   RX,  TX2, RSYN,   RX,   RX,  TX2, RSYN,  TX2,  TX2,  TX2, SSYN,   RX,   RX,  TX2}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::SIX_MOTE = {
+	//    0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24    25    26    27    28    29    30    31    32    33    34    35
+	{  SSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX2,  TX2,  TX2,  TX2,  TX2},
+	{  RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX},
+	{  RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,  TX1,   RX,   RX,   RX},
+	{  RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,  TX1,   RX,   RX},
+	{  RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,  TX1,   RX},
+	{  RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,   RX,  TX1}
+};
+
 std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_4 = {
 	//   0     1     2     3     4     5
 	{ RSYN,  TX1,  W10, RSYN},
@@ -230,6 +240,7 @@ std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_18 = {
 
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
+	{"SIX_MOTE", SIX_MOTE},
 	{"PHASEMAP_TEST_4", PHASEMAP_TEST_4},
 	{"PHASEMAP_TEST_5", PHASEMAP_TEST_5},
 	{"PHASEMAP_TEST_6", PHASEMAP_TEST_6},

@@ -38,7 +38,7 @@
 
 int main(int argc, char *argv[]) {
 	Writer<RipsDat::Packet> writer;
-	RipsDat ripsdat("PHASEMAP_TEST_5");
+	RipsDat ripsdat("SIX_MOTE");
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
 	Reader<std::vector<unsigned char>> reader;
