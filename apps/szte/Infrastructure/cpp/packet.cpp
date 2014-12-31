@@ -164,13 +164,13 @@ std::vector<std::vector<uint8_t>> RipsDat::FOUR_MOTE = {
 };
 
 std::vector<std::vector<uint8_t>> RipsDat::SIX_MOTE = {
-	//    0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24    25    26    27    28    29    30    31    32    33    34    35
-	{  SSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX, RSYN,  TX2,  TX2,  TX2,  TX2,  TX2},
-	{  RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,  TX1,   RX,   RX,   RX,   RX},
-	{  RSYN,   RX,  TX2,   RX,   RX,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,  TX1,   RX,   RX,   RX},
-	{  RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,   RX,   RX,  TX2,   RX,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,  TX1,   RX,   RX},
-	{  RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,   RX,   RX,   RX,  TX2,   RX, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,  TX1,   RX},
-	{  RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,   RX,   RX,   RX,   RX,  TX2, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1, SSYN,   RX,   RX,   RX,   RX,  TX1}
+	//    0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24    25    26    27    28    29    30    31    32    33    34    35    36    37    38    39    40    41
+	{  SSYN,  TX1,   RX,   RX,   RX,   RX,   W1, RSYN,  TX1,   RX,   RX,   RX,   RX,   W1, RSYN,  TX1,   RX,   RX,   RX,   RX,   W1, RSYN,  TX1,   RX,   RX,   RX,   RX,   W1, RSYN,  TX1,   RX,   RX,   RX,   RX,   W1, RSYN,  TX2,  TX2,  TX2,  TX2,  TX2,   W1},
+	{  RSYN,  TX2,  TX1,  TX1,  TX1,  TX1,   W1, SSYN,   RX,  TX2,   RX,   RX,   RX,   W1, RSYN,   RX,  TX2,   RX,   RX,   RX,   W1, RSYN,   RX,  TX2,   RX,   RX,   RX,   W1, RSYN,   RX,  TX2,   RX,   RX,   RX,   W1, RSYN,  TX1,   RX,   RX,   RX,   RX,   W1},
+	{  RSYN,   RX,  TX2,   RX,   RX,   RX,   W1, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1,   W1, SSYN,   RX,   RX,  TX2,   RX,   RX,   W1, RSYN,   RX,   RX,  TX2,   RX,   RX,   W1, RSYN,   RX,   RX,  TX2,   RX,   RX,   W1, RSYN,   RX,  TX1,   RX,   RX,   RX,   W1},
+	{  RSYN,   RX,   RX,  TX2,   RX,   RX,   W1, RSYN,   RX,   RX,  TX2,   RX,   RX,   W1, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1,   W1, SSYN,   RX,   RX,   RX,  TX2,   RX,   W1, RSYN,   RX,   RX,   RX,  TX2,   RX,   W1, RSYN,   RX,   RX,  TX1,   RX,   RX,   W1},
+	{  RSYN,   RX,   RX,   RX,  TX2,   RX,   W1, RSYN,   RX,   RX,   RX,  TX2,   RX,   W1, RSYN,   RX,   RX,   RX,  TX2,   RX,   W1, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1,   W1, SSYN,   RX,   RX,   RX,   RX,  TX2,   W1, RSYN,   RX,   RX,   RX,  TX1,   RX,   W1},
+	{  RSYN,   RX,   RX,   RX,   RX,  TX2,   W1, RSYN,   RX,   RX,   RX,   RX,  TX2,   W1, RSYN,   RX,   RX,   RX,   RX,  TX2,   W1, RSYN,   RX,   RX,   RX,   RX,  TX2,   W1, RSYN,  TX2,  TX1,  TX1,  TX1,  TX1,   W1, SSYN,   RX,   RX,   RX,   RX,  TX1,   W1}
 };
 
 std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_4 = {
@@ -323,17 +323,17 @@ void RipsDat::analize_schedule() {
 
 void RipsDat::decode(const RipsMsg::Packet &rips) {
 	if (rips.nodeid < 1 || rips.nodeid > node_count)
-		std::cerr << "Schedule mismatch: node id\n";
+		std::cerr << "RipsDat schedule mismatch: node id\n";
 	else if (rips.slot >= slot_count)
-		std::cerr << "Schedule mismatch: slot number\n";
+		std::cerr << "RipsDat schedule mismatch: slot number\n";
 	else if (rx_indices[rips.nodeid - 1].size() != rips.measurements.size())
-		std::cerr << "Schedule mismatch: measurement count\n";
+		std::cerr << "RipsDat schedule mismatch: measurement count\n";
 	else {
 		uint n = rips.nodeid - 1;
 		uint s = (rips.slot + slot_count - 1) % slot_count;
 
 		if ((*schedule)[n][s] != SSYN)
-			std::cerr << "Schedule mismatch: send sync slot\n";
+			std::cerr << "RipsDat schedule mismatch: send sync slot\n";
 		else {
 			// send out old packets
 			do {
@@ -385,11 +385,9 @@ void RipsDat::search(const RipsMsg::Packet &rips) {
 
 	if (possibilities.size() < 0)
 		throw std::runtime_error("RipsDat input contradicts all schedules");
-	else if (possibilities.size() == 1 || backlog.size() >= 100) {
+	else if (possibilities.size() == 1) {
 		uint n = possibilities.front();
-
-		const char *what = possibilities.size() == 1 ? "detecting" : "guessing";
-		std::cerr << "RipsDat " << what << " " << NAMES[n].first << " schedule\n";
+		std::cerr << "RipsDat detecting " << NAMES[n].first << " schedule\n";
 
 		schedule = &(NAMES[n].second);
 		analize_schedule();
@@ -399,6 +397,8 @@ void RipsDat::search(const RipsMsg::Packet &rips) {
 
 		backlog.clear();
 	}
+	else if (backlog.size() >= 100)
+		throw std::runtime_error("RipsDat could not match schedule");
 }
 
 bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::vector<uint8_t>> &schedule) {
