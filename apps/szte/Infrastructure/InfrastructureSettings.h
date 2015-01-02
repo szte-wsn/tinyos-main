@@ -27,7 +27,11 @@ enum {
 #define PHASEMAP_TEST_6 9
 #define PHASEMAP_TEST_12 10
 #define PHASEMAP_TEST_5 11
+<<<<<<< HEAD
+#define LOC_TEST_9_GRID 12
+=======
 #define SIX_MOTE 12
+>>>>>>> 9dfda0e6fcf336ba4d708543f1998c434cc2e49a
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
@@ -192,6 +196,26 @@ enum {
 		{RSYN,  TX1,  W10,  W10, NDEB,  W10,  W10},
 		{RSYN,  TX2,  W10,  W10, NDEB,  W10,  W10},
 		{RSYN, NTRX,  W10,  W10, NDEB,  W10,  W10}
+	};
+#elif MEASURE_TYPE == LOC_TEST_9_GRID
+	//for processing debug it falls out of sync!
+	#define  NUMBER_OF_INFRAST_NODES 12
+	#define NUMBER_OF_SLOTS 20
+	#define NUMBER_OF_RX 9
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+	//0      1      2      3      4      5      6      7      8      9      10     11     12     13     14     15     16     17     18     19
+	{ RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  },
+	{ RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  },
+	{ SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX },
+	{ RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   }
 	};
 #else
 	#error "Unknown MEASURE_TYPE"
