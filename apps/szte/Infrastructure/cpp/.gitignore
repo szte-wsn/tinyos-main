@@ -1,4 +1,5 @@
 *.o
 *.d
 recorder
+phaseplot
 test

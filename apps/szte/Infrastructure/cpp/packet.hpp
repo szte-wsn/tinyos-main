@@ -98,7 +98,7 @@ std::ostream& operator <<(std::ostream& stream, const TosMsg::Packet &packet);
 class RipsMsg : public Block {
 public:
 	struct Measurement {
-		int freq;
+		int period;
 		int phase;
 	};
 
@@ -124,7 +124,7 @@ class RipsDat : public Block {
 public:
 	struct Measurement {
 		uint nodeid;
-		int freq;
+		int period;
 		int phase;
 	};
 

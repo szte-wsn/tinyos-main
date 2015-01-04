@@ -4,12 +4,15 @@ LDFLAGS = -pthread
 SOURCES = $(wildcard *.cpp)
 DEPENDS = ${SOURCES:.cpp=.d}
 
-all: recorder test
+all: recorder phaseplot test
 
 test: test.o block.o serial.o packet.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 recorder: recorder.o block.o serial.o
+	$(CXX) $(LDFLAGS) -o $@ $^
+
+phaseplot: phaseplot.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 .PHONY: clean socat

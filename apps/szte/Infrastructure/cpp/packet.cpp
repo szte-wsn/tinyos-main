@@ -134,8 +134,10 @@ void RipsMsg::decode(const TosMsg::Packet &tos) {
 	packet.slot = read_uint8(tos.payload.begin());
 	for (unsigned int i = 1; i < tos.payload.size(); i += 2) {
 		Measurement mnt;
-		mnt.freq = read_uint8(tos.payload.begin() + i);
+		mnt.period = read_uint8(tos.payload.begin() + i);
 		mnt.phase = read_uint8(tos.payload.begin() + i + 1);
+		if (mnt.period != 0 && mnt.phase >= mnt.period)
+			std::cerr << "Invalid RipsMsg phase: " << mnt.phase << "/" << mnt.period << std::endl;
 		packet.measurements.push_back(mnt);
 	}
 
@@ -148,7 +150,7 @@ std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet) {
 	stream << " slt=" << packet.slot;
 	stream << " [";
 	for (RipsMsg::Measurement mnt : packet.measurements)
-		stream << " " << mnt.phase << "/" << mnt.freq;
+		stream << " " << mnt.phase << "/" << mnt.period;
 	stream << " ]";
 	return stream;
 }
@@ -376,7 +378,7 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 
 				Measurement m;
 				m.nodeid = rips.nodeid;
-				m.freq = rips.measurements[i].freq;
+				m.period = rips.measurements[i].period;
 				m.phase = rips.measurements[i].phase;
 				packet.measurements.push_back(m);
 			}
@@ -443,7 +445,7 @@ std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
 	stream << " tx2=" << packet.sender2;
 	stream << " [";
 	for (RipsDat::Measurement mnt : packet.measurements)
-		stream << " " << mnt.nodeid << ":" << mnt.phase << "/" << mnt.freq;
+		stream << " " << mnt.nodeid << ":" << mnt.phase << "/" << mnt.period;
 	stream << " ]";
 	return stream;
 }

@@ -37,16 +37,16 @@
 #include "packet.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<RipsMsg::Packet> writer;
-	RipsDat ripsdat;
-	RipsMsg ripsmsg;
-	TosMsg tosmsg;
-	Reader<std::vector<unsigned char>> reader;
-
-	connect(reader.out, tosmsg.sub_in);
-	connect(tosmsg.out, ripsmsg.sub_in);
-//	connect(ripsmsg.out, ripsdat.sub_in);
-	connect(ripsmsg.out, writer.in);
-	reader.run();
+	std::cout << "# Usage: phaseplot | gnuplot\n";
+	std::cout << "set term wxt persist title 'hihi'\n";
+	std::cout << "set style data linespoint\n";
+	std::cout << "plot '-' using 1:($2) title 'haha'\n";
+	std::cout << "1 2\n";
+	std::cout << "2 4\n";
+	std::cout << "3 9\n";
+	std::cout << "4 ?\n";
+	std::cout << "5 25\n";
+	std::cout << "6 36\n";
+	std::cout << "e\n";
 	return 0;
 }
