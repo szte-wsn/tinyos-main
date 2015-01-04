@@ -167,6 +167,7 @@ private:
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_6;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_12;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_18;
+	static std::vector<std::vector<uint8_t>> LOC_TEST_9_GRID;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);

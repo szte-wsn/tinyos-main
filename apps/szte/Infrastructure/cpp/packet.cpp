@@ -238,6 +238,22 @@ std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_18 = {
 	{ RSYN,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, RSYN, SSYN}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::LOC_TEST_9_GRID = {
+	//0      1      2      3      4      5      6      7      8      9      10     11     12     13     14     15     16     17     18     19
+	{ RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  , RSYN , TX1  },
+	{ RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  , RSYN , TX2  },
+	{ SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX },
+	{ RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   , RSYN , RX   },
+	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   }
+};
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -246,6 +262,7 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"PHASEMAP_TEST_6", PHASEMAP_TEST_6},
 	{"PHASEMAP_TEST_12", PHASEMAP_TEST_12},
 	{"PHASEMAP_TEST_18", PHASEMAP_TEST_18},
+	{"LOC_TEST_9_GRID", LOC_TEST_9_GRID},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
