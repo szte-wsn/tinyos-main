@@ -37,7 +37,7 @@
 #include "packet.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<RipsMsg::Packet> writer;
+	Writer<RipsDat::Packet> writer;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
@@ -45,8 +45,8 @@ int main(int argc, char *argv[]) {
 
 	connect(reader.out, tosmsg.sub_in);
 	connect(tosmsg.out, ripsmsg.sub_in);
-//	connect(ripsmsg.out, ripsdat.sub_in);
-	connect(ripsmsg.out, writer.in);
+	connect(ripsmsg.out, ripsdat.sub_in);
+	connect(ripsdat.out, writer.in);
 	reader.run();
 	return 0;
 }

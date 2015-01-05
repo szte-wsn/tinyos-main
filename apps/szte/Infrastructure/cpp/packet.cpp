@@ -133,11 +133,11 @@ void RipsMsg::decode(const TosMsg::Packet &tos) {
 	packet.nodeid = tos.src;
 	packet.slot = read_uint8(tos.payload.begin());
 
-	unsigned int half = tos.payload.size()/2;
-	for (unsigned int i = 1; i < half; i++) {
+	unsigned int half = (tos.payload.size() - 1)/2;
+	for (unsigned int i = 0; i < half; i++) {
 		Measurement mnt;
-		mnt.period = read_uint8(tos.payload.begin() + i);
-		mnt.phase = read_uint8(tos.payload.begin() + half + i);
+		mnt.period = read_uint8(tos.payload.begin() + 1 + i);
+		mnt.phase = read_uint8(tos.payload.begin() + 1 + half + i);
 		if (mnt.period != 0 && mnt.phase >= mnt.period)
 			std::cerr << "Invalid RipsMsg phase: " << mnt.phase << "/" << mnt.period << std::endl;
 		packet.measurements.push_back(mnt);
