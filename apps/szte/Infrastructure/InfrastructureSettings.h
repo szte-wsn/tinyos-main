@@ -27,11 +27,8 @@ enum {
 #define PHASEMAP_TEST_6 9
 #define PHASEMAP_TEST_12 10
 #define PHASEMAP_TEST_5 11
-<<<<<<< HEAD
-#define LOC_TEST_9_GRID 12
-=======
 #define SIX_MOTE 12
->>>>>>> 9dfda0e6fcf336ba4d708543f1998c434cc2e49a
+#define LOC_TEST_9_GRID 13
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
