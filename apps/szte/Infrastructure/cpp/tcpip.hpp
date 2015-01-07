@@ -45,17 +45,19 @@ public:
 	TcpClient(const char *hostname, const char *port);
 	~TcpClient();
 
-private:
-	const char *hostname;
+	void start();
+	void stop();
 
+private:
+	std::string hostname;
 	int socket_fd;
 	int pipe_fds[2];
 
-	std::mutex send_mutex;
+	std::mutex mutex;
 	void send(const std::vector<unsigned char> &data);
 
-	std::unique_ptr<std::thread> receive_thread;
-	void receive();
+	std::unique_ptr<std::thread> pump_thread;
+	void pump();
 
 	void error(const char *msg, int err);
 };

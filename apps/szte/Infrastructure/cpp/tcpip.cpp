@@ -46,7 +46,7 @@
 // ------- TcpClient
 
 TcpClient::TcpClient(const char *hostname, const char *port)
-	: in(bind(&TcpClient::send, this)), hostname(hostname) {
+	: hostname(hostname), in(bind(&TcpClient::send, this)) {
 
 	socket_fd = -1;
 	pipe_fds[0] = -1;
@@ -65,28 +65,61 @@ TcpClient::TcpClient(const char *hostname, const char *port)
 			error("Host resolution", err);
 
 		for (struct addrinfo *r = result; r != NULL; r = r->ai_next) {
-			socket_fd = socket(r->ai_family, r->ai_socktype | SOCK_NONBLOCK | SOCK_CLOEXEC, r->ai_protocol);
+			socket_fd = socket(r->ai_family, r->ai_socktype | SOCK_CLOEXEC, r->ai_protocol);
 			if (socket_fd == -1)
 				err = errno;
-			else if (connect(socket_fd, r->ai_addr, r->ai_addrlen) == -1)
+			else if (connect(socket_fd, r->ai_addr, r->ai_addrlen) == -1) {
 				err = errno;
-			else {
-				err = 0;
-				break;
+				close(socket_fd);
+				socket_fd = -1;
 			}
+			else
+				break;
 		}
 
 		freeaddrinfo(result);
 		result = NULL;
 
-		if (err != 0)
+		if (socket_fd == -1)
 			error("Connection", err);
 
-		if (pipe2(pipe_fds, O_NONBLOCK) == -1)
+		unsigned char buff[2];
+		buff[0] = 'U';
+		buff[1] = ' ';
+
+		int count = 0;
+		while (count < 2) {
+			ssize_t n = write(socket_fd, buff + count, 2 - count);
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				else
+					error("Handshake", errno);
+			}
+			else
+				count += n;
+		}
+
+		count = 0;
+		while (count < 2) {
+			ssize_t n = read(socket_fd, buff + count, 2 - count);
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				else
+					error("Handshake", errno);
+			}
+			else
+				count += n;
+		}
+
+		if (buff[0] != 'U' || buff[1] != ' ')
+			throw std::runtime_error("Protocol mismatch with " + this->hostname);
+
+		if (pipe2(pipe_fds, O_NONBLOCK | O_CLOEXEC) != 0)
 			error("Creating pipe", errno);
 
 		std::cerr << "Opened " << hostname << " with port " << port << std::endl;
-		receive_thread = std::unique_ptr<std::thread>(new std::thread(&TcpClient::receive, this));
 	}
 	catch(const std::exception &e) {
 		if (socket_fd != -1)
@@ -103,12 +136,7 @@ TcpClient::TcpClient(const char *hostname, const char *port)
 }
 
 TcpClient::~TcpClient() {
-	unsigned char data = 0;
-	ssize_t ignore = write(pipe_fds[1], &data, 1);
-	(void) ignore;
-
-	if (receive_thread != NULL)
-		receive_thread->join();
+	abort();
 
 	close(socket_fd);
 	close(pipe_fds[0]);
@@ -117,48 +145,84 @@ TcpClient::~TcpClient() {
 	std::cerr << "Closed " << hostname << std::endl;
 }
 
-void TcpClient::send(const std::vector<unsigned char> &packet) {
-	std::lock_guard<std::mutex> lock(send_mutex);
+void TcpClient::start() {
+	if (pump_thread != NULL)
+		throw std::runtime_error("Already started");
 
-	unsigned int sent = 0;
+	pump_thread.reset(new std::thread(&TcpClient::pump, this));
+}
+
+void TcpClient::stop() {
+	std::lock_guard<std::mutex> lock(mutex);
+
+	unsigned char data = 0;
+	ssize_t ignore = write(pipe_fds[1], &data, 1);
+	(void) ignore;
+
+	if (pump_thread != NULL)
+		pump_thread->join();
+}
+
+void TcpClient::send(const std::vector<unsigned char> &packet) {
+	std::lock_guard<std::mutex> lock(mutex);
+
+	uint sent = 0;
 	do {
-		int n = write(socket_fd, packet.data() + sent, packet.size() - sent);
-		if (n < 0)
-			error("Write", errno);
+		ssize_t n = write(socket_fd, packet.data() + sent, packet.size() - sent);
+		if (n < 0) {
+			if (errno == EINTR)
+				continue;
+			else
+				error("Write", errno);
+		}
 		else
 			sent += n;
 	} while (sent < packet.size());
 }
 
-void TcpClient::receive() {
+void TcpClient::pump() {
 	struct pollfd fds[2];
 	fds[0].fd = pipe_fds[0];
-	fds[0].events = POLLIN | POLLPRI;
+	fds[0].events = POLLIN;
 	fds[1].fd = socket_fd;
-	fds[1].events = POLLIN | POLLPRI;
+	fds[1].events = POLLIN;
 
-	std::vector<unsigned char> packet;
+	std::vector<unsigned char> buffer;
+	uint pos;
 
 	for(;;) {
 		int a = poll(fds, 2, -1);
 		if (a < 0)
 			error("Poll", errno);
 
-		if ((fds[0].revents & (POLLIN | POLLPRI)) != 0)
+		if (fds[0].revents != 0)
 			return;
-		else if ((fds[1].revents & (POLLIN | POLLPRI)) != 0) {
+		else if (fds[1].revents != 0) {
+			if (pos == 0)
+				buffer.resize(1);
 
-			packet.resize(READ_BUFFER);
-			ssize_t n = read(socket_fd, &packet[0], READ_BUFFER);
-			if (n < 0 || n > READ_BUFFER)
-				error("Read", errno);
-			else if (n == 0)	// TODO: implement auto reconnect
-				throw std::runtime_error("Disconnected " + devicename);
+			assert(buffer.size() > pos);
+			ssize_t n = read(socket_fd, buffer.data() + pos, buffer.size() - pos);
+			if (n == -1) {
+				if (errno == EINTR)
+					continue;
+				else
+					error("Read", errno);
+			}
+			else if (n == 0) {
+				std::cerr << "Disconnected " << hostname << std::endl;
+				break;
+			}
+			else
+				pos += n;
 
-			packet.resize(n);
-			out.send(packet);
+			assert(pos >= 1 && pos <= buffer.size());
+			if (pos == static_cast<uint>(buffer[0]) + 1) {
+				out.send(buffer);
+				buffer.clear();
+				pos = 0;
+			}
 		}
-
 	}
 }
 
