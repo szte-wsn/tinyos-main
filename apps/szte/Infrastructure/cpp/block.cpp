@@ -69,6 +69,5 @@ std::istream& operator >>(std::istream& stream, std::vector<unsigned char> &vect
 			vector.push_back(a);
 		}
 	}
-
 	return stream;
 }

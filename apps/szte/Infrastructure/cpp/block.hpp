@@ -45,21 +45,44 @@
 #include <thread>
 #include <atomic>
 #include <string>
-#include <functional>
 
 class Block {
-public:
-	template <typename CLASS, typename DATA>
-	std::function<void (const DATA&)> bind(void (CLASS::*handler)(const DATA&), CLASS *that) {
-		return std::bind(handler, that, std::placeholders::_1);
-	}
-
+protected:
 	template <typename DATA> class Output;
 
+private:
 	template <typename DATA>
-	class Input final {
+	class Handler {
 	public:
-		Input(const std::function<void (const DATA&)> &h) : handler(h), refcount(0) {
+		typedef void (Block::*func_t)(const DATA&);
+
+		Handler(Block *block, func_t func) : block(block), func(func) {
+		}
+
+		Handler(const Handler<DATA> &handler) : block(handler.block), func(handler.func) {
+		}
+
+	private:
+		Block *block;
+		func_t func;
+
+		friend class Output<DATA>;
+
+		void work(const DATA &data) {
+			(block->*func)(data);
+		}
+	};
+
+protected:
+	template <typename CLASS, typename DATA>
+	Handler<DATA> bind(void (CLASS::*handler)(const DATA&), CLASS *that) {
+		return Handler<DATA>(that, static_cast<void (Block::*)(const DATA&)>(handler));
+	}
+
+	template <typename DATA>
+	class Input final : public Handler<DATA> {
+	public:
+		Input(const Handler<DATA> &handler) : Handler<DATA>(handler), refcount(0) {
 		}
 
 		~Input() {
@@ -68,14 +91,9 @@ public:
 		}
 
 	private:
-		std::function<void (const DATA&h)> handler;
 		std::atomic<int> refcount;
 
 		friend class Output<DATA>;
-
-		void work(const DATA &data) {
-			handler(data);
-		}
 
 		void addref() {
 			assert(refcount >= 0);
@@ -161,7 +179,7 @@ private:
 	}
 };
 
-template <typename DATA> class Reader : Block {
+template <typename DATA> class Reader : public Block {
 public:
 	Output<DATA> out;
 
@@ -204,7 +222,7 @@ private:
 std::ostream& operator <<(std::ostream& stream, const std::vector<unsigned char> &vector);
 std::istream& operator >>(std::istream& stream, std::vector<unsigned char> &vector);
 
-template <typename DATA> class Buffer : Block {
+template <typename DATA> class Buffer : public Block {
 public:
 	Input<DATA> in;
 	Output<DATA> out;
