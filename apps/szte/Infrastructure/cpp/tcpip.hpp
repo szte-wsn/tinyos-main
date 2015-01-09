@@ -37,6 +37,39 @@
 
 #include "block.hpp"
 
+class IoBlock : public Block {
+public:
+	Input<std::vector<unsigned char>> in;
+	Output<std::vector<unsigned char>> out;
+
+	IoBlock(const char *name);
+	~IoBlock();
+
+	void start();
+	void abort();
+	void stop();
+
+protected:
+	void set_fd(int fd);
+	void error(const char *msg, int err);
+
+private:
+	std::string name;
+	int fd;
+	int pipe_fds[2];
+
+	std::mutex mutex;
+	void send(const std::vector<unsigned char> &data);
+
+	std::unique_ptr<std::thread> thread;
+	void pump();
+};
+
+class ClientDev : public IoBlock {
+public:
+	ClientDev(const char *hostname, const char *port);
+};
+
 class TcpClient : public Block {
 public:
 	Input<std::vector<unsigned char>> in;

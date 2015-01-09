@@ -43,6 +43,198 @@
 #include <unistd.h>
 #include <poll.h>
 
+// ------- IoBlock
+
+IoBlock::IoBlock(const char *name) : name(name), fd(-1), in(bind(&IoBlock::send, this)) {
+	pipe_fds[0] = -1;
+	pipe_fds[1] = -1;
+
+	if (pipe2(pipe_fds, O_NONBLOCK | O_CLOEXEC) != 0)
+		error("Creating pipe", errno);
+}
+
+IoBlock::~IoBlock() {
+	abort();
+
+	close(pipe_fds[0]);
+	close(pipe_fds[1]);
+
+	if (fd >= 0) {
+		close(fd);
+		std::cerr << "Closed " << name << std::endl;
+	}
+}
+
+void IoBlock::start() {
+	if (thread != NULL)
+		throw std::runtime_error("Thread already started");
+
+	thread.reset(new std::thread(&IoBlock::pump, this));
+}
+
+void IoBlock::abort() {
+	std::lock_guard<std::mutex> lock(mutex);
+
+	unsigned char data = 0;
+	ssize_t ignore = write(pipe_fds[1], &data, 1);
+	(void) ignore;
+
+	stop();
+}
+
+void IoBlock::stop() {
+	if (thread != NULL)
+		thread->join();
+}
+
+void IoBlock::set_fd(int fd) {
+	if (this->fd != -1)
+		throw std::runtime_error("File descriptor already set");
+
+	this->fd = fd;
+}
+
+void IoBlock::send(const std::vector<unsigned char> &packet) {
+	std::lock_guard<std::mutex> lock(mutex);
+
+	uint sent = 0;
+	do {
+		ssize_t n = write(fd, packet.data() + sent, packet.size() - sent);
+		if (n < 0) {
+			if (errno == EINTR)
+				continue;
+			else
+				error("Write", errno);
+		}
+		else
+			sent += n;
+	} while (sent < packet.size());
+}
+
+void IoBlock::pump() {
+	struct pollfd fds[2];
+	fds[0].fd = pipe_fds[0];
+	fds[0].events = POLLIN;
+	fds[1].fd = fd;
+	fds[1].events = POLLIN;
+
+	const int LIMIT = 1024;
+	std::vector<unsigned char> packet;
+
+	for(;;) {
+		int a = poll(fds, 2, -1);
+		if (a < 0)
+			error("Poll", errno);
+
+		if (fds[0].revents != 0)
+			return;
+		else if (fds[1].revents != 0) {
+			packet.resize(LIMIT);
+
+			ssize_t n = read(fd, packet.data(), LIMIT);
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				else
+				error("Read", errno);
+			}
+			else if (n == 0) {
+				std::cerr << "Disconnected " << name << std::endl;
+				return;
+			}
+
+			packet.resize(n);
+			out.send(packet);
+		}
+	}
+}
+
+void IoBlock::error(const char *msg, int err) {
+	throw std::runtime_error(std::string(msg) + " failed for " + name + ": " + std::strerror(err));
+}
+
+// ------- ClientDev
+
+ClientDev::ClientDev(const char *hostname, const char *port) : IoBlock(hostname) {
+	int fd = -1;
+	struct addrinfo *result = NULL;
+
+	try {
+		struct addrinfo hints;
+		memset(&hints, 0, sizeof hints);
+		hints.ai_family = AF_UNSPEC;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = 0;
+
+		int err = getaddrinfo(hostname, port, &hints, &result);
+		if (err != 0)
+			error("Host resolution", err);
+
+		for (struct addrinfo *r = result; r != NULL; r = r->ai_next) {
+			fd = socket(r->ai_family, r->ai_socktype | SOCK_CLOEXEC, r->ai_protocol);
+			if (fd == -1)
+				err = errno;
+			else if (connect(fd, r->ai_addr, r->ai_addrlen) == -1) {
+				err = errno;
+				close(fd);
+				fd = -1;
+			}
+			else
+				break;
+		}
+
+		freeaddrinfo(result);
+		result = NULL;
+
+		if (fd == -1)
+			error("Connection", err);
+
+		unsigned char buff[2];
+		buff[0] = 'U';
+		buff[1] = ' ';
+
+		int count = 0;
+		while (count < 2) {
+			ssize_t n = write(fd, buff + count, 2 - count);
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				else
+					error("Handshake", errno);
+			}
+			else
+				count += n;
+		}
+
+		count = 0;
+		while (count < 2) {
+			ssize_t n = read(fd, buff + count, 2 - count);
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				else
+					error("Handshake", errno);
+			}
+			else
+				count += n;
+		}
+
+		if (buff[0] != 'U' || buff[1] != ' ')
+			throw std::runtime_error("Protocol mismatch with " + std::string(hostname));
+
+		set_fd(fd);
+		std::cerr << "Opened " << hostname << " with port " << port << std::endl;
+	}
+	catch(const std::exception &e) {
+		if (fd != -1)
+			close(fd);
+		if (result != NULL)
+			freeaddrinfo(result);
+
+		throw;
+	}
+}
+
 // ------- TcpClient
 
 TcpClient::TcpClient(const char *hostname, const char *port)
