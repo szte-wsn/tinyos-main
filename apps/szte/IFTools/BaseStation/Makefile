@@ -12,6 +12,7 @@ include $(TINYOS_ROOT_DIR)/Makefile.include
 ifeq ($(PLATFORM),$(filter $(PLATFORM),ucmini ucprotona ucprotonb ucbase ucbasedrd))
   CFLAGS += -DPLATFORM_BAUDRATE=500000U
   CFLAGS += -DMIB_SERIAL
+  CFLAGS += -DRFA1_DATA_RATE=500
 else
   CFLAGS += -DPLATFORM_BAUDRATE=230400U
 endif

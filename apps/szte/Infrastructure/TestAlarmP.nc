@@ -40,15 +40,24 @@ module TestAlarmP{
 implementation{
 
 	enum {
-    CHANNEL = 17,
+		CHANNEL = 26,
 		TRIM1 = 2,
 		TRIM2 = 5,
-  };
-  
-  enum {
-		MEAS_SLOT = 80, //measure slot
-		SYNC_SLOT = 150, //sync slot
-		DEBUG_SLOT = 3000UL*NUMBER_OF_RX, //between super frames
+		MIN_SYNC_LENGTH = 19, //minimum length of the sync msg, based on the PHR
+	};
+	
+	enum {
+		MEAS_SLOT = 80,
+		#if RFA1_DATA_RATE == 500
+			SYNC_SLOT = 27 + MIN_SYNC_LENGTH + NUMBER_OF_RX*2,
+		#elif RFA1_DATA_RATE == 1000
+			SYNC_SLOT = 28 + (MIN_SYNC_LENGTH + NUMBER_OF_RX*2)/2,
+		#elif RFA1_DATA_RATE == 2000
+			SYNC_SLOT = 28 + (MIN_SYNC_LENGTH + NUMBER_OF_RX*2)/4,
+		#else
+			SYNC_SLOT = 27 + (MIN_SYNC_LENGTH + NUMBER_OF_RX*2)*2,
+		#endif
+		DEBUG_SLOT = 3000UL*NUMBER_OF_RX,
 		WAIT_SLOT_1 = 62,
 		WAIT_SLOT_10 = 625,
 		WAIT_SLOT_100 = 6250,
