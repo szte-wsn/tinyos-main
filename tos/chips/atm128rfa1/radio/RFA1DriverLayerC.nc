@@ -131,6 +131,8 @@ implementation
 	AtmelRadioTest = RFA1DriverLayerP;
 	#endif
 	#ifdef CONTINOUS_WAVE
+  components new AlarmMicro32C();
 	RadioContinuousWave = RFA1DriverLayerP;
+  RFA1DriverLayerP.Alarm -> AlarmMicro32C;
 	#endif
 }

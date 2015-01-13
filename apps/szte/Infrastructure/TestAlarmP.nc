@@ -10,7 +10,7 @@
 #include "TestAlarm.h"
 #include "RadioConfig.h"
 
-#define SENDING_TIME 64
+#define SENDING_TIME 1010
 
 #define TX1_THRESHOLD 0
 #define TX2_THRESHOLD 0
@@ -472,5 +472,8 @@ implementation{
 		}
 	}
 	#endif
+	
+	async event void RadioContinuousWave.sendWaveStart(){}
+	async event void RadioContinuousWave.sendWaveDone(){}
 
 }

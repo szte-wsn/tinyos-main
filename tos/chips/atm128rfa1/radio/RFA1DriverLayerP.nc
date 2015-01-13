@@ -87,6 +87,10 @@ module RFA1DriverLayerP
     interface Tasklet;
     interface McuPowerState;
     interface AsyncStdControl as ExtAmpControl;
+    
+    #ifdef CONTINOUS_WAVE
+    interface Alarm<TMicro, uint32_t>;
+    #endif
 
 #ifdef RADIO_DEBUG
     interface DiagMsg;
@@ -1007,6 +1011,7 @@ implementation
       ;
     
     TRX_STATE = CMD_TX_START;
+    signal RadioContinuousWave.sendWaveStart();
   }
   
   void stopTestRadio(){
@@ -1176,77 +1181,84 @@ implementation
   
   async command error_t RadioContinuousWave.sendWave(uint8_t testChannel, int8_t tune, uint8_t power, uint16_t time){
     if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
-      uint32_t end = time;
+//       uint32_t end = time;
       state = STATE_CW_SEND;
       #ifdef CW_SYNC_TEST
       PORTB|=1<<PB7;
       #endif
       XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
       atomic{
-        end += call LocalTime.get();
+        call Alarm.start(time);
         testRadio(NULL, testChannel, power, RFA1_TEST_MODE_CW_PLUS_NORESET, 0);
       }
-      while( (int32_t)(end - call LocalTime.get()) > 0 )
-        ;
-      stopTestRadio();
-      
-      //reset register states
-      CCA_THRES=RFA1_CCA_THRES_VALUE;
-      #ifdef RFA1_DATA_RATE
-      #if RFA1_DATA_RATE == 250
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 0;
-      #elif RFA1_DATA_RATE == 500
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 1;
-      #elif RFA1_DATA_RATE == 1000
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 2;
-      #elif RFA1_DATA_RATE == 2000
-      TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3;
-      #else
-      #error Unsupported RFA1_DATA_RATE (supported: 250, 500, 1000, 2000. default is 250)
-      #endif
-      #endif
-      PHY_TX_PWR = RFA1_PA_BUF_LT | RFA1_PA_LT | (txPower)<<TX_PWR0;
-      TRX_CTRL_1 |= 1<<TX_AUTO_CRC_ON;
-      PHY_CC_CCA = RFA1_CCA_MODE_VALUE | channel;
-      
-      IRQ_STATUS = 0xFF;
-      TRX_STATE = CMD_RX_ON;
-      
-      XOSC_CTRL= (XOSC_CTRL&0xf0);
-      #ifdef RFA1_ENABLE_PA
-      SET_BIT(TRX_CTRL_1, PA_EXT_EN);
-      #endif
-      #ifdef RFA1_ENABLE_EXT_ANT_SW
-      #ifdef RFA1_ANT_DIV_EN
-      ANT_DIV = 0x7f & (1<<ANT_DIV_EN | 1<<ANT_EXT_SW_EN);
-      #elif defined(RFA1_ANT_SEL1)
-      ANT_DIV = 0x7f & (1<<ANT_EXT_SW_EN | 1<<ANT_CTRL0);
-      #elif defined(RFA1_ANT_SEL0)
-      ANT_DIV = 0x7f & (1<<ANT_EXT_SW_EN | 2<<ANT_CTRL0);
-      #else
-      #error Neighter antenna is selected with ANT_EXT_SW_EN. You can choose between RFA1_ANT_DIV_EN, RFA1_ANT_SEL0, RFA1_ANT_SEL1
-      #endif
-      #endif
-      call ExtAmpControl.start();
-      
-      while( !(IRQ_STATUS & (1<<PLL_LOCK)) ) //waiting for TRX_STATE==RX_ON would be cleaner, but pll lock comes a bit later
-        ;
-      radioIrq = 0;
-      IRQ_STATUS = 0xFF;
-      IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
-      
-      state = STATE_RX_ON;
-      call Tasklet.asyncResume();
-      #ifdef CW_SYNC_TEST
-      PORTB&=~(1<<PB7);
-      #endif
       return SUCCESS;
     } else
       return EBUSY;
+  }
+      
+  async event void Alarm.fired(){
+//       while( (int32_t)(end - call LocalTime.get()) > 0 )
+//         ;
+    stopTestRadio();
+    
+    //reset register states
+    CCA_THRES=RFA1_CCA_THRES_VALUE;
+    #ifdef RFA1_DATA_RATE
+    #if RFA1_DATA_RATE == 250
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 0;
+    #elif RFA1_DATA_RATE == 500
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 1;
+    #elif RFA1_DATA_RATE == 1000
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 2;
+    #elif RFA1_DATA_RATE == 2000
+    TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3;
+    #else
+    #error Unsupported RFA1_DATA_RATE (supported: 250, 500, 1000, 2000. default is 250)
+    #endif
+    #endif
+    PHY_TX_PWR = RFA1_PA_BUF_LT | RFA1_PA_LT | (txPower)<<TX_PWR0;
+    TRX_CTRL_1 |= 1<<TX_AUTO_CRC_ON;
+    PHY_CC_CCA = RFA1_CCA_MODE_VALUE | channel;
+    
+    IRQ_STATUS = 0xFF;
+    TRX_STATE = CMD_RX_ON;
+    
+    XOSC_CTRL= (XOSC_CTRL&0xf0);
+    #ifdef RFA1_ENABLE_PA
+    SET_BIT(TRX_CTRL_1, PA_EXT_EN);
+    #endif
+    #ifdef RFA1_ENABLE_EXT_ANT_SW
+    #ifdef RFA1_ANT_DIV_EN
+    ANT_DIV = 0x7f & (1<<ANT_DIV_EN | 1<<ANT_EXT_SW_EN);
+    #elif defined(RFA1_ANT_SEL1)
+    ANT_DIV = 0x7f & (1<<ANT_EXT_SW_EN | 1<<ANT_CTRL0);
+    #elif defined(RFA1_ANT_SEL0)
+    ANT_DIV = 0x7f & (1<<ANT_EXT_SW_EN | 2<<ANT_CTRL0);
+    #else
+    #error Neighter antenna is selected with ANT_EXT_SW_EN. You can choose between RFA1_ANT_DIV_EN, RFA1_ANT_SEL0, RFA1_ANT_SEL1
+    #endif
+    #endif
+    call ExtAmpControl.start();
+    
+    while( !(IRQ_STATUS & (1<<PLL_LOCK)) ) //waiting for TRX_STATE==RX_ON would be cleaner, but pll lock comes a bit later
+      ;
+    radioIrq = 0;
+    IRQ_STATUS = 0xFF;
+    IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
+    
+    state = STATE_RX_ON;
+    call Tasklet.asyncResume();
+    #ifdef CW_SYNC_TEST
+    PORTB&=~(1<<PB7);
+    #endif
+    signal RadioContinuousWave.sendWaveDone();
   }
   
   async command uint32_t RadioContinuousWave.convertTime(uint32_t fromTime){
     return (fromTime<<4); //TODO this depends on the radio timer
   }
+  
+  default async event void RadioContinuousWave.sendWaveStart(){}
+  default async event void RadioContinuousWave.sendWaveDone(){}
 #endif
 }
