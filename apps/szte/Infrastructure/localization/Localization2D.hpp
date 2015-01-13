@@ -3,26 +3,33 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
-#include "Position.cpp"
+#include "Position.hpp"
+#include "Config.hpp"
+#include "Measurement.hpp"
+#include "Mote.hpp"
+#include "PhaseMap2D.hpp"
+
+#define PERIODMISMATCH -1.0
+#define PERIODTOLERANCE 4
+#define DEGINRAD 0.0174532925
 
 class Localization2D{
 
 public:
-	Localization2D(double distance_in, double step_in, double angleStep_in, cv::Mat* phaseMap_in, double deviation_in);
-	cv::Mat calculateLocations(double NW, double N, double NE, double W, double middle, double E, double SW, double S, double SE);
+	Localization2D(double step_in, double angleStep_in, double deviation_in, Config& config_in);
+	cv::Mat calculateLocations(std::vector<Measurement> measures, PhaseMap2D& map, Mote& ref);
 
 	
 private:
+	Config& config;
 	double deviation;
-	std::vector<Position<short> > smallCirclePositions;
-	std::vector<Position<short> > bigCirclePositions;
 	double angleStep;
 	double step;
-	double distance; //between two nodes in the grid
 	cv::Mat* phaseMap;
 	cv::Mat locationMap;
-	
-	void calculatePositionOffsets(std::vector<Position<short> >& small, std::vector<Position<short> >& big);
+	std::map<Mote,double> mobileAngles;
+	std::map<Mote,std::vector<Position<short>>> offsets;
+	void calculatePositionOffsets();
 
 	
 };
