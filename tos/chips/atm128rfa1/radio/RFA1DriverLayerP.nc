@@ -1187,10 +1187,16 @@ implementation
       PORTB|=1<<PB7;
       #endif
       XOSC_CTRL= (XOSC_CTRL&0xf0) | (tune & 0x0f); //strangely, this is not "forgotten" after reset
+      #ifdef CW_SYNC_TEST_PASSIVE
+      PORTB&=~(1<<PB7);
+      #endif
       atomic{
         call Alarm.start(time);
         testRadio(NULL, testChannel, power, RFA1_TEST_MODE_CW_PLUS_NORESET, 0);
       }
+      #ifdef CW_SYNC_TEST_PASSIVE
+      PORTB|=1<<PB7;
+      #endif
       return SUCCESS;
     } else
       return EBUSY;
@@ -1199,7 +1205,13 @@ implementation
   async event void Alarm.fired(){
 //       while( (int32_t)(end - call LocalTime.get()) > 0 )
 //         ;
+    #ifdef CW_SYNC_TEST
+    PORTB&=~(1<<PB7);
+    #endif
     stopTestRadio();
+    #ifdef CW_SYNC_TEST_PASSIVE
+    PORTB|=(1<<PB7);
+    #endif
     
     //reset register states
     CCA_THRES=RFA1_CCA_THRES_VALUE;
@@ -1248,7 +1260,7 @@ implementation
     
     state = STATE_RX_ON;
     call Tasklet.asyncResume();
-    #ifdef CW_SYNC_TEST
+    #ifdef CW_SYNC_TEST_PASSIVE
     PORTB&=~(1<<PB7);
     #endif
     signal RadioContinuousWave.sendWaveDone();

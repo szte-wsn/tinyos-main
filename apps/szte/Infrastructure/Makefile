@@ -12,10 +12,10 @@ CFLAGS += -DUCPROTONA_REV=20
 CFLAGS += -DNO_COLLISION_LAYER
 #should be at least: 6+NUMBER_OF_RX*5
 CFLAGS += -DTOSH_DATA_LENGTH=100
-CFLAGS += -DRFA1_DATA_RATE=500
+CFLAGS += -DRFA1_DATA_RATE=250
 
 #Measure types: FOUR_MOTE, FOUR_MOTE_WF, PHASEMAP_TEST_13, PHASEMAP_TEST_18, PROCESSING_DEBUG
-CFLAGS += -DMEASURE_TYPE=LOC_TEST_9_GRID
+CFLAGS += -DMEASURE_TYPE=FOUR_MOTE
 
 #disables waveform processing
 # CFLAGS += -DDISABLE_PROCESSING
@@ -23,6 +23,7 @@ CFLAGS += -DMEASURE_TYPE=LOC_TEST_9_GRID
 # CFLAGS += -DMEASUREWAVE_SAVE_BUFFER
 #enables GPIO based sync testing (with logic analyzer)
 # CFLAGS += -DCW_SYNC_TEST
+# CFLAGS += -DCW_SYNC_TEST_PASSIVE
 #sets the period and all bytes of the waveform to the current slot's number. Useful for debugging data downloading
 # CFLAGS += -DDEBUG_COLLECTOR
 #measures cpu load with infinite task. Overwrites measured frequency
