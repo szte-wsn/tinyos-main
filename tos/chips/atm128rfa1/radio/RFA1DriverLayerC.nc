@@ -71,16 +71,13 @@ configuration RFA1DriverLayerC
 
 implementation
 {
-	components RFA1DriverLayerP, BusyWaitMicroC,
-		LocalTime62khzC, new Alarm62khz32C(), HplAtmRfa1TimerMacC;
+	components RFA1DriverLayerP, BusyWaitMicroC;
 
 	RadioState = RFA1DriverLayerP;
 	RadioSend = RFA1DriverLayerP;
 	RadioReceive = RFA1DriverLayerP;
 	RadioCCA = RFA1DriverLayerP;
 	RadioPacket = RFA1DriverLayerP;
-
-	LocalTimeRadio = LocalTime62khzC;
 
 	Config = RFA1DriverLayerP;
 
@@ -97,13 +94,27 @@ implementation
 	PacketTimeStamp = RFA1DriverLayerP.PacketTimeStamp;
 	LinkPacketMetadata = RFA1DriverLayerP;
 
-	RFA1DriverLayerP.LocalTime -> LocalTime62khzC;
-	RFA1DriverLayerP.SfdCapture -> HplAtmRfa1TimerMacC.SfdCapture;
-
-	Alarm = Alarm62khz32C;
-
 	Tasklet = RFA1DriverLayerP.Tasklet;
 	RFA1DriverLayerP.BusyWait -> BusyWaitMicroC;
+
+#ifdef RFA1_RADIO_TIMER1
+	components LocalTimeMicroC as LocalTimeC, new AlarmMicro32C() as AlarmC;
+	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 1), HplAtmRfa1Timer1C, new AtmegaTransformCounterC(uint32_t, uint16_t, 1);
+	
+	RFA1DriverLayerP.SfdCapture -> AtmegaTransformCaptureC.HplAtmegaCapture;
+	AtmegaTransformCaptureC.SubCapture -> HplAtmRfa1Timer1C;
+	AtmegaTransformCaptureC.HplAtmegaCounter -> AtmegaTransformCounterC;
+	AtmegaTransformCounterC.SubCounter -> HplAtmRfa1Timer1C;
+	
+// 	AtmegaTransformCaptureC.DiagMsg -> DiagMsgC;
+#else
+	components LocalTime62khzC as LocalTimeC, new Alarm62khz32C() as AlarmC, HplAtmRfa1TimerMacC;
+	RFA1DriverLayerP.SfdCapture -> HplAtmRfa1TimerMacC.SfdCapture;
+#endif
+	LocalTimeRadio = LocalTimeC;
+	Alarm = AlarmC;
+	
+	RFA1DriverLayerP.LocalTime -> LocalTimeC;
 
 #ifdef RADIO_DEBUG
 	components DiagMsgC;

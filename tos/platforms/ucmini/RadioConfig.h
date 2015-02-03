@@ -76,9 +76,19 @@ enum
 /**
  * This is the timer type of the radio alarm interface
  */
-typedef T62khz TRadio;
-typedef uint32_t tradio_size;
+#ifdef RFA1_RADIO_TIMER1
+typedef TMicro TRadio;
+/**
+ * The number of radio alarm ticks per one microsecond
+ */
+#define RADIO_ALARM_MICROSEC	1
 
+/**
+ * The base two logarithm of the number of radio alarm ticks per one millisecond
+ */
+#define RADIO_ALARM_MILLI_EXP	10
+#else
+typedef T62khz TRadio;
 /**
  * The number of radio alarm ticks per one microsecond
  */
@@ -88,5 +98,9 @@ typedef uint32_t tradio_size;
  * The base two logarithm of the number of radio alarm ticks per one millisecond
  */
 #define RADIO_ALARM_MILLI_EXP	6
+#endif
+typedef uint32_t tradio_size;
+
+
 
 #endif//__RADIOCONFIG_H__

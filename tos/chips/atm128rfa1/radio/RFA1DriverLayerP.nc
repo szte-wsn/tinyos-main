@@ -211,7 +211,15 @@ implementation
 
     SET_BIT(TRXPR,SLPTR);
 
+#ifdef RFA1_RADIO_TIMER1
+    #ifdef RFA1_ENABLE_EXT_ANT_SW
+      #error "RFA1_ENABLE_EXT_ANT_SW and RFA1_RADIO_TIMER1 can't be defined both: both uses DIG1"
+    #endif
+    call SfdCapture.setMode(0); //ATMRFA1_CAP16_RISING_EDGE
+    TRX_CTRL_1 |= 1<<IRQ_2_EXT_EN; //switches irq capture to timer1
+#else
     call SfdCapture.setMode(ATMRFA1_CAPSC_ON);
+#endif
 
     state = STATE_SLEEP;
 
@@ -376,7 +384,7 @@ implementation
 
   enum {
     // 16 us delay (1 tick), 4 bytes preamble (2 ticks each), 1 byte SFD (2 ticks)
-    TX_SFD_DELAY = 11,
+    TX_SFD_DELAY = 11, //176, //11
   };
 
   tasklet_async command error_t RadioSend.send(message_t* msg)
@@ -457,7 +465,7 @@ implementation
 
       call DiagMsg.chr('t');
       call DiagMsg.uint32(call PacketTimeStamp.isValid(msg) ? call PacketTimeStamp.timestamp(msg) : 0);
-      call DiagMsg.uint16(call LocalTime.get());
+      call DiagMsg.uint32(call LocalTime.get());
       call DiagMsg.int8(length);
       call DiagMsg.hex8s(getPayload(msg), length - 2);
       call DiagMsg.send();
@@ -538,7 +546,7 @@ implementation
 
       call DiagMsg.chr('r');
       call DiagMsg.uint32(call PacketTimeStamp.isValid(rxMsg) ? call PacketTimeStamp.timestamp(rxMsg) : 0);
-      call DiagMsg.uint16(call LocalTime.get());
+      call DiagMsg.uint32(call LocalTime.get());
       call DiagMsg.int8(sendSignal ? length : -length);
       call DiagMsg.hex8s(getPayload(rxMsg), length - 2);
       call DiagMsg.int8(call PacketRSSI.isSet(rxMsg) ? call PacketRSSI.get(rxMsg) : -1);
@@ -784,6 +792,7 @@ implementation
 
    async command mcu_power_t McuPowerOverride.lowestState()
    {
+      return ATM128_POWER_IDLE;
       if( (IRQ_MASK & 1<<AWAKE_EN) != 0 )
          return ATM128_POWER_EXT_STANDBY;
       else
