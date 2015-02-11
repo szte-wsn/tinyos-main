@@ -20,6 +20,7 @@ public:
 	void display();
 	cv::Mat* getPhaseMap();
 	void generateMap(const Mote& A, const Mote& B, const Mote& C);
+	void PhaseMap2D::generateMap(const Mote& A, const Mote& B);
 
 private:
 	cv::Mat phaseMap;
@@ -30,5 +31,6 @@ private:
 };
 
 void displayMat(cv::Mat& mat);
+void tresholdMat(cv::Mat& mat, double tresh);
 
 #endif

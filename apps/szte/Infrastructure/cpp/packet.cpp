@@ -258,6 +258,59 @@ std::vector<std::vector<uint8_t>> RipsDat::LOC_TEST_9_GRID = {
 	{ RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , RX   , RSYN , NTRX , SSYN , RX   }
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::LOC_MULT_TX = {
+	{TX1,	TX1,	TX1,	NTRX,	NTRX,	NTRX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{TX2,	NTRX,	NTRX,	TX1,	TX1,	NTRX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{NTRX,	TX2,	NTRX,	TX2,	NTRX,	TX1,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{NTRX,	NTRX,	TX2,	NTRX,	TX2,	TX2,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::LOC_4TX_4ANCHORRX = {
+	{TX1,	TX1,	TX1,	NTRX,	NTRX,	NTRX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{TX2,	NTRX,	NTRX,	TX1,	TX1,	NTRX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{NTRX,	TX2,	NTRX,	TX2,	NTRX,	TX1,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{NTRX,	NTRX,	TX2,	NTRX,	TX2,	TX2,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN}
+};
+
+std::vector<std::vector<uint8_t>> RipsDat::LOC_4TX_NOANCHORRX = {
+	{TX1,	TX1,	TX1,	NTRX,	NTRX,	NTRX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{TX2,	NTRX,	NTRX,	TX1,	TX1,	NTRX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{NTRX,	TX2,	NTRX,	TX2,	NTRX,	TX1,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{NTRX,	NTRX,	TX2,	NTRX,	TX2,	TX2,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN},
+	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN}
+};
+
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -267,6 +320,9 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"PHASEMAP_TEST_12", PHASEMAP_TEST_12},
 	{"PHASEMAP_TEST_18", PHASEMAP_TEST_18},
 	{"LOC_TEST_9_GRID", LOC_TEST_9_GRID},
+	{"LOC_MULT_TX", LOC_MULT_TX},
+	{"LOC_4TX_4ANCHORRX", LOC_4TX_4ANCHORRX},
+	{"LOC_4TX_NOANCHORRX", LOC_4TX_NOANCHORRX},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
@@ -440,14 +496,10 @@ bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::ve
 }
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
-	stream << std::dec;
-	stream << "frm=" << packet.frame;
-	stream << " slt=" << packet.slot;
-	stream << " tx1=" << packet.sender1;
-	stream << " tx2=" << packet.sender2;
-	stream << " [";
+	stream << packet.sender1;
+	stream << " " << packet.sender2 << " ";
 	for (RipsDat::Measurement mnt : packet.measurements)
-		stream << " " << mnt.nodeid << ":" << mnt.phase << "/" << mnt.period;
-	stream << " ]";
+		stream << mnt.nodeid << ":" << mnt.period << "/" << mnt.phase << " ";
+	stream << ";";
 	return stream;
 }

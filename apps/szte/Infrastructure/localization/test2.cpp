@@ -4,69 +4,75 @@
 #include <iostream>
 #include <cmath>
 #include "Config.hpp"
-#include "PhaseMap2D.hpp"
 #include <string>
 #include "Measurement.hpp"
 #include "InputParser.hpp"
 #include <vector>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/contrib/contrib.hpp>
+
+#include <chrono>
 
 #define PI 3.14159265
 
+void displayMat(cv::Mat& mat){
+	cv::Mat display(mat.size(),CV_8UC1);
+	double min, max;
+	cv::minMaxLoc(mat, &min, &max);
+	mat.convertTo(display, CV_8UC1, 255.0 / max, 0);
+	applyColorMap(display, display, cv::COLORMAP_SUMMER);
+	cv::imshow("Display",display);
+	cv::waitKey(500);
+}
+
+void tresholdMat(cv::Mat& mat, double tresh){
+	for(int i=0;i<mat.size().height;i++){
+		for(int j=0;j<mat.size().width;j++){
+			if(mat.at<double>(i,j)>tresh){
+				mat.at<double>(i,j)=1.0;
+			}else{
+				mat.at<double>(i,j)=0.0;
+			}
+		}
+	}
+}
+
+
 int main(){
-
-	Mote moteA(1,0,0);
-	Mote moteB(2,2,0);
-	Mote moteC(3,1,0);
-
-	Mote mote4(4,-0.1,0.1);
-	Mote mote5(5,0,0.1);
-	Mote mote6(6,0.1,0.1);
-	Mote mote7(7,-0.1,0);
-	Mote mote8(8,0,0);
-	Mote mote9(9,0.1,0);
-	Mote mote10(10,-0.1,-0.1);
-	Mote mote11(11,0,-0.1);
-	Mote mote12(12,0.1,-0.1);
 
 	double step = 0.01;
 	double angle_step = 360.0;
-	double deviation = 10.0;
 
-	Config config;
-	config.addStables( { moteA,moteB,moteC } );
-	config.addMobiles( { mote4,mote5,mote6,mote7,mote8,mote9,mote10,mote11,mote12 } );
+	#include "../cpp/4tx4anchor/first.conf"
 
 	std::cout<< config << std::endl;
 
-	std::map<Mote,double> tempMap;
-	tempMap.insert(std::pair<Mote,double>(moteA,1.55));
+	//PhaseMap2D map(Position<double>(-2,2),Position<double>(4,0),step);
+	//map.generateMap(moteA,moteB,moteC);
 
-	PhaseMap2D map(Position<double>(-2,2),Position<double>(4,0),step);
-	map.generateMap(moteA,moteB,moteC);
-	map.display();
-	double NW = map.getPhaseMap()->at<double>(90,290);
-	double N  = map.getPhaseMap()->at<double>(90,300);
-	double NE = map.getPhaseMap()->at<double>(90,310);
-	double W  = map.getPhaseMap()->at<double>(100,290);
-	double middle = map.getPhaseMap()->at<double>(100,300);
-	double E  = map.getPhaseMap()->at<double>(100,300);
-	double SW = map.getPhaseMap()->at<double>(110,290);
-	double S  = map.getPhaseMap()->at<double>(110,300);
-	double SE = map.getPhaseMap()->at<double>(110,310);
-
-	Localization2D local(step,angle_step,deviation,config);
+	Localization2D local(step,angle_step,config,0.0,4.0,4.8,0.8);
 
 	InputParser input(config);
-	//std::string in = "1 2 3:45/7 4:44/5 5:43/25 6:45/7 7:44/5 8:43/25 9:45/7 10:44/5 11:43/25 12:45/5 ;";
-	std::string in = "1 2 3:43/17 5:45/0 6:42/10 7:43/11 8:43/36 9:42/25 10:42/40 11:13/5 12:42/8 ;1 2 3:41/2 4:41/28 5:44/30 6:42/2 7:42/39 9:42/10 10:42/27 11:13/10 12:42/35 ;1 2 3:43/33 4:42/18 5:40/25 6:42/41 7:43/30 8:42/12 10:42/18 11:17/8 12:42/27 ;";
-	std::vector<Measurement> measures = input.getMeasurements(in);
-	for(std::vector<Measurement>::iterator it=measures.begin() ; it < measures.end(); it++) {
-		std::cout<<*it;
+	//std::string in;
+	char in_array[50000];
+	while(1){
+		std::cin.getline(in_array,50000);
+		std::string in(in_array);
+		if(in == "q"){
+			break;
+		}else if(in == ""){
+			continue;
+		}
+		std::vector<Measurement> measures = input.getMeasurements(in);
+		std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+		cv::Mat localMap = local.calculateLocations(measures);
+		std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::seconds>( t2 - t1 ).count();
+		std::cout << "Duration: " << duration << std::endl;
+		//tresholdMat(localMap,13.0);
+		displayMat(localMap);
 	}
-	cv::Mat localMap = local.calculateLocations(measures,map,moteC);
-	//std::cout << localMap << std::endl;
-	displayMat(localMap);
-	
-	
+	cv::waitKey(0);
 	return 0;
 }

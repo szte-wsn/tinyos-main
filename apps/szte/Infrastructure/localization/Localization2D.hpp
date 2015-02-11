@@ -7,7 +7,7 @@
 #include "Config.hpp"
 #include "Measurement.hpp"
 #include "Mote.hpp"
-#include "PhaseMap2D.hpp"
+#include "PhaseCalculator.hpp"
 
 #define PERIODMISMATCH -1.0
 #define PERIODTOLERANCE 4
@@ -16,8 +16,8 @@
 class Localization2D{
 
 public:
-	Localization2D(double step_in, double angleStep_in, double deviation_in, Config& config_in);
-	cv::Mat calculateLocations(std::vector<Measurement> measures, PhaseMap2D& map, Mote& ref);
+	Localization2D(double step_in, double angleStep_in, Config& config_in, double xStart_in, double yStart_in, double xEnd_in, double yEnd_in);
+	cv::Mat calculateLocations(std::vector<Measurement> measures);
 
 	
 private:
@@ -25,10 +25,10 @@ private:
 	double deviation;
 	double angleStep;
 	double step;
-	cv::Mat* phaseMap;
+	double xStart, xEnd, yStart, yEnd;
 	cv::Mat locationMap;
 	std::map<Mote,double> mobileAngles;
-	std::map<Mote,std::vector<Position<short>>> offsets;
+	std::map<Mote,std::vector<Position<double>>> offsets;
 	void calculatePositionOffsets();
 
 	
