@@ -70,6 +70,20 @@ public:
 	ClientDev(const char *hostname, const char *port);
 };
 
+class ClientFrm : public Block {
+public:
+	Input<std::vector<unsigned char>> in;
+	Output<std::vector<unsigned char>> out;
+
+	ClientFrm();
+
+private:
+	std::vector<unsigned char> decoded;
+	void decode(const std::vector<unsigned char> &packet);
+
+	void encode(const std::vector<unsigned char> &packet);
+};
+
 class TcpClient : public Block {
 public:
 	Input<std::vector<unsigned char>> in;
