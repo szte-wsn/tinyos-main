@@ -27,19 +27,20 @@ class Slot {
 	}
 	
 	public int printtoFile(int superframeNumber) {
-		String line = String.format("%6d %5d %5d ", superframeNumber, tx1, tx2);
+		String line = String.format("%d %d ", tx1, tx2);
 		for(Integer rx:receivers){
-			line+=String.format("%5d ",rx);
+			line+=String.format("%d:",rx);
 			for(SlotMeasurement m:measurements){
 				if(m.nodeid == rx){
-					if(m.getErrorCode() != SlotMeasurement.NO_ERROR){
+					/*if(m.getErrorCode() != SlotMeasurement.NO_ERROR){
 						return superframeNumber;
-					}
-					line+=String.format("%5d  ",m.period);
-					line+=String.format("%5d  ",m.phase);
+					}*/
+					line+=String.format("%d/",m.period);
+					line+=String.format("%d ",m.phase);
 				}
 			}
 		}
+		line+=";";
 		System.out.println(line);
 		return superframeNumber+1;
 	}
