@@ -28,6 +28,8 @@ module TestAlarmP{
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
+	uses interface AutoTrim;
+	uses interface AMPacket;
 	#ifdef ENABLE_DEBUG_SLOTS	
 	uses interface AMSend;
 	uses interface Timer<TMilli>;
@@ -45,9 +47,19 @@ implementation{
 		TRIM2 = 5,
   };
   
-  enum {
+  	/*enum {
 		MEAS_SLOT = 80, //measure slot
 		SYNC_SLOT = 150, //sync slot
+		DEBUG_SLOT = 3000UL*NUMBER_OF_RX, //between super frames
+		WAIT_SLOT_1 = 62,
+		WAIT_SLOT_10 = 625,
+		WAIT_SLOT_100 = 6250,
+		WAIT_SLOT_CAL = 93,
+	};*/
+	
+	enum {
+		MEAS_SLOT = 100, //measure slot
+		SYNC_SLOT = 500, //sync slot
 		DEBUG_SLOT = 3000UL*NUMBER_OF_RX, //between super frames
 		WAIT_SLOT_1 = 62,
 		WAIT_SLOT_10 = 625,
@@ -121,6 +133,7 @@ implementation{
 	#endif
 	
 	event void Boot.booted(){
+		call AutoTrim.processSchedule();
 		call SplitControl.start();
 		unsynchronized = NO_SYNC;
 		//call Leds.set(0xff);
@@ -231,12 +244,14 @@ implementation{
 			} break;
 			case TX1:{
 				if(unsynchronized != NO_SYNC){
-					err = call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
+					uint8_t trim = call AutoTrim.getTrim(activeMeasure-1);
+					err = call RadioContinuousWave.sendWave(CHANNEL,trim, RFA1_DEF_RFPOWER, SENDING_TIME);
 				}
 			} break;
 			case TX2:{
 				if(unsynchronized != NO_SYNC){
-					err = call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
+					uint8_t trim = call AutoTrim.getTrim(activeMeasure-1);
+					err = call RadioContinuousWave.sendWave(CHANNEL,trim, RFA1_DEF_RFPOWER, SENDING_TIME);
 				}
 			} break;
 			case RX:{
@@ -379,6 +394,7 @@ implementation{
 				}else{
 					startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 					firetime = SYNC_SLOT;
+					call AutoTrim.processSyncMessage((uint8_t)(call AMPacket.source(bufPtr)),payload);
 				}
 				if(unsynchronized==NO_SYNC){
 					int i;

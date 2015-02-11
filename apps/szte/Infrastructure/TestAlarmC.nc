@@ -13,6 +13,7 @@ implementation{
 
 	components ActiveMessageC;
 	App.SplitControl->ActiveMessageC;
+	App.AMPacket -> ActiveMessageC;
 
 	components TimeSyncMessageC;
 	App.TimeSyncAMSend -> TimeSyncMessageC.TimeSyncAMSendRadio[AM_SYNCMSG];
@@ -24,6 +25,9 @@ implementation{
 
 	components MeasureWave2C as MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
+	
+	components AutoTrimC as AutoTrimC;
+	App.AutoTrim -> AutoTrimC;
 
 	#ifdef ENABLE_DEBUG_SLOTS
   components new AMSenderC(AM_WAVE_MESSAGE_T), new TimerMilliC(), BusyWaitMicroC;
