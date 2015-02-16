@@ -90,6 +90,8 @@ implementation
 
 		// the representation of one in high_bytes
 		INCREMENT = 1ul << ZERO_BITS,
+		
+		ZERO_BIT_MASK = 0xff << ZERO_BITS,
 	};
 
 	uint8_t high_bytes[HIGH_SIZE];
@@ -97,11 +99,11 @@ implementation
 	inline bool isNotNegative(from_size_t low)
 	{
 		if( FROM_SIZE == 1 )
-			return (int8_t)low >= (FROM_SIZE == 1 ? 0 : 1);
+			return (int8_t)low >= 0;
 		else if( FROM_SIZE == 2 )
-			return (int16_t)low >= (FROM_SIZE == 2 ? 0 : 1);
+			return (int16_t)low >= 0;
 		else if( FROM_SIZE == 4 )
-			return (int32_t)low >= (FROM_SIZE == 4 ? 0 : 1);
+			return (int32_t)low >= 0;
 	}
 
 	async command to_size_t HplAtmegaCounter.get()
@@ -109,41 +111,20 @@ implementation
 		from_size_t low;
 		to_size_t value;
 
-		uint8_t high8;
-		uint16_t high16;
-		uint32_t high32;
-
 		atomic
 		{
 			low = call SubCounter.get();
-
+			
 			if( HIGH_SIZE == 1 )
-			{
-				high8 = *(uint8_t*)high_bytes;
-				if( isNotNegative(low) && call SubCounter.test() )
-					high8 += INCREMENT;
-			}
+				value = *(uint8_t*)high_bytes;
 			else if( HIGH_SIZE == 2 )
-			{
-				high16 = *(uint16_t*)high_bytes;
-				if( isNotNegative(low) && call SubCounter.test() )
-					high16 += INCREMENT;
-			}
+				value = *(uint16_t*)high_bytes;
 			else if( HIGH_SIZE == 4 )
-			{
-				high32 = *(uint32_t*)high_bytes;
-				if( isNotNegative(low) && call SubCounter.test() )
-					high32 += INCREMENT;
-			}
+				value = *(uint32_t*)high_bytes;
+			if( isNotNegative(low) && call SubCounter.test() )
+				value += INCREMENT;
 		}
-
-		if( HIGH_SIZE == 1 )
-			value = high8;
-		else if( HIGH_SIZE == 2 )
-			value = high16;
-		else
-			value = high32;
-
+		
 		value <<= LOW_BITS - ZERO_BITS;
 		value |= low >> BITSHIFT;
 		return value;
@@ -151,6 +132,18 @@ implementation
 
 	async command void HplAtmegaCounter.set(to_size_t value)
 	{
+		if( HIGH_SIZE == 1 ){
+			*(uint8_t*)high_bytes = value >> (LOW_BITS - ZERO_BITS);
+			high_bytes[0] &= ZERO_BIT_MASK;
+		} else if( HIGH_SIZE == 2 ) {
+			*(uint16_t*)high_bytes = value >> (LOW_BITS - ZERO_BITS);
+			high_bytes[1] &= ZERO_BIT_MASK;
+		} else if( HIGH_SIZE == 4 ) {
+			*(uint32_t*)high_bytes = value >> (LOW_BITS - ZERO_BITS);
+			high_bytes[3] &= ZERO_BIT_MASK;
+		}
+		
+		call SubCounter.set( value >> BITSHIFT );
 	}
 
 	default async event void HplAtmegaCounter.overflow() { }
@@ -176,12 +169,41 @@ implementation
 	// does not help if we put the body inside an atomic block
 	async command bool HplAtmegaCounter.test()
 	{
-		return call SubCounter.test() && high_bytes[0] == -1;
+		if ( call SubCounter.test() ){
+			if( HIGH_SIZE == 4 ){
+				if( high_bytes[0] == 0xff && high_bytes[1] == 0xff && high_bytes[2] == 0xff && high_bytes[3] == ZERO_BIT_MASK ) 
+					return TRUE;
+				else
+					return FALSE;
+			}
+			if( HIGH_SIZE == 2 ) {
+					if( high_bytes[0] == 0xff && high_bytes[1] == ZERO_BIT_MASK ) 
+						return TRUE;
+					else
+						return FALSE;
+			}
+			if( HIGH_SIZE == 1 ) {
+				if( high_bytes[0] == ZERO_BIT_MASK ) 
+						return TRUE;
+					else
+						return FALSE;
+			} else
+				return FALSE; //should never happen
+		} else
+			return FALSE;
 	}
 
 	async command void HplAtmegaCounter.reset()
 	{
-		call SubCounter.reset();
+		if ( call HplAtmegaCounter.test() ){
+			if( HIGH_SIZE == 1 )
+				*(uint8_t*)high_bytes += INCREMENT;
+			else if( HIGH_SIZE == 2 )
+				*(uint16_t*)high_bytes += INCREMENT;
+			else if( HIGH_SIZE == 4 )
+				*(uint32_t*)high_bytes += INCREMENT;
+			call SubCounter.reset();
+		}
 	}
 
 	async command void HplAtmegaCounter.start()

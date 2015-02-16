@@ -180,13 +180,14 @@ implementation
 	components new TinyosNetworkLayerC();
 
 	TinyosNetworkLayerC.SubSend -> UniqueLayerC;
-	TinyosNetworkLayerC.SubReceive -> PacketLinkLayerC;
+	TinyosNetworkLayerC.SubReceive -> Ieee154PacketLayerC;
 	TinyosNetworkLayerC.SubPacket -> Ieee154PacketLayerC;
 
 // -------- IEEE 802.15.4 Packet
 
 	components new Ieee154PacketLayerC();
 	Ieee154PacketLayerC.SubPacket -> PacketLinkLayerC;
+	Ieee154PacketLayerC.SubReceive -> PacketLinkLayerC;
 
 // -------- UniqueLayer Send part (wired twice)
 
@@ -198,7 +199,11 @@ implementation
 
 	components new PacketLinkLayerC();
 	PacketLink = PacketLinkLayerC;
+#ifdef RFA1_HARDWARE_ACK
+	PacketLinkLayerC.PacketAcknowledgements -> RadioDriverLayerC;
+#else
 	PacketLinkLayerC.PacketAcknowledgements -> SoftwareAckLayerC;
+#endif
 	PacketLinkLayerC -> LowPowerListeningLayerC.Send;
 	PacketLinkLayerC -> LowPowerListeningLayerC.Receive;
 	PacketLinkLayerC -> LowPowerListeningLayerC.RadioPacket;
@@ -209,7 +214,11 @@ implementation
 	#warning "*** USING LOW POWER LISTENING LAYER"
 	components new LowPowerListeningLayerC();
 	LowPowerListeningLayerC.Config -> RadioP;
+#ifdef RFA1_HARDWARE_ACK
+	LowPowerListeningLayerC.PacketAcknowledgements -> RadioDriverLayerC;
+#else
 	LowPowerListeningLayerC.PacketAcknowledgements -> SoftwareAckLayerC;
+#endif
 #else	
 	components new LowPowerListeningDummyC() as LowPowerListeningLayerC;
 #endif
@@ -258,10 +267,14 @@ implementation
 
 // -------- SoftwareAcknowledgement
 
+#ifndef RFA1_HARDWARE_ACK
 	components new SoftwareAckLayerC();
 	SoftwareAckLayerC.AckReceivedFlag -> MetadataFlagsLayerC.PacketFlag[unique(UQ_METADATA_FLAGS)];
 	SoftwareAckLayerC.RadioAlarm -> RadioAlarmC.RadioAlarm[unique(UQ_RADIO_ALARM)];
 	PacketAcknowledgements = SoftwareAckLayerC;
+#else
+	components new DummyLayerC() as SoftwareAckLayerC;
+#endif
 	SoftwareAckLayerC.Config -> RadioP;
 	SoftwareAckLayerC.SubSend -> CsmaLayerC;
 	SoftwareAckLayerC.SubReceive -> CsmaLayerC;
@@ -313,7 +326,14 @@ implementation
 
 // -------- Driver
 
+#ifdef RFA1_HARDWARE_ACK
+	components RFA1DriverHwAckC as RadioDriverLayerC;
+	PacketAcknowledgements = RadioDriverLayerC;
+	RadioDriverLayerC.Ieee154PacketLayer -> Ieee154PacketLayerC;
+	RadioDriverLayerC.AckReceivedFlag -> MetadataFlagsLayerC.PacketFlag[unique(UQ_METADATA_FLAGS)];
+#else
 	components RFA1DriverLayerC as RadioDriverLayerC;
+#endif
 	RadioDriverLayerC.Config -> RadioP;
 	RadioDriverLayerC.PacketTimeStamp -> TimeStampingLayerC;
 	PacketTransmitPower = RadioDriverLayerC.PacketTransmitPower;

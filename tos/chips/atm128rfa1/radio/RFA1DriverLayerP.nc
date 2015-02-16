@@ -228,9 +228,17 @@ implementation
     PHY_CC_CCA = RFA1_CCA_MODE_VALUE | channel;
     
     SET_BIT(TRXPR,SLPTR);
-    
+
+#if defined(RFA1_RADIO_TIMER1_MCU) || defined(RFA1_RADIO_TIMER1_MICRO) 
+    #ifdef RFA1_ENABLE_EXT_ANT_SW
+      #error "RFA1_ENABLE_EXT_ANT_SW and RFA1_RADIO_TIMER1_* can't be defined both: both uses DIG1"
+    #endif
+    call SfdCapture.setMode(ATMRFA1_CAP16_RISING_EDGE);
+    TRX_CTRL_1 |= 1<<IRQ_2_EXT_EN; //switches irq capture to timer1
+#else
     call SfdCapture.setMode(ATMRFA1_CAPSC_ON);
-    
+#endif
+
     state = STATE_SLEEP;
   }
 
@@ -398,7 +406,13 @@ implementation
 
   enum {
     // 16 us delay (1 tick), 4 bytes preamble (2 ticks each), 1 byte SFD (2 ticks)
-    TX_SFD_DELAY = 12,
+    #ifdef RFA1_RADIO_TIMER1_MCU
+      TX_SFD_DELAY = 431,
+    #elif defined(RFA1_RADIO_TIMER1_MICRO) 
+      TX_SFD_DELAY = 218,
+    #else
+      TX_SFD_DELAY = 12,
+    #endif
   };
 
   tasklet_async command error_t RadioSend.send(message_t* msg)
@@ -479,7 +493,7 @@ implementation
 
       call DiagMsg.chr('t');
       call DiagMsg.uint32(call PacketTimeStamp.isValid(msg) ? call PacketTimeStamp.timestamp(msg) : 0);
-      call DiagMsg.uint16(call LocalTime.get());
+      call DiagMsg.uint32(call LocalTime.get());
       call DiagMsg.int8(length);
       call DiagMsg.hex8s(getPayload(msg), length - 2);
       call DiagMsg.send();
@@ -560,7 +574,7 @@ implementation
 
       call DiagMsg.chr('r');
       call DiagMsg.uint32(call PacketTimeStamp.isValid(rxMsg) ? call PacketTimeStamp.timestamp(rxMsg) : 0);
-      call DiagMsg.uint16(call LocalTime.get());
+      call DiagMsg.uint32(call LocalTime.get());
       call DiagMsg.int8(sendSignal ? length : -length);
       call DiagMsg.hex8s(getPayload(rxMsg), length - 2);
       call DiagMsg.int8(call PacketRSSI.isSet(rxMsg) ? call PacketRSSI.get(rxMsg) : -1);
@@ -806,11 +820,11 @@ implementation
 
    async command mcu_power_t McuPowerOverride.lowestState()
    {
-//       if( (IRQ_MASK & 1<<AWAKE_EN) != 0 || (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) > 5  )
-//          return ATM128_POWER_EXT_STANDBY;
-//       else
-//          return ATM128_POWER_DOWN;
-      return ATM128_POWER_IDLE;
+//      if( (IRQ_MASK & 1<<AWAKE_EN) != 0 || (boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0F) > 5  )
+//        return ATM128_POWER_EXT_STANDBY;
+//      else
+//        return ATM128_POWER_DOWN;
+     return ATM128_POWER_IDLE;
    }
 
   /*----------------- RadioPacket -----------------*/
