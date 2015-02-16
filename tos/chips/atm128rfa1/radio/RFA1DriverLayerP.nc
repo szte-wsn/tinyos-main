@@ -1215,13 +1215,15 @@ implementation
       TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 2;
       #elif RFA1_DATA_RATE == 2000
       TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3;
-      #else
-      #error Unsupported RFA1_DATA_RATE (supported: 250, 500, 1000, 2000. default is 250)
       #endif
       #endif
       PHY_TX_PWR = RFA1_PA_BUF_LT | RFA1_PA_LT | (txPower)<<TX_PWR0;
       TRX_CTRL_1 |= 1<<TX_AUTO_CRC_ON;
       PHY_CC_CCA = RFA1_CCA_MODE_VALUE | channel;
+      
+      #if defined(RFA1_RADIO_TIMER1_MCU) || defined(RFA1_RADIO_TIMER1_MICRO) 
+      TRX_CTRL_1 |= 1<<IRQ_2_EXT_EN; //switches irq capture to timer1
+      #endif
       
       IRQ_STATUS = 0xFF;
       TRX_STATE = CMD_RX_ON;
