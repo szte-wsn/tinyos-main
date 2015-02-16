@@ -211,11 +211,11 @@ implementation
 
     SET_BIT(TRXPR,SLPTR);
 
-#ifdef RFA1_RADIO_TIMER1
+#if defined(RFA1_RADIO_TIMER1_MCU) || defined(RFA1_RADIO_TIMER1_MICRO) 
     #ifdef RFA1_ENABLE_EXT_ANT_SW
-      #error "RFA1_ENABLE_EXT_ANT_SW and RFA1_RADIO_TIMER1 can't be defined both: both uses DIG1"
+      #error "RFA1_ENABLE_EXT_ANT_SW and RFA1_RADIO_TIMER1_* can't be defined both: both uses DIG1"
     #endif
-    call SfdCapture.setMode(0); //ATMRFA1_CAP16_RISING_EDGE
+    call SfdCapture.setMode(ATMRFA1_CAP16_RISING_EDGE);
     TRX_CTRL_1 |= 1<<IRQ_2_EXT_EN; //switches irq capture to timer1
 #else
     call SfdCapture.setMode(ATMRFA1_CAPSC_ON);
@@ -384,7 +384,13 @@ implementation
 
   enum {
     // 16 us delay (1 tick), 4 bytes preamble (2 ticks each), 1 byte SFD (2 ticks)
-    TX_SFD_DELAY = 11, //176, //11
+    #ifdef RFA1_RADIO_TIMER1_MCU
+      TX_SFD_DELAY = 431,
+    #elif defined(RFA1_RADIO_TIMER1_MICRO) 
+      TX_SFD_DELAY = 218,
+    #else
+      TX_SFD_DELAY = 11,
+    #endif
   };
 
   tasklet_async command error_t RadioSend.send(message_t* msg)

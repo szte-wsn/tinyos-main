@@ -73,10 +73,25 @@ enum
 #define SOFTWAREACK_TIMEOUT	1000
 #endif
 
+#ifdef RFA1_RADIO_TIMER1_MCU
 /**
  * This is the timer type of the radio alarm interface
  */
-#ifdef RFA1_RADIO_TIMER1
+typedef TMcu TRadio;
+/**
+ * The number of radio alarm ticks per one microsecond
+ */
+#define RADIO_ALARM_MICROSEC	2
+
+/**
+ * The base two logarithm of the number of radio alarm ticks per one millisecond
+ */
+#define RADIO_ALARM_MILLI_EXP	11
+
+#elif defined(RFA1_RADIO_TIMER1_MICRO)
+/**
+ * This is the timer type of the radio alarm interface
+ */
 typedef TMicro TRadio;
 /**
  * The number of radio alarm ticks per one microsecond
@@ -87,7 +102,11 @@ typedef TMicro TRadio;
  * The base two logarithm of the number of radio alarm ticks per one millisecond
  */
 #define RADIO_ALARM_MILLI_EXP	10
+
 #else
+/**
+ * This is the timer type of the radio alarm interface
+ */
 typedef T62khz TRadio;
 /**
  * The number of radio alarm ticks per one microsecond

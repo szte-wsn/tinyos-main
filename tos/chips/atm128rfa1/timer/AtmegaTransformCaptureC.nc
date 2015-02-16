@@ -48,13 +48,32 @@ implementation{
 	
 	async command to_size_t HplAtmegaCapture.get(){
 		to_size_t ret = call HplAtmegaCounter.get();
-		from_size_t capt = call SubCapture.get() >> BITSHIFT;
-		if( FROM_SIZE == 1 ){
-			ret+=(int8_t)(capt) - (int8_t)ret;
-		} else if(FROM_SIZE == 2){
-			ret+=(int16_t)(capt) - (int16_t)ret;
-		} else if(FROM_SIZE == 4){
-			ret+=(int32_t)(capt) - (int32_t)ret;
+		from_size_t capt = call SubCapture.get()>>BITSHIFT;
+		if( BITSHIFT == 0 ){
+			if( FROM_SIZE == 1 ){
+				ret += (int8_t)capt - (int8_t)ret;
+			} else if(FROM_SIZE == 2){
+				ret += (int16_t)capt - (int16_t)ret;
+			} else if(FROM_SIZE == 4){
+				ret += (int32_t)capt - (int32_t)ret;
+			}
+		} else {
+			if( FROM_SIZE == 1 ){
+				uint8_t sub = ret&(0xFF>>BITSHIFT);
+				ret = ret - sub + capt;
+				if( sub < capt )
+					ret -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
+			} else if(FROM_SIZE == 2){
+				uint16_t sub = ret&(0xFFFF>>BITSHIFT);
+				ret =  ret - sub + capt;
+				if( sub < capt )
+					ret -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
+			} else if(FROM_SIZE == 4){
+				uint32_t sub = ret&(0xFFFFFFFF>>BITSHIFT);
+				ret = ret - sub + capt;
+				if( sub < capt )
+					ret -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
+			}
 		}
 		return ret;
 	}
