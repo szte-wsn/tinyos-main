@@ -10,7 +10,7 @@
 #include "TestAlarm.h"
 #include "RadioConfig.h"
 
-#define SENDING_TIME 64
+#define SENDING_TIME 2000
 
 #define TX1_THRESHOLD 0
 #define TX2_THRESHOLD 0
@@ -22,7 +22,7 @@ module TestAlarmP{
 	uses interface Boot;
 	uses interface SplitControl;
 	uses interface Leds;
-	uses interface Alarm<T62khz, uint32_t> as Alarm;
+	uses interface Alarm<TMcu, uint32_t> as Alarm;
 	uses interface RadioContinuousWave;
 	uses interface TimeSyncAMSend<TRadio, uint32_t> as TimeSyncAMSend;
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
@@ -44,32 +44,32 @@ module TestAlarmP{
 implementation{
 
 	enum {
-    		CHANNEL = 17,
+		CHANNEL = 17,
 		TRIM1 = 2,
 		TRIM2 = 5,
-  	};
-  	#ifndef ENABLE_AUTOTRIM
-  	enum {
-		MEAS_SLOT = 80, //measure slot
-		SYNC_SLOT = 150, //sync slot
-		DEBUG_SLOT = 3000UL*NUMBER_OF_RX,
-		WAIT_SLOT_1 = 62,
-		WAIT_SLOT_10 = 625,
-		WAIT_SLOT_100 = 6250,
-		WAIT_SLOT_CAL = 93,
 	};
-	#else
+#ifndef ENABLE_AUTOTRIM
+	enum {
+		MEAS_SLOT = 2560,
+		SYNC_SLOT = 4800,
+		DEBUG_SLOT = 96000UL*NUMBER_OF_RX,
+		WAIT_SLOT_1 = 2000,
+		WAIT_SLOT_10 = 20000UL,
+		WAIT_SLOT_100 = 200000UL,
+		WAIT_SLOT_CAL = 2976,
+	};
+#else
 	//increased slot times because of processing overhead    ***NOT OPTIMIZED YET***
 	enum {
-		MEAS_SLOT = 100, //measure slot
-		SYNC_SLOT = 500, //sync slot
-		DEBUG_SLOT = 3000UL*NUMBER_OF_RX,
-		WAIT_SLOT_1 = 62,
-		WAIT_SLOT_10 = 625,
-		WAIT_SLOT_100 = 6250,
-		WAIT_SLOT_CAL = 93,
+		MEAS_SLOT = 3200, //measure slot
+		SYNC_SLOT = 16000, //sync slot
+		DEBUG_SLOT = 96000UL*NUMBER_OF_RX,
+		WAIT_SLOT_1 = 2000,
+		WAIT_SLOT_10 = 20000UL,
+		WAIT_SLOT_100 = 200000UL,
+		WAIT_SLOT_CAL = 2976,
 	};
-	#endif
+#endif
 
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
@@ -84,11 +84,6 @@ implementation{
 	typedef struct schedule_t{
 		uint8_t work;
 	}schedule_t;
-	
-	#ifdef TEST_CALCULATION_TIMING
-	uint32_t sentpacket = 0;
-	uint32_t droppacket = 0;
-	#endif
 
 	message_t debugPacket;
 	message_t syncPacket[2];
@@ -118,24 +113,6 @@ implementation{
 	task void sendDummySync();
 	task void processData();
 	
-	#ifdef MEASURE_CPU_LOAD
-	uint32_t superframeStart;
-	uint32_t lastTime;
-	uint32_t busyTime;
-	uint32_t lastFrame;
-	uint32_t lastBusy;
-	task void measureTask(){
-		atomic{
-			uint32_t now = call Alarm.getNow();
-			if( (int32_t)(now - lastTime) > 1 ){
-				busyTime += (int32_t)(now - lastTime);
-			}
-			lastTime = now;
-		}
-		post measureTask();
-	}
-	#endif
-	
 	event void Boot.booted(){
 		#ifdef ENABLE_AUTOTRIM
 		call AutoTrim.processSchedule();
@@ -150,13 +127,8 @@ implementation{
 			currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 			startOfFrame = call Alarm.getNow();
 			firetime = 0; 
-			call Alarm.startAt(startOfFrame, 100);
+			call Alarm.startAt(startOfFrame, 4000);
 		}
-		#ifdef MEASURE_CPU_LOAD
-		post measureTask();
-		lastTime = call Alarm.getNow();
-		busyTime = 0;
-		#endif
 	}
 
 	event void SplitControl.stopDone(error_t error){}
@@ -302,12 +274,6 @@ implementation{
 			#ifdef ENABLE_DEBUG_SLOTS
 			sendedMeasureCounter = 0;
 			#endif
-			#ifdef MEASURE_CPU_LOAD
-			lastFrame = call Alarm.getNow() - superframeStart;
-			lastBusy = busyTime;
-			superframeStart = call Alarm.getNow();
-			busyTime = 0;
-			#endif
 		}
 		if(unsynchronized == NO_SYNC){
 			setLeds(ERROR_UNSYNCHRONIZED);
@@ -323,13 +289,6 @@ implementation{
 		Sends sync message.
 	*/
 	task void sendSync(){
-		#ifdef TEST_CALCULATION_TIMING
-		int8_t temp=NUMBER_OF_RX-1;
-		#endif
-		#ifdef MEASURE_CPU_LOAD
-		currentSyncPayload->freq[0] = lastFrame;
-		currentSyncPayload->freq[1] = lastBusy;
-		#endif
 		
 		atomic{
 			currentSyncPayload->frame = syncFrame;
@@ -343,18 +302,7 @@ implementation{
 		}	
 		if( currentSyncPayload->phase[NUMBER_OF_RX-1] == 255 )
 			setLeds(ERROR_WAVE_PROCESSING);
-		#ifdef TEST_CALCULATION_TIMING
-		sentpacket+=NUMBER_OF_RX;
-		while( temp>=0 && currentSyncPayload->phaseRef[temp] == 0 ){
-			droppacket++;
-			temp--;
-		}
-		if(call DiagMsg.record()){
-			call DiagMsg.uint32(sentpacket);
-			call DiagMsg.uint32(droppacket);
-			call DiagMsg.send();
-		}
-		#endif
+		
 		currentSyncPacket = currentSyncPacket==0?1:0;
 		currentSyncPayload = (sync_message_t*)call TimeSyncAMSend.getPayload(&syncPacket[currentSyncPacket],sizeof(sync_message_t));
 		processing = FALSE;
