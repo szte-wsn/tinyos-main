@@ -310,6 +310,17 @@ std::vector<std::vector<uint8_t>> RipsDat::LOC_4TX_NOANCHORRX = {
 	{RX,	RX,	RX,	RX,	RX,	RX,	W100,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_8 = {
+	{ RSYN,  TX1,  TX1,  W10, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,  TX2,  TX2,  W10, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ SSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,   RX,  W10, SSYN, RSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,   RX,  W10, RSYN, SSYN, RSYN, RSYN, RSYN},
+	{ RSYN,   RX,   RX,  W10, RSYN, RSYN, SSYN, RSYN, RSYN},
+	{ RSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, SSYN, RSYN},
+	{ RSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, RSYN, SSYN}
+};
+
 
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
@@ -323,6 +334,7 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"LOC_MULT_TX", LOC_MULT_TX},
 	{"LOC_4TX_4ANCHORRX", LOC_4TX_4ANCHORRX},
 	{"LOC_4TX_NOANCHORRX", LOC_4TX_NOANCHORRX},
+	{"PHASEMAP_TEST_8", PHASEMAP_TEST_8},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
