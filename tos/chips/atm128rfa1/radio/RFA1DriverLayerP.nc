@@ -994,11 +994,11 @@ implementation
     
     IRQ_MASK = 0; // we will poll for PLL_LOCK
     TRX_CTRL_1 = 0; //disable aut crc
-    TRX_STATE = CMD_FORCE_TRX_OFF; 
+    TRX_STATE = CMD_FORCE_TRX_OFF;
+    call BusyWait.wait(40); //this is a tested value - it should be much smaller
+
     PHY_CC_CCA = RFA1_CCA_MODE_VALUE | testChannel;
     PHY_TX_PWR = testPower;
-    while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != TRX_OFF )
-      ;
     TST_CTRL_DIGI = 0x0F; //Enable test mode step #1
     TRX_CTRL_2 = (TRX_CTRL_2 & 0xfc) | 3; //2Mb/s mode
     RX_CTRL = 0xA7; //"configure high data rate  mode" although we're writing reserved bits...
@@ -1017,8 +1017,7 @@ implementation
     PART_NUM = 0x54; //Enable test mode step #2
     PART_NUM = 0x46; //Enable test mode step #3
     TRX_STATE = CMD_PLL_ON;
-    while( (TRX_STATUS & RFA1_TRX_STATUS_MASK) != PLL_ON )
-      ;
+    call BusyWait.wait(40); //this is a tested value - it should be much bigger
     
     TRX_STATE = CMD_TX_START;
   }
@@ -1107,16 +1106,13 @@ implementation
       atomic{
         IRQ_MASK = 0;
         radioIrq = 0;
-        IRQ_STATUS = 0xFF;
       }
       if( sampleChannel != channel ){
         PHY_CC_CCA=RFA1_CCA_MODE_VALUE|sampleChannel;
         PHY_CC_CCA=RFA1_CCA_MODE_VALUE|sampleChannel;//this value is cached, we have to write it twice to update it, unless we're in TRX_OFF
-        while( !(IRQ_STATUS & (1<<PLL_LOCK)) )
-          ;
-        IRQ_STATUS = 0xFF;
       }
       atomic{
+        call BusyWait.wait(30); //wait for PLL LOCK (24 us in theory)
         *time = call LocalTime.get();
         /*
          * This assembly part stores the PHY_RSSI register in the buffer at 500kHz (which is the update frequency of the register)
@@ -1165,6 +1161,7 @@ implementation
         *time = call LocalTime.get() - *time;
       }
       if( sampleChannel != channel ){
+        IRQ_STATUS = 0xFF;
         PHY_CC_CCA=RFA1_CCA_MODE_VALUE|channel;
         PHY_CC_CCA=RFA1_CCA_MODE_VALUE|channel;//this value is cached, we have to write it twice to update it, unless we're in TRX_OFF
         while( !(IRQ_STATUS & (1<<PLL_LOCK)) )

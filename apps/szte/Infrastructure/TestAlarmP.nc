@@ -10,11 +10,13 @@
 #include "TestAlarm.h"
 #include "RadioConfig.h"
 
-#define SENDING_TIME 2000
+#define SENDING_TIME 1920UL
 
-#define TX1_THRESHOLD 0
-#define TX2_THRESHOLD 0
-#define RX_THRESHOLD 0
+#define TX1_THRESHOLD 0UL
+#define TX2_THRESHOLD 200UL
+#define RX_THRESHOLD 200UL
+
+//rx-tx diff: 130us
 
 #define NO_SYNC_TOLERANCE 5
 
