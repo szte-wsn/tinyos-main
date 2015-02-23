@@ -20,7 +20,7 @@ else:
 index=0;
 for filename in filenames:
   f = open(filename, 'rb')
-  
+
   #reading the main data
   arraylength = struct.unpack('>I', f.read(4))[0]
   if arraylength == 0:
@@ -44,7 +44,7 @@ for filename in filenames:
   if measureTime > 100:
     period, phase, channel, sender1, sender2, fineTune1, fineTune2, power1, power2, nodeid, measureId, timestamp  = struct.unpack('>HIIBHHbbBBHHQ', f.read(29))
     f.close()
-    
+
 
     #print data
     print("Read Values from file: " + filename)
@@ -59,30 +59,28 @@ for filename in filenames:
     print("Senders: "+str(sender1)+", "+str(sender2))
     print("FineTune: "+str(fineTune1)+", "+str(fineTune2))
     print("Power: "+str(power1)+", "+str(power2))
-    
+
     #set up the title
     title = datetime.fromtimestamp(timestamp/1000).strftime("&%m.%d. %H:%M:%S.%f")[:-3]
     title += " #"+str(measureId)+"/"+str(nodeid)
     title += " ("+str(sender1)+", "+str(sender2)+")"
-    timeusbase = measureTime/arraylength
   else:
     title = ""
-    timeusbase = 2
    #set up the time axis, and convert the value axis to integer
   timelist = []
   valuelist = []
   for i in range(0, arraylength):
-    timelist.append(i*timeusbase)
+    timelist.append(i)
     if( sys.version_info.major < 3):
       valuelist.append(ord(values[i]))
     else:
       valuelist.append(int(values[i]))
-  
+
   #plot
   plt.figure(index);
   plt.plot(timelist, valuelist)
   plt.title(title)
-  plt.xlabel('time [us]')
+  plt.xlabel('sample')
   plt.ylabel('RSSI')
   plt.draw()
   index+=1
