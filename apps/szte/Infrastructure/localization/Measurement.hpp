@@ -23,6 +23,9 @@ public:
 	Mote getTx1();
 	void setTx2(Mote& tx2_in);
 	Mote getTx2();
+	
+	std::map<Mote,short> getPhases();
+	std::map<Mote,short> getPeriods();
 
 	void addMoteMeasure(Mote& mote_in, short phase_in, short period_in);
 

@@ -14,6 +14,10 @@ void Measurement::setTx1(Mote& tx1_in){ Measurement::tx1 = tx1_in; }
 Mote Measurement::getTx1(){ return Measurement::tx1; }
 void Measurement::setTx2(Mote& tx2_in){ Measurement::tx2 = tx2_in; }
 Mote Measurement::getTx2(){ return Measurement::tx2; }
+std::map<Mote,short> Measurement::getPhases(){ return phases; }
+std::map<Mote,short> Measurement::getPeriods(){ return periods; }
+
+
 
 void Measurement::addMoteMeasure(Mote& mote_in, short phase_in, short period_in){
 	 Measurement::phases.insert(std::pair<Mote,short>(mote_in,phase_in));
