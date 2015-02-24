@@ -15,15 +15,15 @@ recorder: recorder.o block.o serial.o
 phaseplot: phaseplot.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-.PHONY: clean socat
-
-clean:
-	$(RM) test *.o *.d
-
-socat:
-	socat -d -d STDIO PTY
-
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
 -include ${DEPENDS}
+
+.PHONY: clean socat
+
+clean:
+	$(RM) test recorder phaseplot *.o *.d
+
+socat:
+	socat -d -d STDIO PTY
