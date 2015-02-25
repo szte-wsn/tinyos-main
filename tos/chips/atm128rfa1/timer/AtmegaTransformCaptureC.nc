@@ -39,9 +39,6 @@ generic module AtmegaTransformCaptureC(typedef to_size_t @integer(), typedef fro
 	uses interface HplAtmegaCounter<to_size_t>;
 }
 implementation{
-	
-	to_size_t lastCaptured;
-	
 	enum
 	{
 		FROM_SIZE = sizeof(from_size_t),
@@ -49,17 +46,11 @@ implementation{
 		BITSHIFT = bitshift,
 	};
 	
+	to_size_t lastCaptured;
+	
 	async command to_size_t HplAtmegaCapture.get(){
-		return lastCaptured;
-	}
-
-	async command void HplAtmegaCapture.set(to_size_t value){
-		lastCaptured = value;
-	}
-
-	async event void SubCapture.fired(){
-		lastCaptured = call HplAtmegaCounter.get();
 		from_size_t capt = call SubCapture.get()>>BITSHIFT;
+		lastCaptured = call HplAtmegaCounter.get();
 		if( BITSHIFT == 0 ){
 			if( FROM_SIZE == 1 ){
 				lastCaptured += (int8_t)capt - (int8_t)lastCaptured;
@@ -86,6 +77,14 @@ implementation{
 					lastCaptured -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
 			}
 		}
+		return lastCaptured;
+	}
+
+	async command void HplAtmegaCapture.set(to_size_t value){
+		lastCaptured = value;
+	}
+
+	async event void SubCapture.fired(){
 		signal HplAtmegaCapture.fired();
 	}
 
