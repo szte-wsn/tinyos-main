@@ -77,6 +77,7 @@ implementation{
 		nx_uint8_t frame;
 		nx_uint8_t freq[NUMBER_OF_RX];
 		nx_uint8_t phase[NUMBER_OF_RX];
+		nx_uint8_t rssis[NUMBER_OF_RX];
 	} sync_message_t;
 
 	enum {
@@ -331,6 +332,8 @@ implementation{
 		call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
 		currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
 		currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
+		currentSyncPayload->rssis[processBuffer] = (call MeasureWave.getRssi1()>0xf?0xf:call MeasureWave.getRssi1()) << 4;
+		currentSyncPayload->rssis[processBuffer] |= call MeasureWave.getRssi2()>0xf?0xf:call MeasureWave.getRssi2();
 		#ifdef DEBUG_COLLECTOR
 		currentSyncPayload->freq[processBuffer] = buffer[processBuffer][0];
 		#endif

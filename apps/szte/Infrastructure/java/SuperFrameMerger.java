@@ -97,17 +97,37 @@ public class SuperFrameMerger implements MessageListener{
 				for(int i=0;i<msg.getSettingsNum();i++){
 					int receivedslot = activeSlots.get(i);
 					if( receivedslot < currentSlot ){
-						superFrames.getLast().get(receivedslot).addMeasurement(
-								dataSource,
-								msg.getElement_freq(i),
-								msg.getElement_phase(i)
-								);
+						if( msg.hasRssi() ) {
+							superFrames.getLast().get(receivedslot).addMeasurement(
+									dataSource,
+									msg.getElement_freq(i),
+									msg.getElement_phase(i),
+									msg.getElement_rssi1(i),
+									msg.getElement_rssi2(i)
+									);
+						} else {
+							superFrames.getLast().get(receivedslot).addMeasurement(
+									dataSource,
+									msg.getElement_freq(i),
+									msg.getElement_phase(i)
+									);
+						}
 					} else {
-						superFrames.getFirst().get(receivedslot).addMeasurement(
-								dataSource,
-								msg.getElement_freq(i),
-								msg.getElement_phase(i)
-								);
+						if( msg.hasRssi() ) {
+							superFrames.getFirst().get(receivedslot).addMeasurement(
+									dataSource,
+									msg.getElement_freq(i),
+									msg.getElement_phase(i),
+									msg.getElement_rssi1(i),
+									msg.getElement_rssi2(i)
+									);
+						} else {
+							superFrames.getFirst().get(receivedslot).addMeasurement(
+									dataSource,
+									msg.getElement_freq(i),
+									msg.getElement_phase(i)
+									);
+						}
 					}
 				}
 				lastSlot = currentSlot;

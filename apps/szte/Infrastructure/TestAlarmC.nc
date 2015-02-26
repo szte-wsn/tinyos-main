@@ -23,7 +23,7 @@ implementation{
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
 
-	components MeasureWave2C as MeasureWaveC;
+	components MeasureWave3C as MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
 	#ifdef ENABLE_AUTOTRIM
 	components AutoTrimC as AutoTrimC;

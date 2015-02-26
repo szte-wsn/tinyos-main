@@ -4,7 +4,7 @@
  * Author: Miklos Maroti
  */
 
-module MeasureWave2P {
+module MeasureWave3P {
 	provides interface MeasureWave;
 
 #ifdef MEASUREWAVE_PROFILER
@@ -17,66 +17,66 @@ implementation {
 
 	enum {
 		ERR_NONE = 0,
-		ERR_START_NOT_FOUND = 101,
-		ERR_SMALL_MINMAX_RANGE = 102,
-		ERR_FEW_ZERO_CROSSINGS = 103,
-		ERR_LARGE_PERIOD = 104,
-		ERR_PERIOD_MISMATCH = 105,
-		ERR_ZERO_PERIOD = 106
+		ERR_NO_SILENCE1 = 101,
+		ERR_NO_SILENCE2 = 102,
+		ERR_SMALL_RSSI = 103,
+		ERR_SMALL_MINMAX_RANGE = 104,
+		ERR_FEW_ZERO_CROSSINGS = 105,
+		ERR_LARGE_PERIOD = 106,
+		ERR_PERIOD_MISMATCH = 107,
+		ERR_ZERO_PERIOD = 108
 	};
 
 	uint8_t err;
 
 	enum {
 		INPUT_LENGTH = 480,
-		FIND_TX_LEVEL = 5,
-		FIND_TX_START = 1,	// first few bytes are usually non-zero
-		FIND_TX_END = 80,	// tx must start before
-		FIND_TX_NODIP = 0,	// level should not dip below TX_LEVEL
-		FILTER_START_DELAY = 50,
+		SILENCE1_START = 0,
+		SILENCE1_END = 10,
+		TRANSMIT1_START = 30,
+		TRANSMIT1_END = 60,
+		FILTER_START = 120,
+		FILTER_END = 400,
+		TRANSMIT2_START = 430,
+		TRANSMIT2_END = 460,
+		SILENCE2_START = 470,
+		SILENCE2_END = 480,
+		SILENCE_LIMIT = 6,
 		FILTER_MINMAX_RANGE = 7,
-		FILTER_TRIPLETS = (INPUT_LENGTH - FIND_TX_END - FILTER_START_DELAY - 2) / 3,
+		FILTER_TRIPLETS = (FILTER_END - FILTER_START) / 3,
 		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
 		ZERO_CROSSINGS = 3,
 		APPROX_WINDOW = 4
 	};
 
-	// finds the start of the real transmission (where it becomes non-zero)
-	// returns 0 if the start could not be found
-	// we modify the byte input[length] and restore it
+	uint16_t get_sum(uint8_t *input, uint8_t len) {
+		uint16_t a = 0;
 
-	uint8_t tx_start;
-	void find_tx_start(uint8_t *input, uint8_t length) {
-		uint8_t *pos1 = input, *pos2 = input + length;
-		uint8_t overwritten;
+		do {
+			a += *(input++);
+		} while (--len != 0);
 
-		overwritten = *pos2;
-		*pos2 = 255;
+		return a;
+	}
 
-		--pos1;
-		while (*(++pos1) <= FIND_TX_LEVEL)
-			;
+	uint8_t tx1_rssi, tx2_rssi;
+	void check_levels(uint8_t *input) {
+		uint8_t a;
 
-		*pos2 = overwritten;
-
-		if (pos1 != input && pos1 != pos2) {
-			if (FIND_TX_NODIP) {
-				while (*(--pos2) > FIND_TX_LEVEL)
-					;
-
-				if (pos2 + 1 == pos1) {
-					tx_start = pos1 - input;
-					return;
-				}
-			}
-			else {
-				tx_start = pos1 - input;
-				return;
-			}
+		a = get_sum(input + SILENCE1_START, SILENCE1_END - SILENCE1_START) / (SILENCE1_END - SILENCE1_START);
+		if (a > SILENCE_LIMIT) {
+			err = ERR_NO_SILENCE1;
+			return;
 		}
 
-		tx_start = 0;
-		err = ERR_START_NOT_FOUND;
+		a = get_sum(input + SILENCE2_START, SILENCE2_END - SILENCE2_START) / (SILENCE2_END - SILENCE2_START);
+		if (a > SILENCE_LIMIT) {
+			err = ERR_NO_SILENCE2;
+			return;
+		}
+
+		tx1_rssi = get_sum(input + TRANSMIT1_START, TRANSMIT1_END - TRANSMIT1_START) / (TRANSMIT1_END - TRANSMIT1_START);
+		tx2_rssi = get_sum(input + TRANSMIT2_START, TRANSMIT2_END - TRANSMIT2_START) / (TRANSMIT2_END - TRANSMIT2_START);
 	}
 
 	// Calculates the [1,2,3,2,1] filter in place for triplets * 3
@@ -353,19 +353,17 @@ implementation {
 		uint8_t a, b;
 		err = ERR_NONE;
 
-		find_tx_start(input + FIND_TX_START, FIND_TX_END - FIND_TX_START);
+		check_levels(input);
 		if (err != ERR_NONE)
 			return;
 
-		input += tx_start + FILTER_START_DELAY;
-
-		filter3(input, FILTER_TRIPLETS);
+		filter3(input + FILTER_START, FILTER_TRIPLETS);
 		if (err != ERR_NONE)
 			return;
 
 		a = (((uint16_t) filter3_min) + ((uint16_t) filter3_max)) >> 1;
 		b = (filter3_max - filter3_min + 2) >> 3;
-		find_zero_crossings(input, FILTERED_LENGTH, a-b, a+b);
+		find_zero_crossings(input + FILTER_START, FILTERED_LENGTH, a-b, a+b);
 		if (err != ERR_NONE)
 			return;
 
@@ -386,10 +384,13 @@ implementation {
 #endif
 
 	command void MeasureWave.changeData(uint8_t *newData, uint16_t newLen) {
+		uint8_t i;
 #ifdef MEASUREWAVE_PROFILER
 		uint32_t starttime = call LocalTime.get();
 #endif
-		phase=period=filter3_max=filter3_min=tx_start=255;
+		for (i = 0; i < ZERO_CROSSINGS; i++)
+			zero_crossings[i] = 0;
+		phase=period=filter3_max=filter3_min=tx1_rssi=tx2_rssi=255;
 #ifdef MEASUREWAVE_SAVE_BUFFER
 		memcpy(temp, newData, newLen<BUFFER_LEN?newLen:BUFFER_LEN);
 		process(temp);
@@ -409,7 +410,7 @@ implementation {
 	}
 
 	command uint8_t MeasureWave.getPhaseRef() {
-		return tx_start;
+		return 255;
 	}
 
 	command void MeasureWave.filter() {
@@ -432,10 +433,10 @@ implementation {
 	}
 	
 	command uint8_t MeasureWave.getRssi1() {
-		return 255;
+		return tx1_rssi;
 	}
 	
 	command uint8_t MeasureWave.getRssi2() {
-		return 255;
+		return tx2_rssi;
 	}
 }
