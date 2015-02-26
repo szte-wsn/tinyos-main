@@ -278,4 +278,20 @@ private:
 	}
 };
 
+template <typename INPUT, typename OUTPUT> class Transform : public Block {
+public:
+	Input<INPUT> in;
+	Output<OUTPUT> out;
+
+protected:
+	Transform() : in(bind(&Transform<INPUT, OUTPUT>::work, this)) { }
+
+	virtual OUTPUT transform(const INPUT &data) = 0;
+
+private:
+	void work(const INPUT &data) {
+		out.send(transform(data));
+	}
+};
+
 #endif//__BLOCK_HPP__

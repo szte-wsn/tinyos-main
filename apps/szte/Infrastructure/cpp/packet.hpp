@@ -134,6 +134,8 @@ public:
 		uint sender1;
 		uint sender2;
 		std::vector<Measurement> measurements;
+
+		const Measurement *get_measurement(uint nodeid) const;
 	};
 
 	Input<RipsMsg::Packet> sub_in;

@@ -321,7 +321,6 @@ std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_8 = {
 	{ RSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, RSYN, SSYN}
 };
 
-
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -509,9 +508,21 @@ bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::ve
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
 	stream << packet.sender1;
-	stream << " " << packet.sender2 << " ";
+	stream << " " << packet.sender2;
 	for (RipsDat::Measurement mnt : packet.measurements)
-		stream << mnt.nodeid << ":" << mnt.period << "/" << mnt.phase << " ";
-	stream << ";";
+		stream << " " << mnt.nodeid << ":" << mnt.phase << "/" << mnt.period;
+	stream << " ;";
 	return stream;
 }
+
+const RipsDat::Measurement *RipsDat::Packet::get_measurement(uint nodeid) const {
+	std::vector<Measurement>::const_iterator iter = measurements.begin();
+	while (iter != measurements.end()) {
+		if (iter->nodeid == nodeid)
+			return &*iter;
+
+		iter++;
+	}
+	return NULL;
+}
+

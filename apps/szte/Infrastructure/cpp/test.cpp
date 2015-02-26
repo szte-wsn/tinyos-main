@@ -36,18 +36,51 @@
 #include "serial.hpp"
 #include "packet.hpp"
 
+class MyPrinter : public Transform<RipsDat::Packet, std::string> {
+	std::string transform(const RipsDat::Packet &packet) {
+		std::stringstream stream;
+
+		int min_period = 999;
+		int max_period = 0;
+
+		for (int i = 3; i <= 8; i++) {
+			const RipsDat::Measurement *m = packet.get_measurement(i);
+			int period = m != NULL ? m->period : 0;
+			int phase = m != NULL ? m->phase : 100;
+
+			if (period != 0) {
+				if (period < min_period)
+					min_period = period;
+				if (period > max_period)
+					max_period = period;
+			}
+
+			if (i != 3)
+				stream << ", ";
+
+			stream << period << ", " << phase;
+		}
+
+		int period = max_period - min_period <= 4 ? (max_period + min_period) / 2 : 0;
+		stream << ", " << period;
+
+		return stream.str();
+	}
+};
+
 int main(int argc, char *argv[]) {
-	Writer<RipsDat::Packet> writer;
+	Writer<std::string> writer;
+	MyPrinter printer;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
 	Reader<std::vector<unsigned char>> reader;
 
-
 	connect(reader.out, tosmsg.sub_in);
 	connect(tosmsg.out, ripsmsg.sub_in);
 	connect(ripsmsg.out, ripsdat.sub_in);
-	connect(ripsdat.out, writer.in);
+	connect(ripsdat.out, printer.in);
+	connect(printer.out, writer.in);
 	reader.run();
 	return 0;
 }
