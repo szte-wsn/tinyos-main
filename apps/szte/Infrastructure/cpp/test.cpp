@@ -73,26 +73,26 @@ class MyPrinter : public Transform<RipsDat::Packet, std::string> {
 			if (i == 3)
 				continue;
 
-			double rel = -1.0;
 			if (period != 0 && phases[3 - 3] != -1 && phases[i - 3] != -1) {
-				rel = (phases[i - 3] - phases[3 - 3] + 2 * period) % period;
+				double rel = (phases[i - 3] - phases[3 - 3] + 2 * period) % period;
 				rel /= period;
+				stream << ", " << rel;
 			}
-
-			stream << ", " << rel;
+			else
+				stream << ", ";
 		}
 
 		for (int i = 3; i <= 8; i++) {
 			if (i == 5)
 				continue;
 
-			double rel = -1.0;
 			if (period != 0 && phases[5 - 3] != -1 && phases[i - 3] != -1) {
-				rel = (phases[i - 3] - phases[5 - 3] + 2 * period) % period;
+				double rel = (phases[i - 3] - phases[5 - 3] + 2 * period) % period;
 				rel /= period;
+				stream << ", " << rel;
 			}
-
-			stream << ", " << rel;
+			else
+				stream << ", ";
 		}
 
 		return stream.str();
