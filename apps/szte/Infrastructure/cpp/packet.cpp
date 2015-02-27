@@ -525,4 +525,3 @@ const RipsDat::Measurement *RipsDat::Packet::get_measurement(uint nodeid) const 
 	}
 	return NULL;
 }
-
