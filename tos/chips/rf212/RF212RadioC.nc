@@ -83,6 +83,13 @@ configuration RF212RadioC
 		interface LocalTime<TRadio> as LocalTimeRadio;
 		interface PacketTimeStamp<TRadio, uint32_t> as PacketTimeStampRadio;
 		interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+		
+		#ifdef ATMELRADIOTEST
+		interface AtmelRadioTest;
+		#endif
+		#ifdef CONTINOUS_WAVE
+		interface RadioContinuousWave;
+		#endif
 	}
 }
 
@@ -292,6 +299,13 @@ implementation
 	PacketRSSI = RadioDriverLayerC.PacketRSSI;
 	LinkPacketMetadata = RadioDriverLayerC;
 	LocalTimeRadio = RadioDriverLayerC;
+	
+	#ifdef ATMELRADIOTEST
+  AtmelRadioTest = RadioDriverLayerC;
+	#endif
+	#ifdef CONTINOUS_WAVE
+  RadioContinuousWave = RadioDriverLayerC;
+	#endif
 
 	RadioDriverLayerC.TransmitPowerFlag -> MetadataFlagsLayerC.PacketFlag[unique(UQ_METADATA_FLAGS)];
 	RadioDriverLayerC.RSSIFlag -> MetadataFlagsLayerC.PacketFlag[unique(UQ_METADATA_FLAGS)];

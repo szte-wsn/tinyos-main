@@ -69,6 +69,12 @@ configuration RF212ActiveMessageC
 		interface LocalTime<TRadio> as LocalTimeRadio;
 		interface PacketTimeStamp<TRadio, uint32_t> as PacketTimeStampRadio;
 		interface PacketTimeStamp<TMilli, uint32_t> as PacketTimeStampMilli;
+		#ifdef ATMELRADIOTEST
+		interface AtmelRadioTest;
+		#endif
+		#ifdef CONTINOUS_WAVE
+		interface RadioContinuousWave;
+		#endif
 	}
 }
 
@@ -102,4 +108,11 @@ implementation
 	LocalTimeRadio = RadioC;
 	PacketTimeStampMilli = RadioC;
 	PacketTimeStampRadio = RadioC;
+	
+	#ifdef ATMELRADIOTEST
+	AtmelRadioTest = RadioC;
+	#endif
+	#ifdef CONTINOUS_WAVE
+	RadioContinuousWave = RadioC;
+	#endif
 }
