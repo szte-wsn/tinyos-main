@@ -23,6 +23,7 @@
 module TestAlarmP{
 	uses interface Boot;
 	uses interface SplitControl;
+	uses interface SplitControl as CWSplitControl;
 	uses interface Leds;
 	uses interface Alarm<TMcu, uint32_t> as Alarm;
 	uses interface RadioContinuousWave;
@@ -46,7 +47,7 @@ module TestAlarmP{
 implementation{
 
 	enum {
-		CHANNEL = 17,
+		CHANNEL = 1,
 		TRIM1 = 2,
 		TRIM2 = 5,
 	};
@@ -120,9 +121,13 @@ implementation{
 		#ifdef ENABLE_AUTOTRIM
 		call AutoTrim.processSchedule();
 		#endif
-		call SplitControl.start();
+		call CWSplitControl.start();
 		unsynchronized = NO_SYNC;
 		//call Leds.set(0xff);
+	}
+	
+	event void CWSplitControl.startDone(error_t error){
+		call SplitControl.start();
 	}
 	
 	event void SplitControl.startDone(error_t error){
@@ -135,6 +140,7 @@ implementation{
 	}
 
 	event void SplitControl.stopDone(error_t error){}
+	event void CWSplitControl.stopDone(error_t error){}
 	
 	//to store error values and the freezeError initial value
 	enum{

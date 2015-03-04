@@ -20,8 +20,9 @@ implementation{
 	App.TimeSyncPacket -> TimeSyncMessageC.TimeSyncPacketRadio;
 	App.SyncReceive -> TimeSyncMessageC.Receive[AM_SYNCMSG];
 
-	components  RFA1ActiveMessageC as RfxlinkAMC;
+	components  RF212ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
+	App.CWSplitControl -> RfxlinkAMC;
 
 	components MeasureWave3C as MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;

@@ -31,12 +31,52 @@
 //#define RADIO_DEBUG_MESSAGES
 /* * common part  */
 
+//the two radio must use the same timer base 
+#ifdef RFA1_RADIO_TIMER1_MCU
+ #define RF212_RADIO_TIMER1_MCU
+#elif defined(RFA1_RADIO_TIMER1_MICRO)
+ #define RF212_RADIO_TIMER1_MICRO
+#elif defined(RF212_RADIO_TIMER1_MCU)
+ #define RFA1_RADIO_TIMER1_MCU
+#elif defined(RF212_RADIO_TIMER1_MICRO)
+ #define RFA1_RADIO_TIMER1_MICRO
+#endif
+
+#ifdef RFA1_RADIO_TIMER1_MCU
+/**
+ * This is the timer type of the radio alarm interface
+ */
+typedef TMcu TRadio;
+/**
+ * The number of radio alarm ticks per one microsecond
+ */
+#define RADIO_ALARM_MICROSEC	2
+
+/**
+ * The base two logarithm of the number of radio alarm ticks per one millisecond
+ */
+#define RADIO_ALARM_MILLI_EXP	11
+
+#elif defined(RFA1_RADIO_TIMER1_MICRO)
+/**
+ * This is the timer type of the radio alarm interface
+ */
+typedef TMicro TRadio;
+/**
+ * The number of radio alarm ticks per one microsecond
+ */
+#define RADIO_ALARM_MICROSEC	1
+
+/**
+ * The base two logarithm of the number of radio alarm ticks per one millisecond
+ */
+#define RADIO_ALARM_MILLI_EXP	10
+
+#else
 /**
  * This is the timer type of the radio alarm interface
  */
 typedef T62khz TRadio;
-typedef uint32_t tradio_size;
-
 /**
  * The number of radio alarm ticks per one microsecond
  */
@@ -46,6 +86,8 @@ typedef uint32_t tradio_size;
  * The base two logarithm of the number of radio alarm ticks per one millisecond
  */
 #define RADIO_ALARM_MILLI_EXP	6
+#endif
+typedef uint32_t tradio_size;
 
 /* The number of microseconds a sending mote will wait for an acknowledgement */
 #ifdef DEFAULT_RADIO_RF212
