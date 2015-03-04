@@ -5,5 +5,7 @@ interface MeasureWave{
   command uint8_t getMinAmplitude();
 	command uint8_t getMaxAmplitude();
 	command uint8_t getPhaseRef();
+	command uint8_t getRssi1();
+	command uint8_t getRssi2();
 	command void filter();
 }

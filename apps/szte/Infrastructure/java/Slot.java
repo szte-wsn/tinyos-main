@@ -46,18 +46,24 @@ class Slot {
 	}
 	
 
-	public boolean addMeasurement(int dataSource, int period, short phase) {
+	public int addMeasurement(int dataSource, int period, short phase) {
 		
 		for(int i=0;i<measurements.size();i++){
 			if( measurements.get(i).nodeid == dataSource ){
 				measurements.get(i).setMeasurement(period, phase);
-				return true;
+				return i;
 			}
 		}
 		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
 		meas.setMeasurement(period, phase);
 		measurements.add(meas);
-		return false;
+		return measurements.size()-1;
+	}
+	
+	public int addMeasurement(int dataSource, int period, short phase, short rssi1, short rssi2) {
+		int measIndex = addMeasurement(dataSource, period, phase);
+		measurements.get(measIndex).setRssi(rssi1, rssi2);
+		return measIndex;
 	}
 	
 	public boolean addtoWaveform(int dataSource, int offset, short[] data) {

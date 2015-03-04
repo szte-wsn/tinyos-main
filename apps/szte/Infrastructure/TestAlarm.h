@@ -6,7 +6,7 @@
 #define BUFFER_LEN 480
 
 enum {
-  AM_SYNCMSG = 6,
+  AM_SYNCMSG = 8,
   AM_WAVE_MESSAGE_T = 7,
   //just for mig
   AM_REAL_SYNC_MESSAGE_T = 0x3d,
@@ -24,6 +24,7 @@ typedef nx_struct real_sync_message_t{
   nx_uint8_t frame;
   nx_uint8_t freq[NUMBER_OF_RX];
   nx_uint8_t phase[NUMBER_OF_RX];
+  nx_uint8_t rssis[NUMBER_OF_RX];
   nx_uint8_t originalAm;
   nx_uint32_t timesync;
 } real_sync_message_t;

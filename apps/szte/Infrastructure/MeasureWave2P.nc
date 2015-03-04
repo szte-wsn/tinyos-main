@@ -430,4 +430,12 @@ implementation {
 	command uint8_t MeasureWave.getPhase() {
 		return err == ERR_NONE ? phase : err;
 	}
+	
+	command uint8_t MeasureWave.getRssi1() {
+		return 255;
+	}
+	
+	command uint8_t MeasureWave.getRssi2() {
+		return 255;
+	}
 }

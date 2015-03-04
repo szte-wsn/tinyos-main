@@ -22,7 +22,8 @@ class SlotMeasurement {
 	public static final int ERR_NO_MEASUREMENT = 256;
 	
 	public int nodeid, period, phase;
-	public boolean hasMeasurement, hasWaveForm, hasLocalMeasurement;
+	public short rssi1, rssi2;
+	public boolean hasMeasurement, hasWaveForm, hasLocalMeasurement, hasRssi;
 	
 	private ArrayList<Short> waveForm = new ArrayList<Short>();
 	private Slot inSlot;
@@ -33,6 +34,7 @@ class SlotMeasurement {
 		hasMeasurement = false;
 		hasWaveForm = false;
 		hasLocalMeasurement = false;
+		hasRssi = false;
 		this.nodeid = nodeid;
 		this.inSlot = inSlot;
 	}
@@ -43,6 +45,12 @@ class SlotMeasurement {
 		this.phase = phase;
 		if( timestamp == 0 )
 			timestamp = new Date().getTime();
+	}
+	
+	public void setRssi(short rssi1, short rssi2){
+		hasRssi = true;
+		this.rssi1 = rssi1;
+		this.rssi2 = rssi2;
 	}
 	
 	public void setLocalMeasurement(int phaseRef, int minimum, int maximum,	int period, int phase){
@@ -87,7 +95,11 @@ class SlotMeasurement {
 	}
 
 	public void print() {
-		String line = String.format("RX: %5d period: %5d phase: %3d", nodeid, period, phase);
+		String line;
+		if (hasRssi)
+			line = String.format("RX: %5d period: %5d phase: %3d rssi1: %2d rss2: %2d", nodeid, period, phase, rssi1, rssi2);
+		else
+			line = String.format("RX: %5d period: %5d phase: %3d", nodeid, period, phase);
 		System.out.print(line);
 		if( isWaveFormComplete() )
 			System.out.println(" WF saved");

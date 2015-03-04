@@ -34,7 +34,8 @@ public class Tester implements SlotListener {
 
 	@Override
 	public void slotReceived(Slot receivedSlot) {
-		superframeCounter = receivedSlot.printtoFile(superframeCounter);
+//		superframeCounter = receivedSlot.printtoFile(superframeCounter);
+		receivedSlot.print();
 	}
 
 	public static void usage() {

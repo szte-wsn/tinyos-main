@@ -8,8 +8,8 @@ implementation{
 	App.Boot->MainC;
 	App.Leds->LedsC;
 
-	components new Alarm62khz32C();
-	App.Alarm -> Alarm62khz32C;
+	components new AlarmMcu32C();
+	App.Alarm -> AlarmMcu32C;
 
 	components ActiveMessageC;
 	App.SplitControl->ActiveMessageC;
@@ -23,7 +23,7 @@ implementation{
 	components  RFA1ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
 
-	components MeasureWave2C as MeasureWaveC;
+	components MeasureWave3C as MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
 	#ifdef ENABLE_AUTOTRIM
 	components AutoTrimC as AutoTrimC;
