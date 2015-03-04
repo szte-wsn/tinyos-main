@@ -1231,7 +1231,7 @@ implementation
 /*----------------------RadioContinuousWave---------------------*/
 #ifdef CONTINOUS_WAVE
 	async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
-		if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS ){
+		if( state == STATE_RX_ON && cmd == CMD_NONE && isSpiAcquired() && call Tasklet.asyncSuspend() == SUCCESS ){
 			uint8_t trx_ctrl_1;
 			#ifdef CW_SYNC_TEST
 			PORTB|=1<<PB6;
@@ -1288,7 +1288,7 @@ implementation
 	}
 	
 	async command error_t RadioContinuousWave.sendWave(uint8_t testChannel, int8_t tune, uint8_t power, uint16_t time){
-		if( state == STATE_RX_ON && cmd == CMD_NONE && call Tasklet.asyncSuspend() == SUCCESS && isSpiAcquired() ){
+		if( state == STATE_RX_ON && cmd == CMD_NONE && isSpiAcquired() && call Tasklet.asyncSuspend() == SUCCESS ){
 			uint32_t end = time;
 			state = STATE_CW_SEND;
 			#ifdef CW_SYNC_TEST
@@ -1334,8 +1334,8 @@ implementation
 			while( (readRegister(RF212_TRX_STATUS) & RF212_TRX_STATUS_MASK) != RF212_RX_ON )
 				;
 			
-			state = STATE_TRX_OFF_2_RX_ON;
-			
+			state = STATE_RX_ON;
+			readRegister(RF212_IRQ_STATUS);
 			call IRQ.captureRisingEdge(); 
 			
 			
