@@ -1,0 +1,14 @@
+TestData text structure:
+
+1.moteid 2.moteid 3.moteid ...
+1.unknownMoteid 2.unknownMoteid ...
+How many fix coordinate have
+1.fixMoteid xCoord yCoord zCoord
+2.fixMoteid xCoord yCoord zCoord
+...
+Distances between two motes:
+1.moteid 2.moteid distance
+1.moteid 2.moteid distance
+1.moteid 2.moteid distance
+...
+
