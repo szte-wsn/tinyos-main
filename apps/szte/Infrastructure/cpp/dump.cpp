@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
 	Reader<std::vector<unsigned char>> reader;
 
 	connect(reader.out, tosmsg.sub_in);
-	connect(tosmsg.out, ripsmsg.sub_in);
-	connect(ripsmsg.out, ripsdat.sub_in);
+	connect(tosmsg.out, ripsmsg.in);
+	connect(ripsmsg.out, ripsdat.in);
 	connect(ripsdat.out, writer.in);
 	reader.run();
 	return 0;

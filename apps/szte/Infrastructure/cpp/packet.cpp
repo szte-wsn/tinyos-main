@@ -120,7 +120,7 @@ std::ostream& operator <<(std::ostream& stream, const TosMsg::Packet &packet) {
 
 // ------- RipsMsg
 
-RipsMsg::RipsMsg() : sub_in(bind(&RipsMsg::decode, this)) {
+RipsMsg::RipsMsg() : in(bind(&RipsMsg::decode, this)) {
 }
 
 void RipsMsg::decode(const TosMsg::Packet &tos) {
@@ -149,12 +149,9 @@ void RipsMsg::decode(const TosMsg::Packet &tos) {
 
 std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet) {
 	stream << std::dec;
-	stream << "nid=" << packet.nodeid;
-	stream << " slt=" << packet.slot;
-	stream << " [";
+	stream << packet.nodeid << ", " << packet.slot;
 	for (RipsMsg::Measurement mnt : packet.measurements)
-		stream << " " << mnt.phase << "/" << mnt.period;
-	stream << " ]";
+		stream << ",\t" << mnt.phase << ", " << mnt.period;
 	return stream;
 }
 
@@ -348,15 +345,15 @@ const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *sched
 	throw std::invalid_argument(msg);
 }
 
-RipsDat::RipsDat(const std::vector<std::vector<uint8_t>> &schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(&schedule) {
+RipsDat::RipsDat(const std::vector<std::vector<uint8_t>> &schedule) : in(bind(&RipsDat::decode, this)), schedule(&schedule) {
 	analize_schedule();
 }
 
-RipsDat::RipsDat(const char *schedule) : sub_in(bind(&RipsDat::decode, this)), schedule(&get_schedule(schedule)) {
+RipsDat::RipsDat(const char *schedule) : in(bind(&RipsDat::decode, this)), schedule(&get_schedule(schedule)) {
 	analize_schedule();
 }
 
-RipsDat::RipsDat() : sub_in(bind(&RipsDat::search, this)), schedule(NULL) {
+RipsDat::RipsDat() : in(bind(&RipsDat::search, this)), schedule(NULL) {
 	for (uint i = 0; i < NAMES.size(); i++)
 		possibilities.push_back(i);
 }
@@ -508,11 +505,9 @@ bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::ve
 }
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
-	stream << packet.sender1;
-	stream << " " << packet.sender2;
+	stream << packet.sender1 << ", " << packet.sender2;
 	for (RipsDat::Measurement mnt : packet.measurements)
-		stream << " " << mnt.nodeid << ":" << mnt.phase << "/" << mnt.period;
-	stream << " ;";
+		stream << ",\t" << mnt.nodeid << ", " << mnt.phase << ", " << mnt.period;
 	return stream;
 }
 
@@ -527,10 +522,102 @@ const RipsDat::Measurement *RipsDat::Packet::get_measurement(uint nodeid) const 
 	return NULL;
 }
 
+// ------- RipsDat2
+
+RipsDat2::RipsDat2() : in(bind(&RipsDat2::decode, this)) {
+}
+
+void RipsDat2::decode(const RipsDat::Packet &pkt) {
+	if (pkt.slot >= slots.size()) {
+		slots.resize(pkt.slot + 1);
+	}
+
+	assert (pkt.slot < slots.size());
+	slots[pkt.slot].decode(pkt, out);
+}
+
+RipsDat2::Slot::Slot() : history_head(0), full(false) {
+}
+
+void RipsDat2::Slot::decode(const RipsDat::Packet &pkt, Output<Packet> &out) {
+	for (RipsDat::Measurement mnt : pkt.measurements) {
+		if (mnt.period <= 0)
+			continue;
+
+		history[history_head] = mnt.period;
+		if (++history_head >= HISTORY_SIZE) {
+			history_head = 0;
+			full = true;
+		}
+	}
+
+	if (!full)
+		return;
+
+	int temp[HISTORY_SIZE];
+	std::memcpy(temp, history, sizeof(int) * HISTORY_SIZE);
+
+	std::sort(temp, temp + HISTORY_SIZE);
+
+	int sum = 0;
+	for (int i = 0; i < AVERAGE_SIZE; i++)
+		sum += temp[(HISTORY_SIZE - AVERAGE_SIZE) / 2 + i];
+
+	float period = sum * (1.0 / AVERAGE_SIZE);
+
+	RipsDat2::Packet packet;
+	packet.frame = pkt.frame;
+	packet.slot = pkt.slot;
+	packet.sender1 = pkt.sender1;
+	packet.sender2 = pkt.sender2;
+	packet.period = period;
+
+	int period_min = std::round(period * (1.0f - 0.5f / PERIOD_FRAC));
+	int period_max = std::round(period * (1.0f + 0.5f / PERIOD_FRAC));
+
+	for (const RipsDat::Measurement &mnt : pkt.measurements) {
+		if (mnt.period <= 0)
+			continue;
+
+		if (period_min <= mnt.period && mnt.period <= period_max) {
+			RipsDat2::Measurement measurement;
+			measurement.nodeid = mnt.nodeid;
+			measurement.phase = 1.0 * mnt.phase / mnt.period;
+			assert (0.0f <= measurement.phase && measurement.phase < 1.0f);
+
+			packet.measurements.push_back(measurement);
+		}
+	}
+
+	out.send(packet);
+}
+
+std::ostream& operator <<(std::ostream& stream, const RipsDat2::Packet &packet) {
+	stream.precision(2);
+	stream.setf(std::ios::fixed, std::ios::floatfield);
+
+	stream << packet.sender1 << ", " << packet.sender2 << ", " << packet.period;
+	for (RipsDat2::Measurement mnt : packet.measurements)
+		stream << ",\t" << mnt.nodeid << ", " << mnt.phase;
+
+	return stream;
+}
+
+const RipsDat2::Measurement *RipsDat2::Packet::get_measurement(uint nodeid) const {
+	std::vector<Measurement>::const_iterator iter = measurements.begin();
+	while (iter != measurements.end()) {
+		if (iter->nodeid == nodeid)
+			return &*iter;
+
+		iter++;
+	}
+	return NULL;
+}
+
 // ------- RipsQuad
 
 RipsQuad::RipsQuad(uint sender1, uint sender2, uint receiver1, uint receiver2)
-	: sub_in(bind(&RipsQuad::decode, this)),
+	: in(bind(&RipsQuad::decode, this)),
 	sender1(sender1), sender2(sender2), receiver1(receiver1), receiver2(receiver2)
 {
 }

@@ -32,86 +32,23 @@
  * Author: Miklos Maroti
  */
 
-#include "block.hpp"
 #include "serial.hpp"
 #include "packet.hpp"
 
-class MyPrinter : public Transform<RipsDat::Packet, std::string> {
-	std::string transform(const RipsDat::Packet &packet) {
-		std::stringstream stream;
-
-		int phases[6];
-		int min_period = 999;
-		int max_period = 0;
-
-		for (int i = 3; i <= 8; i++) {
-			const RipsDat::Measurement *m = packet.get_measurement(i);
-			int period = m != NULL ? m->period : 0;
-			int phase = m != NULL ? m->phase : 100;
-
-			if (period != 0) {
-				if (period < min_period)
-					min_period = period;
-				if (period > max_period)
-					max_period = period;
-
-				phases[i - 3] = phase;
-			}
-			else
-				phases[i - 3] = -1;
-
-			if (i != 3)
-				stream << ", ";
-
-			stream << period << ", " << phase;
-		}
-
-		int period = max_period - min_period <= 4 ? (max_period + min_period) / 2 : 0;
-		stream << ",\t" << period;
-
-		for (int i = 3; i <= 8; i++) {
-			if (i == 3)
-				continue;
-
-			if (period != 0 && phases[3 - 3] != -1 && phases[i - 3] != -1) {
-				double rel = (phases[i - 3] - phases[3 - 3] + 2 * period) % period;
-				rel /= period;
-				stream << ", " << rel;
-			}
-			else
-				stream << ", ";
-		}
-
-		for (int i = 3; i <= 8; i++) {
-			if (i == 5)
-				continue;
-
-			if (period != 0 && phases[5 - 3] != -1 && phases[i - 3] != -1) {
-				double rel = (phases[i - 3] - phases[5 - 3] + 2 * period) % period;
-				rel /= period;
-				stream << ", " << rel;
-			}
-			else
-				stream << ", ";
-		}
-
-		return stream.str();
-	}
-};
-
 int main(int argc, char *argv[]) {
-	Writer<std::string> writer;
-	MyPrinter printer;
+	Writer<RipsDat2::Packet> writer;
+	RipsDat2 ripsdat2;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
 	Reader<std::vector<unsigned char>> reader;
 
 	connect(reader.out, tosmsg.sub_in);
-	connect(tosmsg.out, ripsmsg.sub_in);
-	connect(ripsmsg.out, ripsdat.sub_in);
-	connect(ripsdat.out, printer.in);
-	connect(printer.out, writer.in);
+	connect(tosmsg.out, ripsmsg.in);
+	connect(ripsmsg.out, ripsdat.in);
+	connect(ripsdat.out, ripsdat2.in);
+	connect(ripsdat2.out, writer.in);
+
 	reader.run();
 	return 0;
 }
