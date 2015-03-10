@@ -36,6 +36,7 @@
 #include <cstring>
 #include <vector>
 #include <memory>
+#include <cmath>
 
 // ------- TosMsg
 
@@ -524,4 +525,50 @@ const RipsDat::Measurement *RipsDat::Packet::get_measurement(uint nodeid) const 
 		iter++;
 	}
 	return NULL;
+}
+
+// ------- RipsQuad
+
+RipsQuad::RipsQuad(uint sender1, uint sender2, uint receiver1, uint receiver2)
+	: sub_in(bind(&RipsQuad::decode, this)),
+	sender1(sender1), sender2(sender2), receiver1(receiver1), receiver2(receiver2)
+{
+}
+
+void RipsQuad::decode(const RipsDat::Packet &pkt) {
+	if (pkt.sender1 != sender1 || pkt.sender2 != sender2)
+		return;
+
+	const RipsDat::Measurement *mnt1 = pkt.get_measurement(receiver1);
+	if (mnt1 == NULL || mnt1->phase == 0)
+		return;
+
+	const RipsDat::Measurement *mnt2 = pkt.get_measurement(receiver2);
+	if (mnt2 == NULL || mnt2->phase == 0)
+		return;
+
+	int perdif = std::abs(mnt1->phase - mnt2->phase);
+	float period = (mnt1->phase + mnt2->phase) * 0.5f;
+	assert (perdif >= 0 && period > 0.0f);
+
+	if (perdif > period * 0.05f)
+		return;
+
+	float relphase = std::fmod((float) (mnt1->phase - mnt2->phase), period);
+	if (relphase < 0.0f)
+		relphase += 1.0f;
+
+	assert (0.0f <= relphase && relphase < 1.0f);
+
+	Packet packet;
+	packet.frame = pkt.frame;
+	packet.slot = pkt.slot;
+	packet.relphase = relphase;
+	out.send(packet);
+}
+
+
+std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet) {
+	stream << packet.frame << " " << packet.relphase;
+	return stream;
 }

@@ -120,6 +120,7 @@ private:
 
 std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet);
 
+// collects the pieces of a single RIPS measurement from different messages into a single packet
 class RipsDat : public Block {
 public:
 	struct Measurement {
@@ -198,5 +199,53 @@ private:
 };
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet);
+
+// checks the historic period for the (slot,sender1,sender2) and filters out outliers
+class RipsDat2 : public Block {
+public:
+	struct Measurement {
+		uint nodeid;
+		float phase;
+	};
+
+	struct Packet {
+		ulong frame;
+		uint slot;
+		uint sender1;
+		uint sender2;
+		int period;
+		std::vector<Measurement> measurements;
+
+		const Measurement *get_measurement(uint nodeid) const;
+	};
+
+	Input<RipsDat::Packet> sub_in;
+	Output<Packet> out;
+
+	RipsDat2();
+
+private:
+};
+
+class RipsQuad : public Block {
+public:
+	struct Packet {
+		ulong frame;
+		uint slot;
+		float relphase;
+	};
+
+	Input<RipsDat::Packet> sub_in;
+	Output<Packet> out;
+
+	RipsQuad(uint sender1, uint sender2, uint receiver1, uint receiver2);
+
+private:
+	uint sender1, sender2, receiver1, receiver2;
+
+	void decode(const RipsDat::Packet &pkt);
+};
+
+std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet);
 
 #endif//__PACKET_HPP__
