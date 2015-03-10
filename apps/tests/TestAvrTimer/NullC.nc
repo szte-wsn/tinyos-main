@@ -70,7 +70,7 @@ implementation
 {
 	enum{
 		TEST_ALARM = 10,
-		TEST_COUNT = 1000,
+		TEST_COUNT = 10000,
 	};
 	int32_t counterNonAtomicMin, counterNonAtomicMax;
 	int32_t counterAtomicMin, counterAtomicMax;
@@ -123,11 +123,11 @@ implementation
 	
 	task void report(){
 		reportLine("Time", call Counter.get(), call Alarm.getNow());
-		reportLine("CNA", counterNonAtomicMin, counterNonAtomicMax);
-		reportLine("CA", counterAtomicMin, counterAtomicMax);
-		reportLine("COP", counterOPMin, counterOPMax);
-		reportLine("CO", counterOMin, counterOMax);
-		reportLine("AE", alarmErrorMin, alarmErrorMax);
+		reportLine(counterNonAtomicMax>40?"CNA!":"CNA", counterNonAtomicMin, counterNonAtomicMax);
+		reportLine(counterAtomicMax>40?"CA!":"CA", counterAtomicMin, counterAtomicMax);
+		reportLine(counterOPMin<0xffffffff?"COP!":"COP", counterOPMin, counterOPMax);
+		reportLine(counterOMin<0xffffffff?"CO!":"CO", counterOMin, counterOMax);
+		reportLine(alarmErrorMax>150?"AE!":"AE", alarmErrorMin, alarmErrorMax);
 		reset();
 		post doTest();
 	}
@@ -146,7 +146,7 @@ implementation
 	}
 	
 	async event void Counter.overflow(){
-		updateMinMax(&counterOMin, &counterOMin, call Counter.get());
+		updateMinMax(&counterOMin, &counterOMax, call Counter.get());
 	}
 }
 

@@ -43,8 +43,8 @@ implementation
 {
 	components HplAtmRfa1Timer3C as HplAtmegaTimerC;
 
-	components new AtmegaTransformCompareC(uint32_t, uint16_t, 2);
-	components new AtmegaTransformCounterC(uint32_t, uint16_t, 2);
+	components new AtmegaTransformCompareC(uint32_t, uint16_t, 1);
+	components new AtmegaTransformCounterC(uint32_t, uint16_t, 1);
 	components new AtmegaAlarmC(TMicro, uint32_t, 0, MCU_ALARM_MINDT);
 	
 	Alarm = AtmegaAlarmC;
