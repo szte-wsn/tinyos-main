@@ -32,17 +32,73 @@
  * Author: Andras Biro
  */
 
-generic configuration AtmegaTransformCaptureC(typedef to_size_t @integer(), typedef from_size_t @integer(), int bitshift)
+generic module AtmegaTransformCaptureP(typedef to_size_t @integer(), typedef from_size_t @integer(), int bitshift)
 {
 	provides interface HplAtmegaCapture<to_size_t>;
 	uses interface HplAtmegaCapture<from_size_t> as SubCapture;
 	uses interface HplAtmegaCounter<to_size_t>;
+	provides interface Init;
 }
 implementation{
-	components MainC, new AtmegaTransformCaptureP(to_size_t, from_size_t, bitshift);
-	AtmegaTransformCaptureP.Init <- MainC.SoftwareInit;
+	enum
+	{
+		FROM_SIZE = sizeof(from_size_t),
+		TO_SIZE = sizeof(to_size_t),
+		BITSHIFT = bitshift,
+		MASK = (1UL << (FROM_SIZE * 8 - BITSHIFT)) - 1,
+	};
 	
-	HplAtmegaCapture = AtmegaTransformCaptureP;
-	SubCapture = AtmegaTransformCaptureP;
-	HplAtmegaCounter = AtmegaTransformCaptureP;
+	to_size_t captured;
+	bool forwardInterrupt = FALSE;
+	
+	command error_t Init.init(){
+		call SubCapture.start();
+		return SUCCESS;
+	}
+	
+	async command to_size_t HplAtmegaCapture.get(){
+		return captured;
+	}
+	
+	async command void HplAtmegaCapture.set(to_size_t value){
+		captured = value;
+	}
+
+	async event void SubCapture.fired(){
+		from_size_t from = call SubCapture.get();
+		captured = call HplAtmegaCounter.get();
+		captured -= ((from_size_t)captured - (from >> BITSHIFT)) & MASK;
+		if( forwardInterrupt )
+			signal HplAtmegaCapture.fired();
+	}
+
+	async command bool HplAtmegaCapture.test(){
+		return call SubCapture.test();
+	}
+
+	async command void HplAtmegaCapture.reset(){
+		call SubCapture.reset();
+	}
+
+	async command void HplAtmegaCapture.start(){
+		forwardInterrupt = TRUE;
+	}
+
+	async command void HplAtmegaCapture.stop(){
+		forwardInterrupt = FALSE;
+	}
+
+	async command bool HplAtmegaCapture.isOn(){
+		return forwardInterrupt;
+	}
+
+	async command void HplAtmegaCapture.setMode(uint8_t mode){
+		call SubCapture.setMode(mode);
+	}
+
+	async command uint8_t HplAtmegaCapture.getMode(){
+		return call SubCapture.getMode();
+	}
+	
+	async event void HplAtmegaCounter.overflow(){}
 }
