@@ -285,6 +285,7 @@ implementation
       // setChannel was ignored in SLEEP because the register didn't work
       PHY_CC_CCA=RFA1_CCA_MODE_VALUE|channel;
 
+      call SfdCapture.start();
       IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
       call McuPowerState.update();
 
@@ -316,6 +317,7 @@ implementation
 #endif
       TRX_STATE = CMD_FORCE_TRX_OFF;
 
+      call SfdCapture.stop();
       IRQ_MASK = 0;
       radioIrq = IRQ_NONE;
 

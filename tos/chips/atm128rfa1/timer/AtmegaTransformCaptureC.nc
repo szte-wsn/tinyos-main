@@ -47,17 +47,20 @@ implementation{
 		MASK = (1UL << (FROM_SIZE * 8 - BITSHIFT)) - 1,
 	};
 	
+	to_size_t captured;
+	
 	async command to_size_t HplAtmegaCapture.get(){
-		from_size_t from = call SubCapture.get();
-		to_size_t to = call HplAtmegaCounter.get();
-		to -= ((from_size_t)to - (from >> BITSHIFT)) & MASK;
-		return to;
+		return captured;
 	}
 	
 	async command void HplAtmegaCapture.set(to_size_t value){
+		captured = value;
 	}
 
 	async event void SubCapture.fired(){
+		from_size_t from = call SubCapture.get();
+		captured = call HplAtmegaCounter.get();
+		captured -= ((from_size_t)captured - (from >> BITSHIFT)) & MASK;
 		signal HplAtmegaCapture.fired();
 	}
 
