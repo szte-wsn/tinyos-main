@@ -44,44 +44,17 @@ implementation{
 		FROM_SIZE = sizeof(from_size_t),
 		TO_SIZE = sizeof(to_size_t),
 		BITSHIFT = bitshift,
+		MASK = (1UL << (FROM_SIZE * 8 - BITSHIFT)) - 1,
 	};
 	
-	to_size_t lastCaptured;
-	
 	async command to_size_t HplAtmegaCapture.get(){
-		from_size_t capt = call SubCapture.get()>>BITSHIFT;
-		lastCaptured = call HplAtmegaCounter.get();
-		if( BITSHIFT == 0 ){
-			if( FROM_SIZE == 1 ){
-				lastCaptured += (int8_t)capt - (int8_t)lastCaptured;
-			} else if(FROM_SIZE == 2){
-				lastCaptured += (int16_t)capt - (int16_t)lastCaptured;
-			} else if(FROM_SIZE == 4){
-				lastCaptured += (int32_t)capt - (int32_t)lastCaptured;
-			}
-		} else {
-			if( FROM_SIZE == 1 ){
-				uint8_t sub = lastCaptured&(0xFF>>BITSHIFT);
-				lastCaptured = lastCaptured - sub + capt;
-				if( sub < capt )
-					lastCaptured -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
-			} else if(FROM_SIZE == 2){
-				uint16_t sub = lastCaptured&(0xFFFF>>BITSHIFT);
-				lastCaptured =  lastCaptured - sub + capt;
-				if( sub < capt )
-					lastCaptured -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
-			} else if(FROM_SIZE == 4){
-				uint32_t sub = lastCaptured&(0xFFFFFFFF>>BITSHIFT);
-				lastCaptured = lastCaptured - sub + capt;
-				if( sub < capt )
-					lastCaptured -= (to_size_t)1<<(FROM_SIZE * 8 - BITSHIFT);
-			}
-		}
-		return lastCaptured;
+		from_size_t from = call SubCapture.get();
+		to_size_t to = call HplAtmegaCounter.get();
+		to -= ((from_size_t)to - (from >> BITSHIFT)) & MASK;
+		return to;
 	}
-
+	
 	async command void HplAtmegaCapture.set(to_size_t value){
-		lastCaptured = value;
 	}
 
 	async event void SubCapture.fired(){
