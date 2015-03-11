@@ -124,26 +124,39 @@ RipsMsg::RipsMsg() : in(bind(&RipsMsg::decode, this)) {
 }
 
 void RipsMsg::decode(const TosMsg::Packet &tos) {
-	if (tos.type != 0x06)
+	if (tos.type != 0x06 && tos.type != 0x08)
 		return;
-
-	if (tos.payload.size() % 2 != 1)
+	if (tos.payload.size() % 3 != 1)
 		runtime_error("Invalid RipsMsg length", tos);
-
+	
 	Packet packet;
 	packet.nodeid = tos.src;
 	packet.slot = read_uint8(tos.payload.begin());
-
-	unsigned int half = (tos.payload.size() - 1)/2;
-	for (unsigned int i = 0; i < half; i++) {
-		Measurement mnt;
-		mnt.period = read_uint8(tos.payload.begin() + 1 + i);
-		mnt.phase = read_uint8(tos.payload.begin() + 1 + half + i);
-		if (mnt.period != 0 && mnt.phase >= mnt.period)
-			std::cerr << "Invalid RipsMsg phase: " << mnt.phase << "/" << mnt.period << std::endl;
-		packet.measurements.push_back(mnt);
+	if(tos.type == 0x08){
+		unsigned int third = (tos.payload.size() - 1)/3;
+		for (unsigned int i = 0; i < third; i++) {
+			Measurement mnt;
+			mnt.period = read_uint8(tos.payload.begin() + 1 + i);
+			mnt.phase = read_uint8(tos.payload.begin() + 1 + third + i);
+			mnt.rssi1 = (read_uint8(tos.payload.begin() + 1 + 2*third + i) >> 4) & 0x0F ;
+			mnt.rssi2 = (read_uint8(tos.payload.begin() + 1 + 2*third + i)     ) & 0x0F ;
+			if (mnt.period != 0 && mnt.phase >= mnt.period)
+				std::cerr << "Invalid RipsMsg phase: " << mnt.phase << "/" << mnt.period << std::endl;
+			packet.measurements.push_back(mnt);
+		}
+	}else if(tos.type == 0x06){
+		unsigned int half = (tos.payload.size() - 1)/2;
+		for (unsigned int i = 0; i < half; i++) {
+			Measurement mnt;
+			mnt.period = read_uint8(tos.payload.begin() + 1 + i);
+			mnt.phase = read_uint8(tos.payload.begin() + 1 + half + i);
+			mnt.rssi1 = -1 ;
+			mnt.rssi2 = -1 ;
+			if (mnt.period != 0 && mnt.phase >= mnt.period)
+				std::cerr << "Invalid RipsMsg phase: " << mnt.phase << "/" << mnt.period << std::endl;
+			packet.measurements.push_back(mnt);
+		}
 	}
-
 	out.send(packet);
 }
 
@@ -319,6 +332,14 @@ std::vector<std::vector<uint8_t>> RipsDat::PHASEMAP_TEST_8 = {
 	{ RSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, RSYN, SSYN}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::MULT_RX_1 = {
+	{	TX1,	TX1,	W10,	RSYN,	RX,	W10,	SSYN,	RSYN,	RSYN,	RSYN	},
+	{	TX2,	RX,	W10,	RSYN,	TX1,	W10,	RSYN,	SSYN,	RSYN,	RSYN	},
+	{	RX,	TX2,	W10,	RSYN,	TX2,	W10,	RSYN,	RSYN,	SSYN,	RSYN	},
+	{	RX,	RX,	W10,	SSYN,	RX,	W10,	RSYN,	RSYN,	RSYN,	SSYN	}
+};
+
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -332,6 +353,7 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"LOC_4TX_4ANCHORRX", LOC_4TX_4ANCHORRX},
 	{"LOC_4TX_NOANCHORRX", LOC_4TX_NOANCHORRX},
 	{"PHASEMAP_TEST_8", PHASEMAP_TEST_8},
+	{"MULT_RX_1", MULT_RX_1},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
@@ -447,6 +469,8 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 				m.nodeid = rips.nodeid;
 				m.period = rips.measurements[i].period;
 				m.phase = rips.measurements[i].phase;
+				m.rssi1 = rips.measurements[i].rssi1;
+				m.rssi2 = rips.measurements[i].rssi2;
 				packet.measurements.push_back(m);
 			}
 		}

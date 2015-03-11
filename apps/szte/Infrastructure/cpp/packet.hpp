@@ -100,6 +100,8 @@ public:
 	struct Measurement {
 		int period;
 		int phase;
+		short rssi1;
+		short rssi2;
 	};
 
 	struct Packet {
@@ -127,6 +129,8 @@ public:
 		uint nodeid;
 		int period;
 		int phase;
+		short rssi1;
+		short rssi2;
 	};
 
 	struct Packet {
@@ -175,6 +179,7 @@ private:
 	static std::vector<std::vector<uint8_t>> LOC_4TX_4ANCHORRX;
 	static std::vector<std::vector<uint8_t>> LOC_4TX_NOANCHORRX;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_8;
+	static std::vector<std::vector<uint8_t>> MULT_RX_1;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
