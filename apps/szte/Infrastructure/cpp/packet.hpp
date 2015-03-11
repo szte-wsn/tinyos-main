@@ -108,7 +108,7 @@ public:
 		std::vector<Measurement> measurements;
 	};
 
-	Input<TosMsg::Packet> sub_in;
+	Input<TosMsg::Packet> in;
 	Output<Packet> out;
 
 	RipsMsg();
@@ -120,6 +120,7 @@ private:
 
 std::ostream& operator <<(std::ostream& stream, const RipsMsg::Packet &packet);
 
+// collects the pieces of a single RIPS measurement from different messages into a single packet
 class RipsDat : public Block {
 public:
 	struct Measurement {
@@ -134,9 +135,11 @@ public:
 		uint sender1;
 		uint sender2;
 		std::vector<Measurement> measurements;
+
+		const Measurement *get_measurement(uint nodeid) const;
 	};
 
-	Input<RipsMsg::Packet> sub_in;
+	Input<RipsMsg::Packet> in;
 	Output<Packet> out;
 
 	RipsDat(const std::vector<std::vector<uint8_t>> &schedule);
@@ -196,5 +199,75 @@ private:
 };
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet);
+
+// checks the historic period for the slot and filters out outliers
+class RipsDat2 : public Block {
+public:
+	struct Measurement {
+		uint nodeid;
+		float phase;
+	};
+
+	struct Packet {
+		ulong frame;
+		uint slot;
+		uint sender1;
+		uint sender2;
+		float period;
+		std::vector<Measurement> measurements;
+
+		const Measurement *get_measurement(uint nodeid) const;
+	};
+
+	Input<RipsDat::Packet> in;
+	Output<Packet> out;
+
+	RipsDat2();
+
+private:
+	class Slot {
+	private:
+		enum {
+			HISTORY_SIZE = 32, // remember this many periods for this slot
+			AVERAGE_SIZE = 4,  // calculate the PERIOD_MEAN as the avg of this many periods
+			PERIOD_FRAC = 20,  // tolerate period error of PERIOD_MEAN / PERIOD_FRAC
+		};
+
+		int history[HISTORY_SIZE];
+		uint history_head;
+		bool full;
+
+	public:
+		Slot();
+		void decode(const RipsDat::Packet &pkt, Output<Packet> &out);
+	};
+
+	std::vector<Slot> slots;
+
+	void decode(const RipsDat::Packet &pkt);
+};
+
+std::ostream& operator <<(std::ostream& stream, const RipsDat2::Packet &packet);
+
+class RipsQuad : public Block {
+public:
+	struct Packet {
+		ulong frame;
+		uint slot;
+		float relphase;
+	};
+
+	Input<RipsDat2::Packet> in;
+	Output<Packet> out;
+
+	RipsQuad(uint sender1, uint sender2, uint receiver1, uint receiver2);
+
+private:
+	uint sender1, sender2, receiver1, receiver2;
+
+	void decode(const RipsDat2::Packet &pkt);
+};
+
+std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet);
 
 #endif//__PACKET_HPP__

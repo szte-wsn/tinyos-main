@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, University of Szeged
+ * Copyright (c) 2015, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,25 +32,24 @@
  * Author: Miklos Maroti
  */
 
-#include "serial.hpp"
-#include "packet.hpp"
+#ifndef __VITERBI_HPP__
+#define __VITERBI_HPP__
 
-int main(int argc, char *argv[]) {
-	Writer<RipsQuad::Packet> writer;
-	RipsQuad ripsquad(1, 2, 5, 6);
-	RipsDat2 ripsdat2;
-	RipsDat ripsdat;
-	RipsMsg ripsmsg;
-	TosMsg tosmsg;
-	Reader<std::vector<unsigned char>> reader;
+#include "block.hpp"
+#include <vector>
 
-	connect(reader.out, tosmsg.sub_in);
-	connect(tosmsg.out, ripsmsg.in);
-	connect(ripsmsg.out, ripsdat.in);
-	connect(ripsdat.out, ripsdat2.in);
-	connect(ripsdat2.out, ripsquad.in);
-	connect(ripsquad.out, writer.in);
+template <typename DATA> class Pattern {
+public:
+	u64_t pattern() const = 0;
+	float weight(const DATA *data) const = 0;
+};
 
-	reader.run();
-	return 0;
-}
+template <typename DATA> class Viterbi : public Transform<DATA, DATA> {
+protected:
+	DATA transform(const DATA &data) = 0;
+
+private:
+	std::vector<DATA> buffer;
+};
+
+#endif//__VITERBI_HPP__

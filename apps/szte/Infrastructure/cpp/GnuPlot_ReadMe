@@ -1,0 +1,12 @@
+Compile:
+	g++ -std=c++11 -o gnu gnuplot.cpp
+
+Run example:
+	cat phaseMapData.txt | ./gnu 0 50000
+	
+PhaseMap txt datas structure:
+1.mote 2.mote 3.mote 4.mote ...
+1.mote 2.mote 3.mote 4.mote ...
+.
+.
+.

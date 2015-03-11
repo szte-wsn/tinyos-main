@@ -10,11 +10,12 @@
 		ERR_NONE = 0,
 		ERR_NO_SILENCE1 = 101,
 		ERR_NO_SILENCE2 = 102,
-		ERR_SMALL_MINMAX_RANGE = 103,
-		ERR_FEW_ZERO_CROSSINGS = 104,
-		ERR_LARGE_PERIOD = 105,
-		ERR_PERIOD_MISMATCH = 106,
-		ERR_ZERO_PERIOD = 107
+		ERR_SMALL_RSSI = 103,
+		ERR_SMALL_MINMAX_RANGE = 104,
+		ERR_FEW_ZERO_CROSSINGS = 105,
+		ERR_LARGE_PERIOD = 106,
+		ERR_PERIOD_MISMATCH = 107,
+		ERR_ZERO_PERIOD = 108
 	};
 
 	uint8_t err;
@@ -25,13 +26,13 @@
 		SILENCE1_END = 10,
 		TRANSMIT1_START = 30,
 		TRANSMIT1_END = 60,
-		FILTER_START = 150,
+		FILTER_START = 120,
 		FILTER_END = 400,
 		TRANSMIT2_START = 430,
 		TRANSMIT2_END = 460,
 		SILENCE2_START = 470,
 		SILENCE2_END = 480,
-		SILENCE_LIMIT = 5,
+		SILENCE_LIMIT = 6,
 		FILTER_MINMAX_RANGE = 7,
 		FILTER_TRIPLETS = (FILTER_END - FILTER_START) / 3,
 		FILTERED_LENGTH = FILTER_TRIPLETS * 3,
@@ -49,24 +50,24 @@
 		return a;
 	}
 
-	uint8_t tx1_avg, tx2_avg;
+	uint8_t tx1_rssi, tx2_rssi;
 	void check_levels(uint8_t *input) {
-		uint8_t avg;
+		uint8_t a;
 
-		avg = get_sum(input + SILENCE1_START, SILENCE1_END - SILENCE1_START) / (SILENCE1_END - SILENCE1_START);
-		if (avg > SILENCE_LIMIT) {
+		a = get_sum(input + SILENCE1_START, SILENCE1_END - SILENCE1_START) / (SILENCE1_END - SILENCE1_START);
+		if (a > SILENCE_LIMIT) {
 			err = ERR_NO_SILENCE1;
 			return;
 		}
 
-		avg = get_sum(input + SILENCE2_START, SILENCE2_END - SILENCE2_START) / (SILENCE2_END - SILENCE2_START);
-		if (avg > SILENCE_LIMIT) {
+		a = get_sum(input + SILENCE2_START, SILENCE2_END - SILENCE2_START) / (SILENCE2_END - SILENCE2_START);
+		if (a > SILENCE_LIMIT) {
 			err = ERR_NO_SILENCE2;
 			return;
 		}
 
-		tx1_avg = get_sum(input + TRANSMIT1_START, TRANSMIT1_END - TRANSMIT1_START) / (TRANSMIT1_END - TRANSMIT1_START);
-		tx2_avg = get_sum(input + TRANSMIT2_START, TRANSMIT2_END - TRANSMIT2_START) / (TRANSMIT2_END - TRANSMIT2_START);
+		tx1_rssi = get_sum(input + TRANSMIT1_START, TRANSMIT1_END - TRANSMIT1_START) / (TRANSMIT1_END - TRANSMIT1_START);
+		tx2_rssi = get_sum(input + TRANSMIT2_START, TRANSMIT2_END - TRANSMIT2_START) / (TRANSMIT2_END - TRANSMIT2_START);
 	}
 
 	// Calculates the [1,2,3,2,1] filter in place for triplets * 3
@@ -455,9 +456,9 @@ void test_zero_crossings() {
 
 void test_process(int argc, char **argv) {
 	int i, j;
-	int hist[10];
+	int hist[11];
 
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < 11; i++)
 		hist[i] = 0;
 
 	for (i = 1; i < argc; i++) {
@@ -465,7 +466,7 @@ void test_process(int argc, char **argv) {
 
 		uint16_t count = read_samples(filename);
 		if (count != INPUT_LENGTH) {
-			fprintf(stderr, "incorrect sample length %d of %s\n", count, filename);
+//			fprintf(stderr, "incorrect sample length %d of %s\n", count, filename);
 			continue;
 		}
 
@@ -477,9 +478,10 @@ void test_process(int argc, char **argv) {
 		char *filename_dup = strdup(filename);
 		char *filename_bas = basename(filename_dup);
 
-		printf("%s process %d %d %d filter %d %d xing", filename_bas,
+		printf("%s process %d %d %d filter %d %d rssi %d %d xing", filename_bas,
 			(int) err, (int) period, (int) phase,
-			(int) filter3_min, (int) filter3_max);
+			(int) filter3_min, (int) filter3_max,
+			(int) tx1_rssi, (int) tx2_rssi);
 		for (j = 1; j < ZERO_CROSSINGS; j++)
 			printf(" %d", (int) (zero_crossings[j] - zero_crossings[j-1]));
 		printf("\n");
@@ -490,16 +492,16 @@ void test_process(int argc, char **argv) {
 
 		if (err == 0)
 			;
-		else if (101 <= err && err <= 108)
+		else if (101 <= err && err <= 109)
 			err = err - 100;
 		else
-			err = 109;
+			err = 10;
 
 		hist[err] += 1;
 	}
 
 	printf("error codes:");
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < 11; i++)
 		printf(" %d", hist[i]);
 	printf("\n");
 }
