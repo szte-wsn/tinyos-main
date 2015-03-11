@@ -126,26 +126,31 @@ RipsMsg::RipsMsg() : in(bind(&RipsMsg::decode, this)) {
 void RipsMsg::decode(const TosMsg::Packet &tos) {
 	if (tos.type != 0x06 && tos.type != 0x08)
 		return;
-	if (tos.payload.size() % 3 != 1)
-		runtime_error("Invalid RipsMsg length", tos);
-	
+
 	Packet packet;
 	packet.nodeid = tos.src;
 	packet.slot = read_uint8(tos.payload.begin());
-	if(tos.type == 0x08){
-		unsigned int third = (tos.payload.size() - 1)/3;
+
+	if (tos.type == 0x08) {
+		if (tos.payload.size() % 3 != 1)
+			runtime_error("Invalid RipsMsg length", tos);
+
+		unsigned int third = (tos.payload.size() - 1) / 3;
 		for (unsigned int i = 0; i < third; i++) {
 			Measurement mnt;
 			mnt.period = read_uint8(tos.payload.begin() + 1 + i);
 			mnt.phase = read_uint8(tos.payload.begin() + 1 + third + i);
-			mnt.rssi1 = (read_uint8(tos.payload.begin() + 1 + 2*third + i) >> 4) & 0x0F ;
-			mnt.rssi2 = (read_uint8(tos.payload.begin() + 1 + 2*third + i)     ) & 0x0F ;
+			mnt.rssi1 = (read_uint8(tos.payload.begin() + 1 + 2 * third + i) >> 4) & 0x0F ;
+			mnt.rssi2 = (read_uint8(tos.payload.begin() + 1 + 2 * third + i)     ) & 0x0F ;
 			if (mnt.period != 0 && mnt.phase >= mnt.period)
 				std::cerr << "Invalid RipsMsg phase: " << mnt.phase << "/" << mnt.period << std::endl;
 			packet.measurements.push_back(mnt);
 		}
-	}else if(tos.type == 0x06){
-		unsigned int half = (tos.payload.size() - 1)/2;
+	} else if(tos.type == 0x06) {
+		if (tos.payload.size() % 2 != 1)
+			runtime_error("Invalid RipsMsg length", tos);
+
+		unsigned int half = (tos.payload.size() - 1) / 2;
 		for (unsigned int i = 0; i < half; i++) {
 			Measurement mnt;
 			mnt.period = read_uint8(tos.payload.begin() + 1 + i);
@@ -339,7 +344,6 @@ std::vector<std::vector<uint8_t>> RipsDat::MULT_RX_1 = {
 	{	RX,	RX,	W10,	SSYN,	RX,	W10,	RSYN,	RSYN,	RSYN,	SSYN	}
 };
 
-
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -399,6 +403,7 @@ void RipsDat::analize_schedule() {
 
 		packet.frame = 0;
 		packet.slot = j;
+		packet.frame_frac = get_frame_frac(packet.slot);
 		packet.sender1 = 0;
 		packet.sender2 = 0;
 
@@ -427,6 +432,10 @@ void RipsDat::analize_schedule() {
 
 		history.push_back(packet);
 	}
+}
+
+float RipsDat::get_frame_frac(uint slot) {
+	return ((float) slot) / slot_count;
 }
 
 void RipsDat::decode(const RipsMsg::Packet &rips) {
