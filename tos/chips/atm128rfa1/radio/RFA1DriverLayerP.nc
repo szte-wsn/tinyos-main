@@ -285,6 +285,7 @@ implementation
       // setChannel was ignored in SLEEP because the register didn't work
       PHY_CC_CCA=RFA1_CCA_MODE_VALUE|channel;
 
+      call SfdCapture.reset();
       IRQ_MASK = 1<<PLL_LOCK_EN | 1<<TX_END_EN | 1<<RX_END_EN | 1<< RX_START_EN | 1<<CCA_ED_DONE_EN;
       call McuPowerState.update();
 
@@ -584,11 +585,15 @@ implementation
   {
     uint32_t time;
     uint8_t irq;
-    uint8_t temp;
+    uint8_t temp = 0;
 
     atomic
     {
-      time = call SfdCapture.get();
+      if ( call SfdCapture.test() ) {
+        time = call SfdCapture.get();
+        call SfdCapture.reset();
+        temp = 1;
+      }
       irq = radioIrq;
       radioIrq = IRQ_NONE;
     }
@@ -643,10 +648,13 @@ implementation
         // the most likely place for busy channel and good SFD, with no other interrupts
         if( irq == IRQ_RX_START )
         {
+          if ( temp == 1 )
+            call PacketTimeStamp.set(rxMsg, time);
+          else
+            call PacketTimeStamp.clear(rxMsg);
           temp = PHY_RSSI & RFA1_RSSI_MASK;
           rssiBusy += temp - (rssiBusy >> 2);
 
-          call PacketTimeStamp.set(rxMsg, time);
 
 #ifndef RFA1_RSSI_ENERGY
           call PacketRSSI.set(rxMsg, temp);

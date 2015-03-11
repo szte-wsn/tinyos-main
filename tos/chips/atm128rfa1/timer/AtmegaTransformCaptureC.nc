@@ -32,17 +32,73 @@
  * Author: Andras Biro
  */
 
-generic configuration AtmegaTransformCaptureC(typedef to_size_t @integer(), typedef from_size_t @integer(), int bitshift)
+generic module AtmegaTransformCaptureC(typedef to_size_t @integer(), typedef from_size_t @integer(), int bitshift)
 {
 	provides interface HplAtmegaCapture<to_size_t>;
 	uses interface HplAtmegaCapture<from_size_t> as SubCapture;
 	uses interface HplAtmegaCounter<to_size_t>;
 }
 implementation{
-	components MainC, new AtmegaTransformCaptureP(to_size_t, from_size_t, bitshift);
-	AtmegaTransformCaptureP.Init <- MainC.SoftwareInit;
+	enum
+	{
+		FROM_SIZE = sizeof(from_size_t),
+		TO_SIZE = sizeof(to_size_t),
+		BITSHIFT = bitshift,
+		MASK = (1UL << (FROM_SIZE * 8 - BITSHIFT)) - 1,
+	};
 	
-	HplAtmegaCapture = AtmegaTransformCaptureP;
-	SubCapture = AtmegaTransformCaptureP;
-	HplAtmegaCounter = AtmegaTransformCaptureP;
+	to_size_t captured;
+	
+	async command to_size_t HplAtmegaCapture.get(){
+		return captured;
+	}
+	
+	async command void HplAtmegaCapture.set(to_size_t value){
+		captured = value;
+	}
+	
+	inline void convert(){
+		from_size_t from = call SubCapture.get();
+		captured = call HplAtmegaCounter.get();
+		captured -= ((from_size_t)captured - (from >> BITSHIFT)) & MASK;
+	}
+
+	async event void SubCapture.fired(){
+		convert();
+		signal HplAtmegaCapture.fired();
+	}
+
+	async command bool HplAtmegaCapture.test(){
+		if ( call SubCapture.test() ){
+			convert();
+			return TRUE;
+		} else
+			return FALSE;
+	}
+
+	async command void HplAtmegaCapture.reset(){
+		call SubCapture.reset();
+	}
+
+	async command void HplAtmegaCapture.start(){
+		call SubCapture.start();
+	}
+
+	async command void HplAtmegaCapture.stop(){
+		call SubCapture.stop();
+	}
+
+	async command bool HplAtmegaCapture.isOn(){
+		return call SubCapture.isOn();
+	}
+
+	async command void HplAtmegaCapture.setMode(uint8_t mode){
+		call SubCapture.setMode(mode);
+	}
+
+	async command uint8_t HplAtmegaCapture.getMode(){
+		return call SubCapture.getMode();
+	}
+	
+	async event void HplAtmegaCounter.overflow(){}
 }
