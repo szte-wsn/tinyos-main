@@ -257,7 +257,7 @@ public:
 		float relphase;
 	};
 
-	Input<RipsDat::Packet> in;
+	Input<RipsDat2::Packet> in;
 	Output<Packet> out;
 
 	RipsQuad(uint sender1, uint sender2, uint receiver1, uint receiver2);
@@ -265,7 +265,7 @@ public:
 private:
 	uint sender1, sender2, receiver1, receiver2;
 
-	void decode(const RipsDat::Packet &pkt);
+	void decode(const RipsDat2::Packet &pkt);
 };
 
 std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet);
