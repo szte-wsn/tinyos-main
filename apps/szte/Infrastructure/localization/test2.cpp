@@ -44,14 +44,14 @@ int main(){
 	double step = 0.01;
 	double angle_step = 360.0;
 
-	#include "../cpp/4tx4anchor/first.conf"
+	#include "proba.conf"
 
 	std::cout<< config << std::endl;
 
 	//PhaseMap2D map(Position<double>(-2,2),Position<double>(4,0),step);
 	//map.generateMap(moteA,moteB,moteC);
 
-	Localization2D local(step,angle_step,config,0.0,4.0,4.8,0.8);
+	Localization2D local(step,angle_step,config,1.0,3.0,3.0,1.0);
 
 	InputParser input(config);
 	//std::string in;
