@@ -72,13 +72,13 @@ implementation
 		TEST_ALARM = 10,
 		TEST_COUNT = 10000,
 	};
-	int32_t counterNonAtomicMin, counterNonAtomicMax;
-	int32_t counterAtomicMin, counterAtomicMax;
-	int32_t counterOPMin, counterOPMax;
-	int32_t counterOMin, counterOMax;
-	int32_t alarmErrorMin, alarmErrorMax;
-	uint32_t alarmShouldFireAt;
-	uint16_t testCounter;
+	uint32_t counterNonAtomicMin, counterNonAtomicMax;
+	uint32_t counterAtomicMin, counterAtomicMax;
+	uint32_t counterOPMin, counterOPMax;
+	uint32_t counterOMin, counterOMax;
+	uint32_t alarmErrorMin, alarmErrorMax;
+	norace uint32_t alarmShouldFireAt;
+	norace uint16_t testCounter;
 	
 	inline void updateMinMax(uint32_t *min, uint32_t *max, uint32_t val){
 		if( *min > val )
@@ -89,7 +89,6 @@ implementation
 	
 	task void doTest(){
 		uint32_t a, b;
-		uint32_t diff;
 		a = call Counter.get();
 		b = call Counter.get();
 		updateMinMax(&counterNonAtomicMin, &counterNonAtomicMax, (uint32_t)(b-a));
