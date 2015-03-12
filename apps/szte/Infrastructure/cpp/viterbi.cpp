@@ -34,5 +34,5 @@
 
 #include "viterbi.hpp"
 
-UnwrapQuad::UnwrapQuad() : Viterbi(patterns) {
-}
+//UnwrapQuad::UnwrapQuad() : Viterbi(patterns) {
+//}

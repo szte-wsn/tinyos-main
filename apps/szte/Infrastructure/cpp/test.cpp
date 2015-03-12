@@ -37,8 +37,8 @@
 #include "viterbi.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<UnwrapQuadPacket> writer;
-	UnwrapQuad unwrapquad;
+//	Writer<UnwrapQuadPacket> writer;
+//	UnwrapQuad unwrapquad;
 	RipsQuad ripsquad(1, 2, 5, 6);
 	RipsDat2 ripsdat2;
 	RipsDat ripsdat;
@@ -51,8 +51,8 @@ int main(int argc, char *argv[]) {
 	connect(ripsmsg.out, ripsdat.in);
 	connect(ripsdat.out, ripsdat2.in);
 	connect(ripsdat2.out, ripsquad.in);
-	connect(ripsquad.out, unwrapquad.in);
-	connect(unwrapquad.out, writer.in);
+//	connect(ripsquad.out, unwrapquad.in);
+//	connect(unwrapquad.out, writer.in);
 
 	reader.run();
 	return 0;
