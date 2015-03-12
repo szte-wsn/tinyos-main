@@ -79,7 +79,7 @@ implementation
 		TOO_LARGE_HIGHBITS_SHIFT = 1 / (LOW_BITS > 0),
 
 		// number of bytes required to store high bits
-		HIGH_SIZE = HIGH_BITS <= 0 ? 0
+		HIGH_SIZE = HIGH_BITS <= 0 ? -1 //zero doesn't mean bitshift only conversion here, it means no conversion or negative shifting/smaller to_size_t than from_size_t
 			: HIGH_BITS <= 8 ? 1
 			: HIGH_BITS <= 16 ? 2
 			: HIGH_BITS <= 32 ? 4
@@ -126,7 +126,7 @@ implementation
 			else if( HIGH_SIZE == 4 ) {
 				uint32_t *p = (uint32_t*)high_bytes;
 				value = *p;
-			}
+			} 
 
 			if( isNotNegative(low) && call SubCounter.test() )
 				value += INCREMENT;
@@ -183,19 +183,16 @@ implementation
 	async command bool HplAtmegaCounter.test()
 	{
 		if ( call SubCounter.test() ) {
-			if( HIGH_SIZE == 4 ) {
-				uint32_t *p = (uint32_t*)high_bytes;
-				return *p == (uint32_t) ZERO_BIT_MASK;
-			}
-			if( HIGH_SIZE == 2 ) {
-				uint16_t *p = (uint16_t*)high_bytes;
-				return *p == (uint16_t) ZERO_BIT_MASK;
-			}
 			if( HIGH_SIZE == 1 ) {
 				uint8_t *p = (uint8_t*)high_bytes;
 				return *p == (uint8_t) ZERO_BIT_MASK;
-			} else
-				return TRUE;
+			} else if( HIGH_SIZE == 2 ) {
+				uint16_t *p = (uint16_t*)high_bytes;
+				return *p == (uint16_t) ZERO_BIT_MASK;
+			} else if( HIGH_SIZE == 4 ) {
+				uint32_t *p = (uint32_t*)high_bytes;
+				return *p == (uint32_t) ZERO_BIT_MASK;
+			}
 		} else
 			return FALSE;
 	}
