@@ -34,26 +34,21 @@
 
 #include "TimerConfig.h"
 
-generic configuration AlarmMcu32C()
+configuration HplAtmegaCounterMicro32C
 {
-	provides interface Alarm<TMcu, uint32_t>;
+	provides interface HplAtmegaCounter<uint32_t>;
 }
 
 implementation
 {
 #if MCU_TIMER_NO == 1
-	components HplAtmRfa1Timer1C as HplAtmegaTimerC;
+	components HplAtmRfa1Timer1C as HplAtmegaTimerC, StartCounter1C;
 #elif MCU_TIMER_NO == 3
-	components HplAtmRfa1Timer3C as HplAtmegaTimerC;
+	components HplAtmRfa1Timer3C as HplAtmegaTimerC, StartCounter3C;
 #endif
-
-	components HplAtmegaCounterMcu32C, new AtmegaTransformCompareC(uint32_t, uint16_t, 0);
-	AtmegaTransformCompareC.SubCompare -> HplAtmegaTimerC.Compare[unique(UQ_MCU_ALARM)];
-	AtmegaTransformCompareC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
 	
-	components new AtmegaAlarmC(TMcu, uint32_t, 0, MCU_ALARM_MINDT);
-	AtmegaAlarmC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
-	AtmegaAlarmC.HplAtmegaCompare -> AtmegaTransformCompareC;
+	components new AtmegaTransformCounterC(uint32_t, uint16_t, 1);
+	AtmegaTransformCounterC.SubCounter -> HplAtmegaTimerC;
 	
-	Alarm = AtmegaAlarmC;
+	HplAtmegaCounter = AtmegaTransformCounterC;
 }

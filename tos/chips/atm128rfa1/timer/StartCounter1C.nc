@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, University of Szeged
+ * Copyright (c) 2015, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,31 +29,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * Author: Miklos Maroti
+ * Author: Andras Biro
  */
 
-#include "TimerConfig.h"
-
-generic configuration AlarmMcu32C()
-{
-	provides interface Alarm<TMcu, uint32_t>;
+configuration StartCounter1C {
 }
-
-implementation
-{
-#if MCU_TIMER_NO == 1
+implementation {
 	components HplAtmRfa1Timer1C as HplAtmegaTimerC;
-#elif MCU_TIMER_NO == 3
-	components HplAtmRfa1Timer3C as HplAtmegaTimerC;
-#endif
-
-	components HplAtmegaCounterMcu32C, new AtmegaTransformCompareC(uint32_t, uint16_t, 0);
-	AtmegaTransformCompareC.SubCompare -> HplAtmegaTimerC.Compare[unique(UQ_MCU_ALARM)];
-	AtmegaTransformCompareC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
-	
-	components new AtmegaAlarmC(TMcu, uint32_t, 0, MCU_ALARM_MINDT);
-	AtmegaAlarmC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
-	AtmegaAlarmC.HplAtmegaCompare -> AtmegaTransformCompareC;
-	
-	Alarm = AtmegaAlarmC;
+	components new StartCounterP(uint16_t, MCU_TIMER_MODE), McuInitC;
+	StartCounterP.HplAtmegaCounter -> HplAtmegaTimerC;
+	McuInitC.TimerInit -> StartCounterP;
 }

@@ -99,20 +99,18 @@ implementation
 
 #ifdef RFA1_RADIO_TIMER1_MCU
 	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC, HplAtmRfa1Timer1C;
-	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 0), new AtmegaTransformCounterC(uint32_t, uint16_t, 0);
+	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 0);
 	
 	RFA1DriverLayerP.SfdCapture -> AtmegaTransformCaptureC.HplAtmegaCapture;
 	AtmegaTransformCaptureC.SubCapture -> HplAtmRfa1Timer1C;
-	AtmegaTransformCaptureC.HplAtmegaCounter -> AtmegaTransformCounterC;
-	AtmegaTransformCounterC.SubCounter -> HplAtmRfa1Timer1C;
+	AtmegaTransformCaptureC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
 #elif defined(RFA1_RADIO_TIMER1_MICRO)
 	components LocalTimeMicroC as LocalTimeC, new AlarmMicro32C() as AlarmC, HplAtmRfa1Timer1C;
-	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 1), new AtmegaTransformCounterC(uint32_t, uint16_t, 1);
+	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 1), HplAtmegaCounterMicro32C;
 	
 	RFA1DriverLayerP.SfdCapture -> AtmegaTransformCaptureC.HplAtmegaCapture;
 	AtmegaTransformCaptureC.SubCapture -> HplAtmRfa1Timer1C;
-	AtmegaTransformCaptureC.HplAtmegaCounter -> AtmegaTransformCounterC;
-	AtmegaTransformCounterC.SubCounter -> HplAtmRfa1Timer1C;
+	AtmegaTransformCaptureC.HplAtmegaCounter -> HplAtmegaCounterMicro32C;
 #else
 	components LocalTime62khzC as LocalTimeC, new Alarm62khz32C() as AlarmC, HplAtmRfa1TimerMacC;
 	RFA1DriverLayerP.SfdCapture -> HplAtmRfa1TimerMacC.SfdCapture;

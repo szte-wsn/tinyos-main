@@ -45,10 +45,11 @@ implementation
 	components CounterMcu32C;
 	Counter = CounterMcu32C;
 #else
-	components new TransformCounterC(TMicro, uint32_t, TMcu, uint32_t, MCU_TIMER_MHZ_LOG2, uint8_t);
-	Counter = TransformCounterC;
+	components HplAtmegaCounterMicro32C;
 
-	components CounterMcu32C;
-	TransformCounterC.CounterFrom -> CounterMcu32C;
+	components new AtmegaCounterP(TMicro, uint32_t, MCU_TIMER_MODE);
+	AtmegaCounterP.HplAtmegaCounter -> HplAtmegaCounterMicro32C;
+
+	Counter = AtmegaCounterP;
 #endif
 }

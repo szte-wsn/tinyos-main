@@ -1,5 +1,5 @@
-generic module StartHplCounterC(typedef size_type @integer(), uint8_t mode){
-	provides interface Init;
+generic module StartCounterP(typedef size_type @integer(), uint8_t mode){
+	provides interface Init @exactlyonce();
 	uses interface HplAtmegaCounter<size_type>;
 }
 implementation{
@@ -7,7 +7,6 @@ implementation{
 	{
 		call HplAtmegaCounter.setMode(mode);
 		call HplAtmegaCounter.start();
-
 		return SUCCESS;
 	}
 	
