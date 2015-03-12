@@ -294,4 +294,21 @@ private:
 	}
 };
 
+template <typename INPUT, typename OUTPUT> class Composite : public Block {
+public:
+	Input<INPUT> in;
+	Output<OUTPUT> out;
+
+protected:
+	Output<INPUT> sub_in;
+	Input<OUTPUT> sub_out;
+
+	Composite() : in(bind(&Composite<INPUT, OUTPUT>::fwdin, this)),
+		sub_out(bind(&Composite<INPUT, OUTPUT>::fwdout, this)) { }
+
+private:
+	void fwdin(const INPUT &data) { sub_in.send(data); }
+	void fwdout(const OUTPUT &data) { out.send(data); }
+};
+
 #endif//__BLOCK_HPP__

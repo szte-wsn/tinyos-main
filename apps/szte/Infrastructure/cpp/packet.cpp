@@ -385,7 +385,7 @@ RipsDat::RipsDat() : in(bind(&RipsDat::search, this)), schedule(NULL) {
 }
 
 void RipsDat::analize_schedule() {
-	assert (schedule != NULL);
+	assert(schedule != NULL);
 
 	if (schedule->size() < 4)
 		throw std::invalid_argument("RipsDat schedule: not enough nodes");
@@ -403,7 +403,7 @@ void RipsDat::analize_schedule() {
 
 		packet.frame = 0;
 		packet.slot = j;
-		packet.frame_frac = get_frame_frac(packet.slot);
+		packet.framefrac = get_framefrac(packet.slot);
 		packet.sender1 = 0;
 		packet.sender2 = 0;
 
@@ -434,7 +434,7 @@ void RipsDat::analize_schedule() {
 	}
 }
 
-float RipsDat::get_frame_frac(uint slot) {
+float RipsDat::get_framefrac(uint slot) {
 	return ((float) slot) / slot_count;
 }
 
@@ -472,7 +472,7 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 				Packet &packet = history[rx_indices[n][i]];
 
 				for (Measurement m : packet.measurements)
-					assert (m.nodeid != rips.nodeid);
+					assert(m.nodeid != rips.nodeid);
 
 				Measurement m;
 				m.nodeid = rips.nodeid;
@@ -565,7 +565,7 @@ void RipsDat2::decode(const RipsDat::Packet &pkt) {
 		slots.resize(pkt.slot + 1);
 	}
 
-	assert (pkt.slot < slots.size());
+	assert(pkt.slot < slots.size());
 	slots[pkt.slot].decode(pkt, out);
 }
 
@@ -601,6 +601,7 @@ void RipsDat2::Slot::decode(const RipsDat::Packet &pkt, Output<Packet> &out) {
 	RipsDat2::Packet packet;
 	packet.frame = pkt.frame;
 	packet.slot = pkt.slot;
+	packet.framefrac = pkt.framefrac;
 	packet.sender1 = pkt.sender1;
 	packet.sender2 = pkt.sender2;
 	packet.period = period;
@@ -616,7 +617,7 @@ void RipsDat2::Slot::decode(const RipsDat::Packet &pkt, Output<Packet> &out) {
 			RipsDat2::Measurement measurement;
 			measurement.nodeid = mnt.nodeid;
 			measurement.phase = 1.0 * mnt.phase / mnt.period;
-			assert (0.0f <= measurement.phase && measurement.phase < 1.0f);
+			assert(0.0f <= measurement.phase && measurement.phase < 1.0f);
 
 			packet.measurements.push_back(measurement);
 		}
@@ -668,11 +669,11 @@ void RipsQuad::decode(const RipsDat2::Packet &pkt) {
 		return;
 
 	float relphase = std::fmod(mnt1->phase - mnt2->phase + 2.0f, 1.0);
-	assert (0.0f <= relphase && relphase < 1.0f);
+	assert(0.0f <= relphase && relphase < 1.0f);
 
 	Packet packet;
 	packet.frame = pkt.frame;
-	packet.slot = pkt.slot;
+	packet.framefrac = pkt.framefrac;
 	packet.relphase = relphase;
 	out.send(packet);
 }
@@ -681,6 +682,6 @@ std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet) 
 	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
-	stream << packet.frame << ", " << packet.slot << ", " << packet.relphase;
+	stream << ((double) packet.frame + packet.framefrac) << ", " << packet.relphase;
 	return stream;
 }

@@ -6,7 +6,7 @@ DEPENDS = ${SOURCES:.cpp=.d}
 
 all: recorder phaseplot test dump
 
-test: test.o block.o serial.o packet.o
+test: test.o block.o serial.o packet.o viterbi.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 dump: dump.o block.o serial.o packet.o

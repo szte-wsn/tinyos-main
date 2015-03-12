@@ -136,7 +136,7 @@ public:
 	struct Packet {
 		ulong frame;
 		uint slot;
-		float frame_frac;
+		float framefrac;
 		uint sender1;
 		uint sender2;
 		std::vector<Measurement> measurements;
@@ -197,7 +197,7 @@ private:
 	uint current_slot = 0;
 	uint current_index = 0;
 	void decode(const RipsMsg::Packet &rips);
-	float get_frame_frac(uint slot);
+	float get_framefrac(uint slot);
 
 	void search(const RipsMsg::Packet &rips);
 	std::vector<RipsMsg::Packet> backlog;
@@ -218,6 +218,7 @@ public:
 	struct Packet {
 		ulong frame;
 		uint slot;
+		float framefrac;
 		uint sender1;
 		uint sender2;
 		float period;
@@ -260,7 +261,7 @@ class RipsQuad : public Block {
 public:
 	struct Packet {
 		ulong frame;
-		uint slot;
+		float framefrac;
 		float relphase;
 	};
 

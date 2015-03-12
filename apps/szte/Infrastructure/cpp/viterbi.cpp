@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, University of Szeged
+ * Copyright (c) 2014, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,55 +32,7 @@
  * Author: Miklos Maroti
  */
 
-#ifndef __VITERBI_HPP__
-#define __VITERBI_HPP__
+#include "viterbi.hpp"
 
-#include "block.hpp"
-#include "packet.hpp"
-#include <vector>
-#include <utility>
-
-template <typename DATA> class ViterbiPattern {
-public:
-	ViterbiPattern(const std::vector<char> &pattern) : pattern(pattern) { }
-
-	std::vector<char> pattern;
-	virtual float weight(const DATA &data) const = 0;
-};
-
-template <typename INPUT, typename OUTPUT> class Viterbi : public Transform<INPUT, OUTPUT> {
-public:
-	Viterbi(const std::vector<ViterbiPattern<INPUT>> &patterns)
-		: pattern(pattern)
-	{
-	}
-
-protected:
-	OUTPUT transform(const INPUT &data);
-
-private:
-	const std::vector<ViterbiPattern<INPUT>> &pattern;
-};
-
-struct UnwrapQuadPacket {
-	ulong frame;
-	float framefrac;
-	float unwrapphase;
-};
-
-std::ostream& operator <<(std::ostream& stream, const UnwrapQuadPacket &packet);
-
-class UnwrapQuad : public Viterbi<RipsQuad::Packet, UnwrapQuadPacket> {
-public:
-	UnwrapQuad();
-
-private:
-	class Pattern : public ViterbiPattern<RipsQuad::Packet> {
-		Pattern(const std::vector<char> &pattern);
-		float weight(const RipsQuad::Packet &data) const;
-	};
-
-	std::vector<Pattern> patterns;
-};
-
-#endif//__VITERBI_HPP__
+UnwrapQuad::UnwrapQuad() : Viterbi(patterns) {
+}
