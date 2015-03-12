@@ -41,7 +41,7 @@ generic module AtmegaTransformCounterC(typedef to_size_t @integer(),
 
 /**
  * This component allows you to store and manipulate high and low
- * bits of an integer. You can freely use positive or negative 
+ * bits of an integer. You can freely use positive or negative
  * bitshifts.
  *
  * The layout of to_size_t:
@@ -56,7 +56,7 @@ generic module AtmegaTransformCounterC(typedef to_size_t @integer(),
  *
  * The layout of high_bytes:
  * +------------------------------------+------------------+
- * | high bits stored by this component | always zero bits | 
+ * | high bits stored by this component | always zero bits |
  * +------------------------------------+------------------+
  */
 
@@ -79,19 +79,19 @@ implementation
 		TOO_LARGE_HIGHBITS_SHIFT = 1 / (LOW_BITS > 0),
 
 		// number of bytes required to store high bits
-		HIGH_SIZE = HIGH_BITS <= 0 ? -1
+		HIGH_SIZE = HIGH_BITS <= 0 ? 0
 			: HIGH_BITS <= 8 ? 1
 			: HIGH_BITS <= 16 ? 2
 			: HIGH_BITS <= 32 ? 4
 			: -1,
-		
+
 		// number of zero bits in high_bytes
 		ZERO_BITS = HIGH_SIZE * 8 - HIGH_BITS,
 
 		// the representation of one in high_bytes
-		INCREMENT = 1ul << ZERO_BITS,
-		
-		ZERO_BIT_MASK = 0xff << ZERO_BITS,
+		INCREMENT = 1UL << ZERO_BITS,
+
+		ZERO_BIT_MASK = 0xFFFFFFFFUL << ZERO_BITS,
 	};
 
 	uint8_t high_bytes[HIGH_SIZE];
@@ -114,17 +114,24 @@ implementation
 		atomic
 		{
 			low = call SubCounter.get();
-			
-			if( HIGH_SIZE == 1 )
-				value = *(uint8_t*)high_bytes;
-			else if( HIGH_SIZE == 2 )
-				value = *(uint16_t*)high_bytes;
-			else if( HIGH_SIZE == 4 )
-				value = *(uint32_t*)high_bytes;
+
+			if( HIGH_SIZE == 1 ) {
+				uint8_t *p = (uint8_t*)high_bytes;
+				value = *p;
+			}
+			else if( HIGH_SIZE == 2 ) {
+				uint16_t *p = (uint16_t*)high_bytes;
+				value = *p;
+			}
+			else if( HIGH_SIZE == 4 ) {
+				uint32_t *p = (uint32_t*)high_bytes;
+				value = *p;
+			}
+
 			if( isNotNegative(low) && call SubCounter.test() )
 				value += INCREMENT;
 		}
-		
+
 		value <<= LOW_BITS - ZERO_BITS;
 		value |= low >> BITSHIFT;
 		return value;
@@ -133,75 +140,82 @@ implementation
 	async command void HplAtmegaCounter.set(to_size_t value)
 	{
 		if( HIGH_SIZE == 1 ){
-			*(uint8_t*)high_bytes = value >> (LOW_BITS - ZERO_BITS);
-			high_bytes[0] &= ZERO_BIT_MASK;
+			uint8_t *p = (uint8_t*)high_bytes;
+			*p = (value >> (LOW_BITS - ZERO_BITS)) & ZERO_BIT_MASK;
 		} else if( HIGH_SIZE == 2 ) {
-			*(uint16_t*)high_bytes = value >> (LOW_BITS - ZERO_BITS);
-			high_bytes[1] &= ZERO_BIT_MASK;
+			uint16_t *p = (uint16_t*)high_bytes;
+			*p = (value >> (LOW_BITS - ZERO_BITS)) & ZERO_BIT_MASK;
 		} else if( HIGH_SIZE == 4 ) {
-			*(uint32_t*)high_bytes = value >> (LOW_BITS - ZERO_BITS);
-			high_bytes[3] &= ZERO_BIT_MASK;
+			uint32_t *p = (uint32_t*)high_bytes;
+			*p = (value >> (LOW_BITS - ZERO_BITS)) & ZERO_BIT_MASK;
 		}
-		
-		call SubCounter.set( value >> BITSHIFT );
+
+		call SubCounter.set(value >> BITSHIFT);
 	}
 
 	default async event void HplAtmegaCounter.overflow() { }
 
-	// WARNING: This event MUST be executed in atomic context, it 
+	// WARNING: This event MUST be executed in atomic context, it
 	// does not help if we put the body inside an atomic block
 	async event void SubCounter.overflow()
 	{
 		bool overflow;
 
-		if( HIGH_SIZE == 1 )
-			overflow = ((*(uint8_t*)high_bytes += INCREMENT) == 0);
-		else if( HIGH_SIZE == 2 )
-			overflow = ((*(uint16_t*)high_bytes += INCREMENT) == 0);
-		else if( HIGH_SIZE == 4 )
-			overflow = ((*(uint32_t*)high_bytes += INCREMENT) == 0);
+		if( HIGH_SIZE == 1 ) {
+			uint8_t *p = (uint8_t*)high_bytes;
+			overflow = ((*p += INCREMENT) == 0);
+		}
+		else if( HIGH_SIZE == 2 ) {
+			uint16_t *p = (uint16_t*)high_bytes;
+			overflow = ((*p += INCREMENT) == 0);
+		}
+		else if( HIGH_SIZE == 4 ) {
+			uint32_t *p = (uint32_t*)high_bytes;
+			overflow = ((*p += INCREMENT) == 0);
+		}
 
 		if( overflow )
 			signal HplAtmegaCounter.overflow();
 	}
 
-	// WARNING: This event MUST be executed in atomic context, it 
+	// WARNING: This event MUST be executed in atomic context, it
 	// does not help if we put the body inside an atomic block
 	async command bool HplAtmegaCounter.test()
 	{
-		if ( call SubCounter.test() ){
-			if( HIGH_SIZE == 4 ){
-				if( high_bytes[0] == 0xff && high_bytes[1] == 0xff && high_bytes[2] == 0xff && high_bytes[3] == ZERO_BIT_MASK ) 
-					return TRUE;
-				else
-					return FALSE;
+		if ( call SubCounter.test() ) {
+			if( HIGH_SIZE == 4 ) {
+				uint32_t *p = (uint32_t*)high_bytes;
+				return *p == (uint32_t) ZERO_BIT_MASK;
 			}
 			if( HIGH_SIZE == 2 ) {
-					if( high_bytes[0] == 0xff && high_bytes[1] == ZERO_BIT_MASK ) 
-						return TRUE;
-					else
-						return FALSE;
+				uint16_t *p = (uint16_t*)high_bytes;
+				return *p == (uint16_t) ZERO_BIT_MASK;
 			}
 			if( HIGH_SIZE == 1 ) {
-				if( high_bytes[0] == ZERO_BIT_MASK ) 
-						return TRUE;
-					else
-						return FALSE;
+				uint8_t *p = (uint8_t*)high_bytes;
+				return *p == (uint8_t) ZERO_BIT_MASK;
 			} else
-				return FALSE; //should never happen
+				return TRUE;
 		} else
 			return FALSE;
 	}
 
 	async command void HplAtmegaCounter.reset()
 	{
-		if ( call HplAtmegaCounter.test() ){
-			if( HIGH_SIZE == 1 )
-				*(uint8_t*)high_bytes += INCREMENT;
-			else if( HIGH_SIZE == 2 )
-				*(uint16_t*)high_bytes += INCREMENT;
-			else if( HIGH_SIZE == 4 )
-				*(uint32_t*)high_bytes += INCREMENT;
+		if ( call HplAtmegaCounter.test() ) {
+			if( HIGH_SIZE == 1 ) {
+				uint8_t *p = (uint8_t*)high_bytes;
+				*p += INCREMENT;
+			}
+			else if( HIGH_SIZE == 2 ) {
+				uint16_t *p = (uint16_t*)high_bytes;
+				*p += INCREMENT;
+			}
+			else if( HIGH_SIZE == 4 ) {
+				uint32_t *p = (uint32_t*)high_bytes;
+				*p += INCREMENT;
+			}
+
 			call SubCounter.reset();
 		}
 	}
