@@ -40,47 +40,56 @@
 #include <vector>
 #include <utility>
 
-template <typename DATA> class ViterbiPattern {
+template <typename DATA, typename PATTERN> class Viterbi {
 public:
-	ViterbiPattern(const std::vector<char> &pattern) : pattern(pattern) { }
+	class Pattern {
+	public:
+		Pattern(const std::vector<char> &pattern) : pattern(pattern) { }
+		virtual float error(const DATA& data) const = 0;
 
-	std::vector<char> pattern;
-	virtual float weight(const DATA &data) const = 0;
-};
+		std::vector<char> pattern;
+	};
 
-template <typename INPUT, typename OUTPUT> class Viterbi : public Transform<INPUT, OUTPUT> {
-public:
-	Viterbi(const std::vector<ViterbiPattern<INPUT>> &patterns)
-		: pattern(pattern)
-	{
+	Viterbi(const std::vector<PATTERN> &patterns) : patterns(patterns) {
 	}
 
-protected:
-	OUTPUT transform(const INPUT &data);
+	std::pair<DATA, char> decode(const DATA &data) {
+		return std::make_pair(data, 0);
+	}
 
 private:
-	const std::vector<ViterbiPattern<INPUT>> &pattern;
+	std::vector<PATTERN> patterns;
 };
 
-struct UnwrapQuadPacket {
-	ulong frame;
-	float framefrac;
-	float unwrapphase;
-};
-
-std::ostream& operator <<(std::ostream& stream, const UnwrapQuadPacket &packet);
-
-class UnwrapQuad : public Viterbi<RipsQuad::Packet, UnwrapQuadPacket> {
+class UnwrapQuad : public Block {
 public:
+	enum {
+		KEEP = 0,
+		SKIP = 1,
+	};
+
+	struct Packet {
+		ulong frame;
+		float subframe;
+		float range;
+		float error;
+	};
+
+	Input<RipsQuad::Packet> in;
+	Output<Packet> out;
+
 	UnwrapQuad();
 
 private:
-	class Pattern : public ViterbiPattern<RipsQuad::Packet> {
+	class Pattern : public Viterbi<RipsQuad::Packet, Pattern>::Pattern {
 		Pattern(const std::vector<char> &pattern);
-		float weight(const RipsQuad::Packet &data) const;
+		float error(const RipsQuad::Packet& data) const;
 	};
 
-	std::vector<Pattern> patterns;
+	const std::vector<Pattern> patterns;
+	Viterbi<RipsQuad::Packet, Pattern> viterbi;
+
+	void decode(const RipsQuad::Packet &packet);
 };
 
 #endif//__VITERBI_HPP__

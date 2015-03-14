@@ -34,5 +34,18 @@
 
 #include "viterbi.hpp"
 
-//UnwrapQuad::UnwrapQuad() : Viterbi(patterns) {
-//}
+UnwrapQuad::UnwrapQuad()
+	: in(bind(&UnwrapQuad::decode, this)), viterbi(patterns)
+{
+}
+
+void UnwrapQuad::decode(const RipsQuad::Packet &packet) {
+	std::pair<RipsQuad::Packet, char> decoded = viterbi.decode(packet);
+
+	Packet unwrapped;
+	unwrapped.frame = decoded.first.frame;
+	unwrapped.subframe = decoded.first.subframe;
+	unwrapped.range = decoded.first.relphase;
+
+	out.send(unwrapped);
+}

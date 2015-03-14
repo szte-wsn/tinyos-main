@@ -403,7 +403,7 @@ void RipsDat::analize_schedule() {
 
 		packet.frame = 0;
 		packet.slot = j;
-		packet.framefrac = get_framefrac(packet.slot);
+		packet.subframe = get_subframe(packet.slot);
 		packet.sender1 = 0;
 		packet.sender2 = 0;
 
@@ -434,7 +434,7 @@ void RipsDat::analize_schedule() {
 	}
 }
 
-float RipsDat::get_framefrac(uint slot) {
+float RipsDat::get_subframe(uint slot) {
 	return ((float) slot) / slot_count;
 }
 
@@ -601,7 +601,7 @@ void RipsDat2::Slot::decode(const RipsDat::Packet &pkt, Output<Packet> &out) {
 	RipsDat2::Packet packet;
 	packet.frame = pkt.frame;
 	packet.slot = pkt.slot;
-	packet.framefrac = pkt.framefrac;
+	packet.subframe = pkt.subframe;
 	packet.sender1 = pkt.sender1;
 	packet.sender2 = pkt.sender2;
 	packet.period = period;
@@ -673,7 +673,7 @@ void RipsQuad::decode(const RipsDat2::Packet &pkt) {
 
 	Packet packet;
 	packet.frame = pkt.frame;
-	packet.framefrac = pkt.framefrac;
+	packet.subframe = pkt.subframe;
 	packet.relphase = relphase;
 	out.send(packet);
 }
@@ -682,6 +682,6 @@ std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet) 
 	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
-	stream << ((double) packet.frame + packet.framefrac) << ", " << packet.relphase;
+	stream << ((double) packet.frame + packet.subframe) << ", " << packet.relphase;
 	return stream;
 }
