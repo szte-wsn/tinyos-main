@@ -38,36 +38,46 @@
 #include "block.hpp"
 #include "packet.hpp"
 #include <vector>
-#include <utility>
 
 template <typename DATA, typename PATTERN> class Viterbi {
 public:
-	class Pattern {
-	public:
-		Pattern(const std::vector<char> &pattern) : pattern(pattern) { }
-		virtual float error(const DATA& data) const = 0;
+	struct Pattern {
+		virtual const std::vector<char> & get_pattern() = 0;
+		virtual float error(const std::vector<DATA>& vector) = 0;
 
-		std::vector<char> pattern;
+		void print(std::ostream& stream) {
+			const std::vector<char> &pattern = get_pattern();
+			for (char c : pattern)
+				stream << (int) c << " ";
+			stream << "\n";
+		}
+	};
+
+	struct Result {
+		DATA data;
+		char state;
+		float error;
 	};
 
 	Viterbi(const std::vector<PATTERN> &patterns) : patterns(patterns) {
 	}
 
-	std::pair<DATA, char> decode(const DATA &data) {
-		return std::make_pair(data, 0);
+	Result decode(const DATA &data) {
+		Result result;
+
+		result.data = data;
+		result.state = 0;
+		result.error = 0.0f;
+
+		return result;
 	}
 
 private:
 	std::vector<PATTERN> patterns;
 };
 
-class UnwrapQuad : public Block {
+class PhaseUnwrap : public Block {
 public:
-	enum {
-		KEEP = 0,
-		SKIP = 1,
-	};
-
 	struct Packet {
 		ulong frame;
 		float subframe;
@@ -78,18 +88,37 @@ public:
 	Input<RipsQuad::Packet> in;
 	Output<Packet> out;
 
-	UnwrapQuad();
+	PhaseUnwrap(int length, int skips);
 
 private:
-	class Pattern : public Viterbi<RipsQuad::Packet, Pattern>::Pattern {
-		Pattern(const std::vector<char> &pattern);
-		float error(const RipsQuad::Packet& data) const;
+	struct Pattern : public Viterbi<RipsQuad::Packet, Pattern>::Pattern {
+		Pattern(const std::vector<char> &pattern) : pattern(pattern) { }
+		std::vector<char> pattern;
+
+		const std::vector<char> & get_pattern() { return pattern; }
+		float error(const std::vector<RipsQuad::Packet>& vector);
+
+		std::vector<std::pair<float, float>> points;
 	};
+
+	enum {
+		KEEP = 0,
+		SKIP = 1,
+	};
+
+	static float get_linear_regression_error(const std::vector<std::pair<float, float>> &points);
+	static float get_phase_change(float phase1, float phase2);
+
+	static int count(const std::vector<char> &pattern, char what);
+	static std::vector<Pattern> make_patterns(int length, int skips);
 
 	const std::vector<Pattern> patterns;
 	Viterbi<RipsQuad::Packet, Pattern> viterbi;
 
+	float last_relphase;
 	void decode(const RipsQuad::Packet &packet);
 };
+
+std::ostream& operator <<(std::ostream& stream, const PhaseUnwrap::Packet &packet);
 
 #endif//__VITERBI_HPP__
