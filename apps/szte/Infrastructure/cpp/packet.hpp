@@ -181,6 +181,7 @@ private:
 	static std::vector<std::vector<uint8_t>> LOC_4TX_NOANCHORRX;
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_8;
 	static std::vector<std::vector<uint8_t>> MULT_RX_1;
+	static std::vector<std::vector<uint8_t>> SCHEDULER_AND_RSSI_LOC_TESTER;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
@@ -195,7 +196,7 @@ private:
 	std::vector<std::vector<uint>> rx_indices;
 
 	uint current_slot = 0;
-	uint current_index = 0;
+	uint current_index = 0; // index into the history
 	void decode(const RipsMsg::Packet &rips);
 	float get_subframe(uint slot);
 

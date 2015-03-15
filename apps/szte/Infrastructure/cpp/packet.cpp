@@ -344,6 +344,20 @@ std::vector<std::vector<uint8_t>> RipsDat::MULT_RX_1 = {
 	{	RX,	RX,	W10,	SSYN,	RX,	W10,	RSYN,	RSYN,	RSYN,	SSYN	}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::SCHEDULER_AND_RSSI_LOC_TESTER = {
+	{	RSYN,	TX1,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	SSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN	},
+	{	RSYN,	RX,	TX1,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	SSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN	},
+	{	RSYN,	RX,	TX2,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	SSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN	},
+	{	RSYN,	TX2,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	TX1,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	SSYN,	RSYN,	RSYN	},
+	{	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RX,	TX1,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	SSYN,	RSYN	},
+	{	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RX,	TX2,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	SSYN	},
+	{	RSYN,	NTRX,	NTRX,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	TX2,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	RX,	TX1,	RSYN,	RSYN,	RSYN	},
+	{	RSYN,	NTRX,	NTRX,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	TX1,	RX,	RSYN,	RSYN,	RSYN	},
+	{	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	TX2,	RX,	RSYN,	RSYN,	RSYN	},
+	{	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	RX,	TX2,	RSYN,	RSYN,	RSYN	},
+	{	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN	}
+};
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -358,6 +372,7 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"LOC_4TX_NOANCHORRX", LOC_4TX_NOANCHORRX},
 	{"PHASEMAP_TEST_8", PHASEMAP_TEST_8},
 	{"MULT_RX_1", MULT_RX_1},
+	{"SCHEDULER_AND_RSSI_LOC_TESTER", SCHEDULER_AND_RSSI_LOC_TESTER}
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
@@ -447,7 +462,7 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 		std::cerr << "RipsDat schedule mismatch: measurement count\n";
 	else {
 		uint n = rips.nodeid - 1;
-		uint s = (rips.slot + slot_count - 1) % slot_count;
+		uint s = (rips.slot + slot_count - 1) % slot_count;	// back up one (different slot logic in mote)
 
 		if ((*schedule)[n][s] != SSYN)
 			std::cerr << "RipsDat schedule mismatch: send sync slot\n";
