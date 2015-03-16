@@ -41,14 +41,20 @@ configuration HplAtmegaCounterMicro32C
 
 implementation
 {
+#if MCU_TIMER_MHZ_LOG2 == 0
+	components HplAtmegaCounterMcu32C;
+	HplAtmegaCounter = HplAtmegaCounterMcu32C;
+#else
+
 #if MCU_TIMER_NO == 1
 	components HplAtmRfa1Timer1C as HplAtmegaTimerC, StartCounter1C;
 #elif MCU_TIMER_NO == 3
 	components HplAtmRfa1Timer3C as HplAtmegaTimerC, StartCounter3C;
 #endif
 	
-	components new AtmegaTransformCounterC(uint32_t, uint16_t, 1);
+	components new AtmegaTransformCounterC(uint32_t, uint16_t, MCU_TIMER_MHZ_LOG2);
 	AtmegaTransformCounterC.SubCounter -> HplAtmegaTimerC;
 	
 	HplAtmegaCounter = AtmegaTransformCounterC;
+#endif
 }

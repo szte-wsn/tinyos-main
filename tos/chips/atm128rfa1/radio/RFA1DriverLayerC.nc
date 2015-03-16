@@ -35,6 +35,7 @@
 
 #include <RadioConfig.h>
 #include <RFA1DriverLayer.h>
+#include "TimerConfig.h"
 
 configuration RFA1DriverLayerC
 {
@@ -97,7 +98,7 @@ implementation
 	Tasklet = RFA1DriverLayerP.Tasklet;
 	RFA1DriverLayerP.BusyWait -> BusyWaitMicroC;
 
-#ifdef RFA1_RADIO_TIMER1_MCU
+#if RFA1_RADIO_TIMER1_MCU
 	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC, HplAtmRfa1Timer1C;
 	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 0);
 	
@@ -106,7 +107,7 @@ implementation
 	AtmegaTransformCaptureC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
 #elif defined(RFA1_RADIO_TIMER1_MICRO)
 	components LocalTimeMicroC as LocalTimeC, new AlarmMicro32C() as AlarmC, HplAtmRfa1Timer1C;
-	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 1), HplAtmegaCounterMicro32C;
+	components new AtmegaTransformCaptureC(uint32_t, uint16_t, MCU_TIMER_MHZ_LOG2), HplAtmegaCounterMicro32C;
 	
 	RFA1DriverLayerP.SfdCapture -> AtmegaTransformCaptureC.HplAtmegaCapture;
 	AtmegaTransformCaptureC.SubCapture -> HplAtmRfa1Timer1C;
