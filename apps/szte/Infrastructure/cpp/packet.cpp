@@ -539,6 +539,11 @@ void RipsDat::decode(const RipsMsg::Packet &rips) {
 			m.rssi2 = rips.measurements[i].rssi2;
 			packet.measurements.push_back(m);
 		}
+
+		for (uint i = rx_indices[s].size(); i < rips.measurements.size(); i++) {
+			if (rips.measurements[i].phase != 255 || rips.measurements[i].period != 0)
+				std::cerr << "RipsDat message: invalid void measurement\n";
+		}
 	}
 }
 
