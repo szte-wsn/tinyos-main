@@ -26,7 +26,7 @@ phaseplot: phaseplot.o
 .PHONY: clean socat
 
 clean:
-	$(RM) test dump recorder phaseplot *.o *.d
+	$(RM) test dump recorder phaseplot ${SOURCES:.cpp=.o} $(DEPENDS)
 
 socat:
 	socat -d -d STDIO PTY

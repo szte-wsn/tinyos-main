@@ -55,25 +55,50 @@ public:
 
 	struct Result {
 		DATA data;
-		char state;
+		char symbol;
 		float error;
 	};
 
-	Viterbi(const std::vector<PATTERN> &patterns) : patterns(patterns) {
+	Viterbi(const std::vector<std::vector<char>> &patterns) {
+		for (const std::vector<char> &pattern : patterns)
+			edges.push_back(Edge(pattern));
 	}
 
 	Result decode(const DATA &data) {
 		Result result;
 
 		result.data = data;
-		result.state = 0;
+		result.symbol = 0;
 		result.error = 0.0f;
 
 		return result;
 	}
 
 private:
-	std::vector<PATTERN> patterns;
+	struct Edge : public PATTERN {
+		Edge(const PATTERN &pattern) : PATTERN(pattern) { }
+	};
+
+	std::vector<Edge> edges;
+
+	struct State {
+		State(const std::vector<char> &pattern) : pattern(pattern) { }
+
+		std::vector<char> pattern;
+		std::vector<Edge*> next;
+		std::vector<Edge*> prev;
+	};
+
+	std::vector<State> states;
+
+	State &get_state(const std::vector<char> &pattern) {
+		for (int i = 0; i < states.size; i++)
+			if (states[i] == pattern)
+				return states[i];
+
+		states.push_back(State(pattern));
+		return states[states.size()-1];
+	}
 };
 
 class PhaseUnwrap : public Block {
@@ -110,11 +135,9 @@ private:
 	static float get_phase_change(float phase1, float phase2);
 
 	static int count(const std::vector<char> &pattern, char what);
-	static std::vector<Pattern> make_patterns(int length, int skips);
+	static std::vector<std::vector<char>> make_patterns(int length, int skips);
 
-	const std::vector<Pattern> patterns;
 	Viterbi<RipsQuad::Packet, Pattern> viterbi;
-
 	float last_relphase;
 	void decode(const RipsQuad::Packet &packet);
 };

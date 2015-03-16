@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, University of Szeged
+ * Copyright (c) 2015, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,8 +38,7 @@
 
 PhaseUnwrap::PhaseUnwrap(int length, int skips)
 	: in(bind(&PhaseUnwrap::decode, this)),
-	patterns(make_patterns(length, skips)),
-	viterbi(patterns),
+	viterbi(make_patterns(length, skips)),
 	last_relphase(0.0f)
 {
 }
@@ -54,14 +53,14 @@ int PhaseUnwrap::count(const std::vector<char> &pattern, char what) {
 	return a;
 }
 
-std::vector<PhaseUnwrap::Pattern> PhaseUnwrap::make_patterns(int length, int skips) {
-	std::vector<Pattern> patterns;
+std::vector<std::vector<char>> PhaseUnwrap::make_patterns(int length, int skips) {
+	std::vector<std::vector<char>> patterns;
 
 	std::vector<char> pattern;
 	for (int i = 0; i < length; i++)
 		pattern.push_back(KEEP);
 
-	patterns.push_back(Pattern(pattern));
+	patterns.push_back(pattern);
 	do {
 		int i = 0;
 		do {
@@ -72,7 +71,7 @@ std::vector<PhaseUnwrap::Pattern> PhaseUnwrap::make_patterns(int length, int ski
 				continue;
 			}
 			else if (count(pattern, SKIP) <= skips) {
-				patterns.push_back(Pattern(pattern));
+				patterns.push_back(pattern);
 				break;
 			}
 		} while (i < length);
@@ -143,7 +142,7 @@ float PhaseUnwrap::Pattern::error(const std::vector<RipsQuad::Packet>& vector) {
 void PhaseUnwrap::decode(const RipsQuad::Packet &packet) {
 	Viterbi<RipsQuad::Packet, Pattern>::Result result = viterbi.decode(packet);
 
-	if (result.state == KEEP) {
+	if (result.symbol == KEEP) {
 		Packet decoded;
 
 		decoded.frame = result.data.frame;
