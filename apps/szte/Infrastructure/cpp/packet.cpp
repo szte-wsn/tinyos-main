@@ -406,9 +406,13 @@ void RipsDat::analize_schedule() {
 		throw std::invalid_argument("RipsDat schedule: not enough nodes");
 
 	node_count = schedule->size();
-	rx_indices.resize(node_count);
-
 	slot_count = (*schedule)[0].size();
+
+	if (slot_count < 2)
+		throw std::invalid_argument("RipsDat schedule: not enough slots");
+
+	rx_indices.resize(slot_count);
+
 	for (uint i = 1; i < node_count; i++)
 		if ((*schedule)[i].size() != slot_count)
 			throw std::invalid_argument("RipsDat schedule: non-uniform slots");
@@ -441,11 +445,41 @@ void RipsDat::analize_schedule() {
 				packet.sender1 = i + 1;
 			else if (s == TX2)
 				packet.sender2 = i + 1;
-			else if (s == RX)
-				rx_indices[i].push_back(history.size());
 		}
 
 		history.push_back(packet);
+	}
+
+	for (uint j = 0; j < slot_count; j++) {
+		int n = -1;
+		for(uint i = 0; i < node_count; i++) {
+			uint8_t s = (*schedule)[i][j];
+			if (s == SSYN) {
+				if (n != -1)
+					throw std::invalid_argument("RipsDat schedule: double SSYN");
+
+				n = i;
+				break;
+			}
+		}
+		if (n == -1)
+			continue;
+
+		uint k = j;
+		std::vector<uint> indices;
+
+		for(;;) {
+			k = (k + 1) % slot_count;
+			uint8_t s = (*schedule)[n][k];
+
+			if (s == RX)
+				indices.push_back(get_packet_by_slot(k));
+			else if (s == SSYN) {
+				assert(rx_indices[k].size() == 0);
+				rx_indices[k] = indices;
+				break;
+			}
+		}
 	}
 }
 
@@ -453,50 +487,57 @@ float RipsDat::get_subframe(uint slot) {
 	return ((float) slot) / slot_count;
 }
 
+uint RipsDat::get_packet_by_slot(uint slot) {
+	for (uint h = 0; h < history.size(); h++) {
+		if (history[h].slot == slot)
+			return h;
+	}
+
+	throw std::invalid_argument("RipsDat schedule: unknown slot");
+}
+
 void RipsDat::decode(const RipsMsg::Packet &rips) {
+	uint n = rips.nodeid - 1;
+	uint s = (rips.slot + slot_count - 1) % slot_count;	// back up one (different slot logic in mote)
+
 	if (rips.nodeid < 1 || rips.nodeid > node_count)
 		std::cerr << "RipsDat schedule mismatch: node id\n";
 	else if (rips.slot >= slot_count)
 		std::cerr << "RipsDat schedule mismatch: slot number\n";
-	else if (rx_indices[rips.nodeid - 1].size() != rips.measurements.size())
+	else if (rx_indices[s].size() > rips.measurements.size())
 		std::cerr << "RipsDat schedule mismatch: measurement count\n";
+	else if ((*schedule)[n][s] != SSYN)
+		std::cerr << "RipsDat schedule mismatch: send sync slot\n";
 	else {
-		uint n = rips.nodeid - 1;
-		uint s = (rips.slot + slot_count - 1) % slot_count;	// back up one (different slot logic in mote)
+		// send out old packets
+		do {
+			if (history[current_index].slot == current_slot) {
+				Packet &packet = history[current_index];
+				if (packet.measurements.size() != 0)
+					out.send(packet);
 
-		if ((*schedule)[n][s] != SSYN)
-			std::cerr << "RipsDat schedule mismatch: send sync slot\n";
-		else {
-			// send out old packets
-			do {
-				if (history[current_index].slot == current_slot) {
-					Packet &packet = history[current_index];
-					if (packet.measurements.size() != 0)
-						out.send(packet);
+				packet.frame += 1;
+				packet.measurements.clear();
 
-					packet.frame += 1;
-					packet.measurements.clear();
-
-					current_index = (current_index + 1) % history.size();
-				}
-
-				current_slot = (current_slot + 1) % slot_count;
-			} while (current_slot != s);
-
-			for (uint i = 0; i < rips.measurements.size(); i++) {
-				Packet &packet = history[rx_indices[n][i]];
-
-				for (Measurement m : packet.measurements)
-					assert(m.nodeid != rips.nodeid);
-
-				Measurement m;
-				m.nodeid = rips.nodeid;
-				m.period = rips.measurements[i].period;
-				m.phase = rips.measurements[i].phase;
-				m.rssi1 = rips.measurements[i].rssi1;
-				m.rssi2 = rips.measurements[i].rssi2;
-				packet.measurements.push_back(m);
+				current_index = (current_index + 1) % history.size();
 			}
+
+			current_slot = (current_slot + 1) % slot_count;
+		} while (current_slot != s);
+
+		for (uint i = 0; i < rx_indices[s].size(); i++) {
+			Packet &packet = history[rx_indices[s][i]];
+
+			for (Measurement m : packet.measurements)
+				assert(m.nodeid != rips.nodeid);
+
+			Measurement m;
+			m.nodeid = rips.nodeid;
+			m.period = rips.measurements[i].period;
+			m.phase = rips.measurements[i].phase;
+			m.rssi1 = rips.measurements[i].rssi1;
+			m.rssi2 = rips.measurements[i].rssi2;
+			packet.measurements.push_back(m);
 		}
 	}
 }
@@ -554,8 +595,10 @@ bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::ve
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
 	stream << packet.sender1 << ", " << packet.sender2;
-	for (RipsDat::Measurement mnt : packet.measurements)
+	for (RipsDat::Measurement mnt : packet.measurements) {
 		stream << ",\t" << mnt.nodeid << ", " << mnt.phase << ", " << mnt.period;
+		stream << ", " << mnt.rssi1 << ", " << mnt.rssi2;
+	}
 	return stream;
 }
 
@@ -630,9 +673,12 @@ void RipsDat2::Slot::decode(const RipsDat::Packet &pkt, Output<Packet> &out) {
 
 		if (period_min <= mnt.period && mnt.period <= period_max) {
 			RipsDat2::Measurement measurement;
+
 			measurement.nodeid = mnt.nodeid;
 			measurement.phase = 1.0 * mnt.phase / mnt.period;
 			assert(0.0f <= measurement.phase && measurement.phase < 1.0f);
+			measurement.rssi1 = mnt.rssi1;
+			measurement.rssi2 = mnt.rssi2;
 
 			packet.measurements.push_back(measurement);
 		}
@@ -646,8 +692,10 @@ std::ostream& operator <<(std::ostream& stream, const RipsDat2::Packet &packet) 
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	stream << packet.sender1 << ", " << packet.sender2 << ", " << packet.period;
-	for (RipsDat2::Measurement mnt : packet.measurements)
+	for (RipsDat2::Measurement mnt : packet.measurements) {
 		stream << ",\t" << mnt.nodeid << ", " << mnt.phase;
+		stream << ", " << mnt.rssi1 << ", " << mnt.rssi2;
+	}
 
 	return stream;
 }

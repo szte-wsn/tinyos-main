@@ -129,8 +129,8 @@ public:
 		uint nodeid;
 		int period;
 		int phase;
-		short rssi1;
-		short rssi2;
+		int rssi1;
+		int rssi2;
 	};
 
 	struct Packet {
@@ -193,7 +193,8 @@ private:
 	uint slot_count;
 
 	std::vector<Packet> history;
-	std::vector<std::vector<uint>> rx_indices;
+	uint get_packet_by_slot(uint slot);
+	std::vector<std::vector<uint>> rx_indices; // which packet to write
 
 	uint current_slot = 0;
 	uint current_index = 0; // index into the history
@@ -214,6 +215,8 @@ public:
 	struct Measurement {
 		uint nodeid;
 		float phase;
+		int rssi1;
+		int rssi2;
 	};
 
 	struct Packet {
