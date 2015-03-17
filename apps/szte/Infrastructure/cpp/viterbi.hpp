@@ -42,62 +42,134 @@
 template <typename DATA, typename PATTERN> class Viterbi {
 public:
 	struct Pattern {
-		virtual const std::vector<char> & get_pattern() = 0;
-		virtual float error(const std::vector<DATA>& vector) = 0;
+		const std::vector<char> pattern;
 
-		void print(std::ostream& stream) {
-			const std::vector<char> &pattern = get_pattern();
-			for (char c : pattern)
-				stream << (int) c << " ";
-			stream << "\n";
-		}
+		Pattern(const std::vector<char> &pattern) : pattern(pattern) { }
+		virtual ~Pattern() { }
+		virtual float cost(const std::vector<DATA>& vector) = 0;
 	};
 
 	struct Result {
 		DATA data;
 		char symbol;
-		float error;
+		float cost;
 	};
 
-	Viterbi(const std::vector<std::vector<char>> &patterns) {
-		for (const std::vector<char> &pattern : patterns)
-			edges.push_back(Edge(pattern));
-	}
+	Viterbi(uint trace_len, const std::vector<std::vector<char>> &patterns) : trace_pos(0), trace_len(trace_len + 1) {
+		for (const std::vector<char> &pattern : patterns) {
+			assert (pattern.size() != 0);
+			std::vector<char> sub;
 
-	Result decode(const DATA &data) {
-		Result result;
+			sub = pattern;
+			sub.pop_back();
+			uint src = get_state(sub);
 
-		result.data = data;
-		result.symbol = 0;
-		result.error = 0.0f;
+			sub = pattern;
+			sub.erase(sub.begin());
+			uint dst = get_state(sub);
 
-		return result;
+			edges.push_back(Edge(pattern, src, dst));
+		}
 	}
 
 private:
 	struct Edge : public PATTERN {
-		Edge(const PATTERN &pattern) : PATTERN(pattern) { }
+		Edge(const std::vector<char> &pattern, uint src, uint dst)
+			: PATTERN(pattern), src(src), dst(dst) { }
+
+		uint src;
+		uint dst;
 	};
 
 	std::vector<Edge> edges;
+	std::vector<std::vector<char>> states;
 
-	struct State {
-		State(const std::vector<char> &pattern) : pattern(pattern) { }
+	uint get_state(const std::vector<char> &state) {
+		for (uint i = 0; i < states.size(); i++)
+			if (states[i] == state)
+				return i;
 
-		std::vector<char> pattern;
-		std::vector<Edge*> next;
-		std::vector<Edge*> prev;
+		states.push_back(state);
+		return states.size() - 1;
+	}
+
+	struct Node {
+		uint prev;
+		float local_cost;
+		float total_cost;
 	};
 
-	std::vector<State> states;
+	struct Trace {
+		DATA data;
+		std::vector<Node> nodes;
+	};
 
-	State &get_state(const std::vector<char> &pattern) {
-		for (int i = 0; i < states.size; i++)
-			if (states[i] == pattern)
-				return states[i];
+	std::vector<Trace> traces;
+	uint trace_pos;
+	uint trace_len;
 
-		states.push_back(State(pattern));
-		return states[states.size()-1];
+	static void print(std::ostream& stream, const std::vector<char> &pattern) {
+		for (char c : pattern)
+			stream << (int) c << " ";
+	}
+
+public:
+	bool decode(const DATA &data, Result &result) {
+		if (traces.size() < trace_len) {
+			Node node;
+			node.prev = 0;
+			node.local_cost = 0.0f;
+			node.total_cost = 0.0f;
+
+			Trace trace;
+			trace.data = data;
+			trace.nodes.resize(states.size(), node);
+
+			traces.push_back(trace);
+			return false;
+		}
+
+		assert(0 <= trace_pos && trace_pos < trace_len);
+		Trace &trace = traces[trace_pos];
+
+		uint best_state = 0;
+		float best_cost = trace.nodes[0].total_cost;
+		for (uint i = 1; i < trace.nodes.size(); i++) {
+			if (trace.nodes[i].total_cost < best_cost) {
+				best_cost = trace.nodes[i].total_cost;
+				best_state = i;
+			}
+		}
+
+		uint pos = trace_pos;
+		do {
+			best_state = traces[pos].nodes[best_state].prev;
+			assert(0 <= best_state && best_state < states.size());
+
+			if (pos == 0)
+				pos = states.size();
+		} while(--pos != trace_pos);
+
+		result.data = trace.data;
+		result.symbol = states[best_state].front();
+		result.cost = trace.nodes[best_state].total_cost;
+
+		return true;
+	}
+
+	void print(std::ostream& stream) {
+		stream << "edges:\n";
+		for (const Edge &edge : edges) {
+			print(stream, edge.pattern);
+			stream << "\t" << edge.src << " " << edge.dst << std::endl;
+		}
+
+		stream << "states:\n";
+		for (uint i = 0; i < states.size(); i++) {
+			stream << i << ": ";
+			print(stream, states[i]);
+			stream << std::endl;
+		}
 	}
 };
 
@@ -107,21 +179,18 @@ public:
 		ulong frame;
 		float subframe;
 		float range;
-		float error;
+		float cost;
 	};
 
 	Input<RipsQuad::Packet> in;
 	Output<Packet> out;
 
-	PhaseUnwrap(int length, int skips);
+	PhaseUnwrap(uint trace_len, int length, int skips);
 
 private:
 	struct Pattern : public Viterbi<RipsQuad::Packet, Pattern>::Pattern {
-		Pattern(const std::vector<char> &pattern) : pattern(pattern) { }
-		std::vector<char> pattern;
-
-		const std::vector<char> & get_pattern() { return pattern; }
-		float error(const std::vector<RipsQuad::Packet>& vector);
+		Pattern(const std::vector<char> &pattern);
+		float cost(const std::vector<RipsQuad::Packet>& vector);
 
 		std::vector<std::pair<float, float>> points;
 	};
@@ -138,6 +207,8 @@ private:
 	static std::vector<std::vector<char>> make_patterns(int length, int skips);
 
 	Viterbi<RipsQuad::Packet, Pattern> viterbi;
+
+	float last_range;
 	float last_relphase;
 	void decode(const RipsQuad::Packet &packet);
 };

@@ -38,7 +38,7 @@
 
 int main(int argc, char *argv[]) {
 	Writer<PhaseUnwrap::Packet> writer;
-	PhaseUnwrap unwrap(5, 1);
+	PhaseUnwrap unwrap(10, 5, 1);
 	RipsQuad ripsquad(1, 2, 5, 6);
 	RipsDat2 ripsdat2;
 	RipsDat ripsdat;

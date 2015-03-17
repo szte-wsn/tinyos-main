@@ -36,11 +36,12 @@
 
 // ------- PhaseUnwrap
 
-PhaseUnwrap::PhaseUnwrap(int length, int skips)
+PhaseUnwrap::PhaseUnwrap(uint trace_len, int length, int skips)
 	: in(bind(&PhaseUnwrap::decode, this)),
-	viterbi(make_patterns(length, skips)),
-	last_relphase(0.0f)
+	viterbi(trace_len, make_patterns(length, skips)),
+	last_range(0.0f), last_relphase(0.0f)
 {
+	viterbi.print(std::cout);
 }
 
 int PhaseUnwrap::count(const std::vector<char> &pattern, char what) {
@@ -117,7 +118,11 @@ float PhaseUnwrap::get_phase_change(float phase1, float phase2) {
 	return p;
 }
 
-float PhaseUnwrap::Pattern::error(const std::vector<RipsQuad::Packet>& vector) {
+PhaseUnwrap::Pattern::Pattern(const std::vector<char> &pattern)
+	: Viterbi<RipsQuad::Packet, Pattern>::Pattern(pattern) {
+}
+
+float PhaseUnwrap::Pattern::cost(const std::vector<RipsQuad::Packet>& vector) {
 	assert(vector.size() == pattern.size());
 
 	points.clear();
@@ -140,16 +145,17 @@ float PhaseUnwrap::Pattern::error(const std::vector<RipsQuad::Packet>& vector) {
 }
 
 void PhaseUnwrap::decode(const RipsQuad::Packet &packet) {
-	Viterbi<RipsQuad::Packet, Pattern>::Result result = viterbi.decode(packet);
-
-	if (result.symbol == KEEP) {
+	Viterbi<RipsQuad::Packet, Pattern>::Result result;
+	if (viterbi.decode(packet, result) && result.symbol == KEEP) {
 		Packet decoded;
+
+		last_range += get_phase_change(last_relphase, result.data.relphase);
+		last_relphase = result.data.relphase;
 
 		decoded.frame = result.data.frame;
 		decoded.subframe = result.data.subframe;
-		decoded.range = get_phase_change(last_relphase, result.data.relphase);
-		last_relphase = result.data.relphase;
-		decoded.error = result.error;
+		decoded.range = last_range;
+		decoded.cost = result.cost;
 
 		out.send(decoded);
 	}
@@ -160,7 +166,7 @@ std::ostream& operator <<(std::ostream& stream, const PhaseUnwrap::Packet &packe
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	stream << (double) packet.frame + packet.subframe;
-	stream << ", " << packet.range << ", " << packet.error;
+	stream << ", " << packet.range << ", " << packet.cost;
 
 	return stream;
 }
