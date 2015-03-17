@@ -61,7 +61,7 @@ public:
 		if (trace_len <= 1)
 			throw std::runtime_error("Viterbi: trace length must be at least two");
 
-		pattern_len = -1;
+		pattern_len = 0;
 		for (const std::vector<char> &pattern : patterns) {
 			if (pattern.size() == 0)
 				throw std::runtime_error("Viterbi: zero length pattern");
@@ -106,9 +106,9 @@ private:
 	}
 
 	struct Node {
-		uint prev;
-		float local_cost;
 		float total_cost;
+		float local_cost;
+		uint src;
 	};
 
 	struct Trace {
@@ -129,82 +129,128 @@ private:
 	}
 
 public:
+	void butterfly(const std::vector<Node> &last, std::vector<Node> &next) {
+		assert(queue.size() == pattern_len);
+
+		for (Node &node : next)
+			node.total_cost = FLT_MAX;
+
+		for (Edge &edge : edges) {
+			float local_cost = edge.cost(queue);
+			float total_cost = last[edge.src].total_cost + local_cost;
+
+			Node &dst = next[edge.dst];
+			if (total_cost < dst.total_cost) {
+				dst.total_cost = total_cost;
+				dst.local_cost = local_cost;
+				dst.src = edge.src;
+			}
+		}
+
+		for (const Node &node : next)
+			assert(node.total_cost != FLT_MAX);
+	}
+
+	void backtrace(Result &result) {
+		assert(traces.size() == trace_len && trace_pos < trace_len);
+
+		// trace_pos points to the oldest (next) data point
+		uint pos = (trace_pos != 0 ? trace_pos : trace_len) - 1;
+		const std::vector<Node> &nodes = traces[pos].nodes;
+
+		uint best_state = 0;
+		float best_cost = nodes[0].total_cost;
+
+		for (uint i = 1; i < nodes.size(); i++) {
+			if (nodes[i].total_cost < best_cost) {
+				best_cost = nodes[i].total_cost;
+				best_state = i;
+			}
+		}
+
+		while(pos != trace_pos) {
+			pos = (pos != 0 ? pos : trace_len) - 1;
+
+			best_state = traces[pos].nodes[best_state].src;
+			assert(0 <= best_state && best_state < states.size());
+		}
+
+		Trace &trace = traces[trace_pos];
+		result.data = trace.data;
+		result.symbol = states[best_state].front();
+		result.cost = trace.nodes[best_state].local_cost;
+	}
+
 	bool decode(const DATA &data, Result &result) {
 		queue.push_back(data);
 		if (queue.size() < pattern_len)
 			return false;
 
 		if (traces.size() < trace_len) {
-			Node node;
-			node.prev = 0;
-			node.local_cost = 0.0f;
-			node.total_cost = FLT_MAX;
+			Node empty_node;
+			empty_node.src = 0;
+			empty_node.local_cost = 0.0f;
+			empty_node.total_cost = 0.0f;
 
 			Trace trace;
 			trace.data = queue.front();
-			trace.nodes.resize(states.size(), node);
+			trace.nodes.resize(states.size(), empty_node);
 
-			for (Edge &edge: edges) {
-				assert(queue.size() == pattern_len);
-				float c = edge.cost(queue);
-				float d = traces.empty() ? 0.0f : traces.back().nodes[edge.src].total_cost;
-
-				Node &dst = trace.nodes[edge.dst];
-				if (c < dst.total_cost) {
-					dst.total_cost = c;
-					dst.local_cost = d + c;
-					dst.prev = edge.src;
-				}
+			if (traces.size() == 0) {
+				const std::vector<Node> last = trace.nodes;
+				butterfly(last, trace.nodes);
 			}
-
-			for (const Node &node : trace.nodes)
-				assert(node.total_cost != FLT_MAX);
+			else {
+				const std::vector<Node> &last = traces.back().nodes;
+				butterfly(last, trace.nodes);
+			}
 
 			traces.push_back(trace);
+			queue.erase(queue.begin());
+
+//			print(std::cout);
 			return false;
 		}
+		else {
+			backtrace(result);
 
-		assert(0 <= trace_pos && trace_pos < trace_len);
-		Trace &trace = traces[trace_pos];
+			uint prev_pos = (trace_pos != 0 ? trace_pos : trace_len) - 1;
+			butterfly(traces[prev_pos].nodes, traces[trace_pos].nodes);
 
-		uint best_state = 0;
-		float best_cost = trace.nodes[0].total_cost;
-		for (uint i = 1; i < trace.nodes.size(); i++) {
-			if (trace.nodes[i].total_cost < best_cost) {
-				best_cost = trace.nodes[i].total_cost;
-				best_state = i;
-			}
+			traces[trace_pos].data = queue.front();
+			queue.erase(queue.begin());
+
+//			print(std::cout);
+			return true;
 		}
-
-		uint pos = trace_pos;
-		do {
-			best_state = traces[pos].nodes[best_state].prev;
-			assert(0 <= best_state && best_state < states.size());
-
-			if (pos == 0)
-				pos = states.size();
-		} while(--pos != trace_pos);
-
-		result.data = trace.data;
-		result.symbol = states[best_state].front();
-		result.cost = trace.nodes[best_state].total_cost;
-
-		return true;
 	}
 
 	void print(std::ostream& stream) {
-		stream << "edges:\n";
+		stream << "edges:" << std::endl;
 		for (const Edge &edge : edges) {
 			print(stream, edge.pattern);
 			stream << "\t" << edge.src << " " << edge.dst << std::endl;
 		}
 
-		stream << "states:\n";
+		stream << "states:" << std::endl;
 		for (uint i = 0; i < states.size(); i++) {
 			stream << i << ": ";
 			print(stream, states[i]);
 			stream << std::endl;
 		}
+
+		stream.precision(2);
+		stream.setf(std::ios::fixed, std::ios::floatfield);
+
+		stream << "traces:" << std::endl;
+		for (uint i = 0; i < traces.size(); i++) {
+			stream << i << ":";
+			for (const Node &node : traces[i].nodes)
+				stream << "\t" << node.src << " " << node.local_cost << " " << node.total_cost;
+			stream << std::endl;
+		}
+
+		stream << std::endl;
 	}
 };
 

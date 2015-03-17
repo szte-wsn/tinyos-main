@@ -41,7 +41,7 @@ PhaseUnwrap::PhaseUnwrap(uint trace_len, int length, int skips)
 	viterbi(trace_len, make_patterns(length, skips)),
 	last_range(0.0f), last_relphase(0.0f)
 {
-	viterbi.print(std::cout);
+//	viterbi.print(std::cout);
 }
 
 int PhaseUnwrap::count(const std::vector<char> &pattern, char what) {
