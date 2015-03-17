@@ -38,6 +38,8 @@
 #include "block.hpp"
 #include "packet.hpp"
 #include <vector>
+#include <queue>
+#include <cfloat>
 
 template <typename DATA, typename PATTERN> class Viterbi {
 public:
@@ -55,9 +57,19 @@ public:
 		float cost;
 	};
 
-	Viterbi(uint trace_len, const std::vector<std::vector<char>> &patterns) : trace_pos(0), trace_len(trace_len + 1) {
+	Viterbi(uint trace_len, const std::vector<std::vector<char>> &patterns) : trace_pos(0), trace_len(trace_len) {
+		if (trace_len <= 1)
+			throw std::runtime_error("Viterbi: trace length must be at least two");
+
+		pattern_len = -1;
 		for (const std::vector<char> &pattern : patterns) {
-			assert (pattern.size() != 0);
+			if (pattern.size() == 0)
+				throw std::runtime_error("Viterbi: zero length pattern");
+			else if (pattern_len == 0)
+				pattern_len = pattern.size();
+			else if (pattern_len != pattern.size())
+				throw std::runtime_error("Viterbi: non-uniform pattern lengths");
+
 			std::vector<char> sub;
 
 			sub = pattern;
@@ -108,6 +120,9 @@ private:
 	uint trace_pos;
 	uint trace_len;
 
+	std::vector<DATA> queue;
+	uint pattern_len;
+
 	static void print(std::ostream& stream, const std::vector<char> &pattern) {
 		for (char c : pattern)
 			stream << (int) c << " ";
@@ -115,15 +130,35 @@ private:
 
 public:
 	bool decode(const DATA &data, Result &result) {
+		queue.push_back(data);
+		if (queue.size() < pattern_len)
+			return false;
+
 		if (traces.size() < trace_len) {
 			Node node;
 			node.prev = 0;
 			node.local_cost = 0.0f;
-			node.total_cost = 0.0f;
+			node.total_cost = FLT_MAX;
 
 			Trace trace;
-			trace.data = data;
+			trace.data = queue.front();
 			trace.nodes.resize(states.size(), node);
+
+			for (Edge &edge: edges) {
+				assert(queue.size() == pattern_len);
+				float c = edge.cost(queue);
+				float d = traces.empty() ? 0.0f : traces.back().nodes[edge.src].total_cost;
+
+				Node &dst = trace.nodes[edge.dst];
+				if (c < dst.total_cost) {
+					dst.total_cost = c;
+					dst.local_cost = d + c;
+					dst.prev = edge.src;
+				}
+			}
+
+			for (const Node &node : trace.nodes)
+				assert(node.total_cost != FLT_MAX);
 
 			traces.push_back(trace);
 			return false;

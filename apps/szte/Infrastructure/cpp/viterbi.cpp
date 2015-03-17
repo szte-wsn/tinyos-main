@@ -146,6 +146,12 @@ float PhaseUnwrap::Pattern::cost(const std::vector<RipsQuad::Packet>& vector) {
 
 void PhaseUnwrap::decode(const RipsQuad::Packet &packet) {
 	Viterbi<RipsQuad::Packet, Pattern>::Result result;
+
+	// just to silence the uninitialized error warning
+	result.data = RipsQuad::Packet();
+	result.symbol = 0;
+	result.cost = NAN;
+
 	if (viterbi.decode(packet, result) && result.symbol == KEEP) {
 		Packet decoded;
 
