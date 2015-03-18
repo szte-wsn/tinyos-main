@@ -99,7 +99,7 @@ implementation
 	RFA1DriverLayerP.BusyWait -> BusyWaitMicroC;
 
 #if RFA1_RADIO_TIMER1_MCU
-	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC, HplAtmRfa1Timer1C;
+	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC, HplAtmRfa1Timer1C, HplAtmegaCounterMcu32C;
 	components new AtmegaTransformCaptureC(uint32_t, uint16_t, 0);
 	
 	RFA1DriverLayerP.SfdCapture -> AtmegaTransformCaptureC.HplAtmegaCapture;
