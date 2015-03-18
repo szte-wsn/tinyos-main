@@ -1,0 +1,92 @@
+import java.util.StringTokenizer;
+
+import net.tinyos.message.MoteIF;
+import net.tinyos.packet.BuildSource;
+import net.tinyos.packet.PhoenixSource;
+import net.tinyos.util.PrintStreamMessenger;
+
+public class RelativePhaseTesterFile  {
+	
+	public static final String RELATIVEPHASEPATH = "relativePhases/";
+	public static final String IMAGEPATH = "images/";
+	
+	static int reference;
+	static int[] others;
+	static int tx1;
+	static int tx2;
+	static boolean saveToFile;
+	static int summarizeData;
+		
+	SuperFrameReader sfm;
+	MoteSettings moteSettings;
+	static PhoenixSource phoenix;
+	DrawRelativePhase drp;
+	RelativePhaseFileWriter rpfw;
+	RelativePhaseMap rpm;
+	ErrorsWriteToConsole ewtc;
+
+	public RelativePhaseTesterFile(String settingsPath, int refNode, int[] otherNode, String directory) {
+		try {
+			moteSettings = new MoteSettings(settingsPath);
+		} catch (Exception e) {
+			System.err.println("Error: setting.ini is not readable");
+			e.printStackTrace();
+			System.exit(1);
+		}
+
+		sfm = new SuperFrameReader(directory, moteSettings);
+		ewtc = new ErrorsWriteToConsole();
+		for(int i=0; i<moteSettings.getNumberOfSlots();i++){
+			if(moteSettings.hasMeasurements(i)){
+				sfm.registerListener(ewtc, i);
+			}
+		}   
+		
+		drp = new DrawRelativePhase("Draw RelativePhase", "Relative Phase", otherNode);
+		rpm = new RelativePhaseMap(IMAGEPATH, refNode, otherNode, saveToFile, summarizeData);
+
+		if(saveToFile) {
+			rpfw = new RelativePhaseFileWriter(RELATIVEPHASEPATH);
+		}
+		
+    	for(int node:others){
+    		RelativePhaseCalculator rpc = new RelativePhaseCalculator(moteSettings, sfm, reference, node, tx1, tx2);
+    		rpc.registerListener(drp);
+    		rpc.registerListener(rpm);
+    		if(saveToFile) {
+	    		rpc.registerListener(rpfw);
+    		}
+		}; 
+    	
+		sfm.read(1);
+	}
+
+	public static void usage() {
+		System.err.println("Usage: RelativePhaseTesterFile saveToFile(true or false) summarizeData(true or false) tx1 tx2 referenceNode rx1,rx2,rx3,...,rxN sourcePath");
+		System.exit(1);
+	}
+	
+	private static int[] initalize(String[] args) {
+		saveToFile = (args[0].equals("true"));
+		summarizeData = Integer.parseInt(args[1]);
+		tx1 = Integer.parseInt(args[2]);
+		tx2 = Integer.parseInt(args[3]);
+		reference = Integer.parseInt(args[4]);
+		StringTokenizer st = new StringTokenizer(args[5],",");
+		others = new int[st.countTokens()];
+		for(int i=0; st.hasMoreElements(); i++) 
+			others[i] = (Integer.parseInt((String) st.nextElement()));
+		return others;
+	}
+
+	public static void main(String[] args) {
+		String source = null;
+		int[] otherNodes;
+		if (args.length != 7) {
+			usage();
+		}
+
+		otherNodes = initalize(args);
+		new RelativePhaseTesterFile("settings.ini", Integer.parseInt(args[4]), otherNodes, args[6]);
+	}
+}

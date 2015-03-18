@@ -1,0 +1,6 @@
+*.o
+*.d
+recorder
+phaseplot
+test
+dump

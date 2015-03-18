@@ -10,13 +10,15 @@ CFLAGS+=-DDISABLE_BATTERY_CHECK
 CFLAGS += -DUCMINI_REV=101
 CFLAGS += -DUCPROTONA_REV=20
 CFLAGS += -DNO_COLLISION_LAYER
+CFLAGS += -DRFA1_RADIO_TIMER1_MCU
 #should be at least: 6+NUMBER_OF_RX*5
 CFLAGS += -DTOSH_DATA_LENGTH=100
 
 #Enables auto Trim algorithm
-#CFLAGS += -DENABLE_AUTOTRIM
+CFLAGS += -DENABLE_AUTOTRIM
+CFLAGS += -DUSE_PRESET_TRIMS
 #Measure types: FOUR_MOTE, FOUR_MOTE_WF, PHASEMAP_TEST_13, PHASEMAP_TEST_18, PROCESSING_DEBUG
-CFLAGS += -DMEASURE_TYPE=PHASEMAP_TEST_8
+CFLAGS += -DMEASURE_TYPE=MULT_RX_1
 
 #disables waveform processing
 # CFLAGS += -DDISABLE_PROCESSING
@@ -41,20 +43,11 @@ CFLAGS += -DMEASURE_TYPE=PHASEMAP_TEST_8
 # CFLAGS += -DRADIO_DEBUG
 # CFLAGS += -DTRAFFIC_MONITOR
 
-#slightly increases the code size
+#slightly increases the code size   DataCollector.class
 CFLAGS += -DENABLE_DEBUG_SLOTS
 
-TOSMAKE_PRE_EXE_DEPS = DataCollector.class ProcessWave.class DrawWaveform.class WaveForm.py SyncMsg.py java/WaveForm.java java/Consts.java
+TOSMAKE_PRE_EXE_DEPS = SyncMsg.py java/WaveForm.java java/Consts.java
 TOSMAKE_CLEAN_EXTRA = *.class *.pyc $(TOSMAKE_PRE_EXE_DEPS) __pycache__ java/WaveForm.java java/Consts.java
-
-DataCollector.class: DataCollector.java
-	javac $?
-
-ProcessWave.class: ProcessWave.java
-	javac $?
-
-DrawWaveform.class: DrawWaveform.java
-	javac $?
 
 WaveForm.py:
 	nescc-mig python $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -python-classname=WaveForm wave_message_t -o $@
