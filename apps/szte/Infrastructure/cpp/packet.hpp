@@ -242,7 +242,7 @@ private:
 		enum {
 			HISTORY_SIZE = 32, // remember this many periods for this slot
 			AVERAGE_SIZE = 4,  // calculate the PERIOD_MEAN as the avg of this many periods
-			PERIOD_FRAC = 20,  // tolerate period error of PERIOD_MEAN / PERIOD_FRAC
+			PERIOD_FRAC = 16,  // tolerate period error of PERIOD_MEAN / PERIOD_FRAC
 		};
 
 		int history[HISTORY_SIZE];
@@ -266,6 +266,7 @@ public:
 	struct Packet {
 		ulong frame;
 		float subframe;
+		float period;
 		float relphase;
 	};
 

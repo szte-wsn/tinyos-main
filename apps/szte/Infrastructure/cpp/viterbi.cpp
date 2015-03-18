@@ -36,12 +36,12 @@
 
 // ------- PhaseUnwrap
 
-PhaseUnwrap::PhaseUnwrap(uint trace_len, int length, int skips)
+PhaseUnwrap::PhaseUnwrap(uint trace_len, int length, int skips, int flips)
 	: in(bind(&PhaseUnwrap::decode, this)),
-	viterbi(trace_len, make_patterns(length, skips)),
+	viterbi(trace_len, make_patterns(length, skips, flips)),
 	last_range(0.0f), last_relphase(0.0f)
 {
-//	viterbi.print(std::cout);
+	viterbi.print(std::cout);
 }
 
 int PhaseUnwrap::count(const std::vector<char> &pattern, char what) {
@@ -54,7 +54,7 @@ int PhaseUnwrap::count(const std::vector<char> &pattern, char what) {
 	return a;
 }
 
-std::vector<std::vector<char>> PhaseUnwrap::make_patterns(int length, int skips) {
+std::vector<std::vector<char>> PhaseUnwrap::make_patterns(int length, int skips, int flips) {
 	std::vector<std::vector<char>> patterns;
 
 	std::vector<char> pattern;
@@ -66,12 +66,12 @@ std::vector<std::vector<char>> PhaseUnwrap::make_patterns(int length, int skips)
 		int i = 0;
 		do {
 			pattern[i] += 1;
-			if (pattern[i] > SKIP ) {
+			if (pattern[i] > FLIP ) {
 				pattern[i] = KEEP;
 				i += 1;
 				continue;
 			}
-			else if (count(pattern, SKIP) <= skips) {
+			else if (count(pattern, SKIP) <= skips && count(pattern, FLIP) <= flips) {
 				patterns.push_back(pattern);
 				break;
 			}
@@ -94,7 +94,7 @@ float PhaseUnwrap::get_linear_regression_error(const std::vector<std::pair<float
 	}
 
 	float b = (n * xy - x * y) / (n * x2 - x * x);
-	float a = y - b * x;
+	float a = (y / n) - b * x;
 
 	float e = 0.0f;
 	for (std::pair<float, float> point : points) {
@@ -131,14 +131,24 @@ float PhaseUnwrap::Pattern::cost(const std::vector<RipsQuad::Packet>& vector) {
 	float unwrap = 0.0f;
 
 	for (uint i = 0; i < vector.size(); i++) {
-		if (pattern[i] == KEEP) {
-			float relphase = vector[i].relphase;
-			unwrap += get_phase_change(last, relphase);
-			last = relphase;
+		if (pattern[i] == SKIP)
+			continue;
 
-			float x = vector[i].subframe + (float) (vector[i].frame - base);
-			points.push_back(std::make_pair(x, unwrap));
+		float relphase = vector[i].relphase;
+		float change = get_phase_change(last, relphase);
+
+		if (pattern[i] == FLIP) {
+			if (change > 0.0f)
+				change -= 1.0f;
+			else
+				change += 1.0f;
 		}
+
+		unwrap += change;
+		last = relphase;
+
+		float x = vector[i].subframe + (float) (vector[i].frame - base);
+		points.push_back(std::make_pair(x, unwrap));
 	}
 
 	return get_linear_regression_error(points);
@@ -147,21 +157,26 @@ float PhaseUnwrap::Pattern::cost(const std::vector<RipsQuad::Packet>& vector) {
 void PhaseUnwrap::decode(const RipsQuad::Packet &packet) {
 	Viterbi<RipsQuad::Packet, Pattern>::Result result;
 
-	// just to silence the uninitialized error warning
-	result.data = RipsQuad::Packet();
-	result.symbol = 0;
-	result.cost = NAN;
-
-	if (viterbi.decode(packet, result) && result.symbol == KEEP) {
+	if (viterbi.decode(packet, result) && result.symbol != SKIP) {
 		Packet decoded;
 
-		last_range += get_phase_change(last_relphase, result.data.relphase);
+		float change = get_phase_change(last_relphase, result.data.relphase);
+		if (result.symbol == FLIP) {
+			if (change > 0.0f)
+				change -= 1.0f;
+			else
+				change += 1.0f;
+		}
+
+		last_range += change;
 		last_relphase = result.data.relphase;
 
 		decoded.frame = result.data.frame;
 		decoded.subframe = result.data.subframe;
 		decoded.range = last_range;
-		decoded.cost = result.cost;
+		decoded.local_cost = result.local_cost;
+		decoded.total_cost = result.total_cost;
+		decoded.period = result.data.period;
 
 		out.send(decoded);
 	}
@@ -172,7 +187,8 @@ std::ostream& operator <<(std::ostream& stream, const PhaseUnwrap::Packet &packe
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	stream << (double) packet.frame + packet.subframe;
-	stream << ", " << packet.range << ", " << packet.cost;
+	stream << ", " << packet.range << ", " << packet.period;
+	stream << ",\t" << packet.local_cost << ", " << packet.total_cost;
 
 	return stream;
 }

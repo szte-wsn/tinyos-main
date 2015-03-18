@@ -743,6 +743,7 @@ void RipsQuad::decode(const RipsDat2::Packet &pkt) {
 	packet.frame = pkt.frame;
 	packet.subframe = pkt.subframe;
 	packet.relphase = relphase;
+	packet.period = pkt.period;
 	out.send(packet);
 }
 
@@ -750,6 +751,6 @@ std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet) 
 	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
-	stream << ((double) packet.frame + packet.subframe) << ", " << packet.relphase;
+	stream << ((double) packet.frame + packet.subframe) << ", " << packet.relphase << ", " << packet.period;
 	return stream;
 }

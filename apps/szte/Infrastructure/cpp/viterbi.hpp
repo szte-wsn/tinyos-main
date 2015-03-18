@@ -54,7 +54,8 @@ public:
 	struct Result {
 		DATA data;
 		char symbol;
-		float cost;
+		float local_cost;
+		float total_cost;
 	};
 
 	Viterbi(uint trace_len, const std::vector<std::vector<char>> &patterns) : trace_pos(0), trace_len(trace_len) {
@@ -178,7 +179,8 @@ public:
 		Trace &trace = traces[trace_pos];
 		result.data = trace.data;
 		result.symbol = states[best_state].front();
-		result.cost = trace.nodes[best_state].local_cost;
+		result.local_cost = trace.nodes[best_state].local_cost;
+		result.total_cost = trace.nodes[best_state].total_cost;
 	}
 
 	bool decode(const DATA &data, Result &result) {
@@ -208,7 +210,6 @@ public:
 			traces.push_back(trace);
 			queue.erase(queue.begin());
 
-//			print(std::cout);
 			return false;
 		}
 		else {
@@ -219,6 +220,9 @@ public:
 
 			traces[trace_pos].data = queue.front();
 			queue.erase(queue.begin());
+
+			if (++trace_pos >= trace_len)
+				trace_pos = 0;
 
 //			print(std::cout);
 			return true;
@@ -250,6 +254,7 @@ public:
 			stream << std::endl;
 		}
 
+		stream << "pos: " << trace_pos << std::endl;
 		stream << std::endl;
 	}
 };
@@ -260,13 +265,15 @@ public:
 		ulong frame;
 		float subframe;
 		float range;
-		float cost;
+		float period;
+		float local_cost;
+		float total_cost;
 	};
 
 	Input<RipsQuad::Packet> in;
 	Output<Packet> out;
 
-	PhaseUnwrap(uint trace_len, int length, int skips);
+	PhaseUnwrap(uint trace_len, int length, int skips, int flips);
 
 private:
 	struct Pattern : public Viterbi<RipsQuad::Packet, Pattern>::Pattern {
@@ -279,13 +286,14 @@ private:
 	enum {
 		KEEP = 0,
 		SKIP = 1,
+		FLIP = 2,
 	};
 
 	static float get_linear_regression_error(const std::vector<std::pair<float, float>> &points);
 	static float get_phase_change(float phase1, float phase2);
 
 	static int count(const std::vector<char> &pattern, char what);
-	static std::vector<std::vector<char>> make_patterns(int length, int skips);
+	static std::vector<std::vector<char>> make_patterns(int length, int skips, int flips);
 
 	Viterbi<RipsQuad::Packet, Pattern> viterbi;
 

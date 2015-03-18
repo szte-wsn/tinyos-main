@@ -38,8 +38,9 @@
 
 int main(int argc, char *argv[]) {
 	Writer<PhaseUnwrap::Packet> writer;
-	PhaseUnwrap unwrap(40, 8, 2);
-	RipsQuad ripsquad(1, 4, 2, 3);
+	PhaseUnwrap unwrap(25, 6, 1, 1);
+//	Writer<RipsQuad::Packet> writer;
+	RipsQuad ripsquad(1, 2, 3, 4);
 	RipsDat2 ripsdat2;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
@@ -53,6 +54,7 @@ int main(int argc, char *argv[]) {
 	connect(ripsdat2.out, ripsquad.in);
 	connect(ripsquad.out, unwrap.in);
 	connect(unwrap.out, writer.in);
+//	connect(ripsquad.out, writer.in);
 
 	reader.run();
 	return 0;
