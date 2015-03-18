@@ -43,8 +43,8 @@ implementation
 {
 	components HplAtmegaCounterMcu32C;
 
-	components new AtmegaCounterP(TMcu, uint32_t, MCU_TIMER_MODE);
-	AtmegaCounterP.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
+	components new AtmegaCounterC(TMcu, uint32_t, MCU_TIMER_MODE);
+	AtmegaCounterC.HplAtmegaCounter -> HplAtmegaCounterMcu32C;
 
-	Counter = AtmegaCounterP;
+	Counter = AtmegaCounterC;
 }

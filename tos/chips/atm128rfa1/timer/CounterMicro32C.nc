@@ -47,9 +47,9 @@ implementation
 #else
 	components HplAtmegaCounterMicro32C;
 
-	components new AtmegaCounterP(TMicro, uint32_t, MCU_TIMER_MODE);
-	AtmegaCounterP.HplAtmegaCounter -> HplAtmegaCounterMicro32C;
+	components new AtmegaCounterC(TMicro, uint32_t, MCU_TIMER_MODE);
+	AtmegaCounterC.HplAtmegaCounter -> HplAtmegaCounterMicro32C;
 
-	Counter = AtmegaCounterP;
+	Counter = AtmegaCounterC;
 #endif
 }

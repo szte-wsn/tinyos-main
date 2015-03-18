@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, University of Szeged
+ * Copyright (c) 2010, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@
  * Author: Miklos Maroti
  */
 
-generic configuration AtmegaCounterC(typedef precision_tag, typedef size_type @integer(), uint8_t mode)
+generic module AtmegaCounterC(typedef precision_tag, typedef size_type @integer(), uint8_t mode)
 {
 	provides
 	{
@@ -47,11 +47,26 @@ generic configuration AtmegaCounterC(typedef precision_tag, typedef size_type @i
 
 implementation
 {
-	components new AtmegaCounterP(precision_tag, size_type, mode);
 
-	Counter = AtmegaCounterP;
-	HplAtmegaCounter = AtmegaCounterP;
+	async command size_type Counter.get()
+	{
+		return call HplAtmegaCounter.get();
+	}
 
-	components McuInitC;
-	McuInitC.TimerInit -> AtmegaCounterP;
+	default async event void Counter.overflow() { }
+
+	async event void HplAtmegaCounter.overflow()
+	{
+		signal Counter.overflow();
+	}
+
+	async command bool Counter.isOverflowPending()
+	{
+		atomic return call HplAtmegaCounter.test();
+	}
+
+	async command void Counter.clearOverflow()
+	{
+		call HplAtmegaCounter.reset();
+	}
 }
