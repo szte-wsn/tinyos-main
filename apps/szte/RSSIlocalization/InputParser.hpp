@@ -9,14 +9,8 @@
 class InputParser{
 
 public:
-	InputParser(Config& config);
-	std::vector<Measurement> getMeasurements(std::string& str);
 	Measurement getMeasurement(std::string& str);
-
-
-private:
-	Config config;
-	
+	InputParser();
 };
 
 

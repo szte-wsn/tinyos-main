@@ -1,7 +1,6 @@
 #ifndef MEASUREMENT_HPP
 #define MEASUREMENT_HPP
 
-#include "Mote.hpp"
 #include <string>
 #include <map>
 #include <iostream>
@@ -10,28 +9,30 @@
 class Measurement{
 
 private:
-	Mote tx1,tx2;  
-	std::map<Mote,short> phases;
-	std::map<Mote,short> periods;
+	short tx1,tx2;  
+	std::map<short,short> phases;
+	std::map<short,short> periods;
+	std::map<short,short> rssi1;
+	std::map<short,short> rssi2;
 
 
 public:
-	Measurement(Mote& tx1_in, Mote& tx2_in, std::map<Mote,short> phases_in, std::map<Mote,short> periods_in);
+	Measurement(short& tx1_in, short& tx2_in, std::map<short,short> phases_in, std::map<short,short> periods_in, std::map<short,short> rssi1_in, std::map<short,short> rssi2_in);
 	Measurement();
 
-	void setTx1(Mote& tx1_in);
-	Mote getTx1();
-	void setTx2(Mote& tx2_in);
-	Mote getTx2();
+	void setTx1(short& tx1_in);
+	short getTx1();
+	void setTx2(short& tx2_in);
+	short getTx2();
 	
-	std::map<Mote,short> getPhases();
-	std::map<Mote,short> getPeriods();
 
-	void addMoteMeasure(Mote& mote_in, short phase_in, short period_in);
+	void addMoteMeasure(short& mote_in, short phase_in, short period_in, short rssi1_in, short rssi2_in);
 
 	friend std::ostream& operator<<(std::ostream& os, Measurement& measure);
 	friend class Localization2D;
-
+	friend class InputParser;
+	friend class RSSIFilter;
+	
 };
 
 
