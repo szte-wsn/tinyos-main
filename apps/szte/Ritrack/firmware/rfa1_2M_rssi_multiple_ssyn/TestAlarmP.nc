@@ -370,7 +370,8 @@ implementation{
 					activeMeasure = msg->frame;
 					measureBuffer = 0;
 					for(i=0;i<activeMeasure;i++){
-						if( read_uint8_t(&(motesettings[TOS_NODE_ID-1][i])) == RX ){
+						uint8_t typeTemp = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
+						if( typeTemp == RX ){
 							measureBuffer++;
 						}
 						if( typeTemp == SSYN){
