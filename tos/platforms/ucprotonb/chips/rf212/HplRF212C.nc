@@ -51,12 +51,17 @@ implementation
 	RSTN = IO.PortG5;
 	SELN = IO.PortF0;
 
-	components LocalTime62khzC, new Alarm62khz32C();
-	LocalTimeRadio = LocalTime62khzC;
-	Alarm = Alarm62khz32C;
-	
+#ifdef RFA1_RADIO_TIMER1_MCU
+	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC;
+#elif defined(RFA1_RADIO_TIMER1_MICRO)
+	components LocalTimeMicroC as LocalTimeC, new AlarmMicro32C() as AlarmC;
+#else
+	components LocalTime62khzC as LocalTimeC, new Alarm62khz32C() as AlarmC;
+#endif
+	LocalTimeRadio = LocalTimeC;
+	Alarm = AlarmC;
 	components AtmegaPinChange0C, HplRF212P;
-	HplRF212P.LocalTime -> LocalTime62khzC;
+	HplRF212P.LocalTime -> LocalTimeC;
 	IRQ = HplRF212P;
 	HplRF212P -> AtmegaPinChange0C.GpioInterrupt[4];
 	components NoLedsC as LedsC;
