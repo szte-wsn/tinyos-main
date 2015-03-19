@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	const char *device = parse_arg(argc, argv, "-d", "/dev/ttyACM0");
-	int baudrate = std::stoi(parse_arg(argc, argv, "-b", "57600"));
+	const char *device = parse_arg(argc, argv, "-d", "/dev/ttyUSB1");
+	int baudrate = std::stoi(parse_arg(argc, argv, "-b", "500000"));
 
 	Writer<std::vector<unsigned char>> writer;
 	Buffer<std::vector<unsigned char>> buffer;
