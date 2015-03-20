@@ -92,6 +92,39 @@ public class MoteSettings {
 		}
 		return ret;
 	}
+	
+	public ArrayList<Integer> getSlotNumbersBetween(int nodeid, String type, int before, String betweenType){
+		ArrayList<Integer> temp = new ArrayList<>();
+		if( before >= slotNumber )
+			before = slotNumber-1;
+		
+		boolean adding = false;
+		boolean foundAll = false;
+		int checked = 0;
+		while( !foundAll ) {
+			String currentType = settings.get(nodeid-NODEIDSHIFT)[before];
+			if( !adding ){//searching for before
+				if( currentType.equals(betweenType) ){
+					adding = true;
+				} 
+			} else {
+				if( currentType.equals(type) ){
+					temp.add(before);
+				} else if( currentType.equals(betweenType) ) {
+					foundAll = true;
+				}
+			}
+			if( ++checked == slotNumber )
+				foundAll = true;
+			if( --before < 0 )
+				before = slotNumber-1;
+		}
+		//we found everything we can, but it's in reverse order
+		ArrayList<Integer> ret = new ArrayList<>();
+		for(int i=temp.size()-1; i>=0 ; i--)
+			ret.add(temp.get(i));	
+		return ret;
+	}
 
 
 }

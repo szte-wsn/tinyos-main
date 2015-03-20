@@ -93,8 +93,9 @@ public class SuperFrameMerger implements MessageListener{
 						}
 					}
 				} 
-				ArrayList<Integer> activeSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
-				for(int i=0;i<msg.getSettingsNum();i++){
+				ArrayList<Integer> activeSlots = ms.getSlotNumbersBetween(dataSource, MoteSettings.RX, currentSlot, MoteSettings.SSYN);
+				int i = 0;
+				while( i<msg.getSettingsNum() && i<activeSlots.size() ){
 					int receivedslot = activeSlots.get(i);
 					if( receivedslot < currentSlot ){
 						if( msg.hasRssi() ) {
@@ -129,6 +130,7 @@ public class SuperFrameMerger implements MessageListener{
 									);
 						}
 					}
+					i++;
 				}
 				lastSlot = currentSlot;
 			}
