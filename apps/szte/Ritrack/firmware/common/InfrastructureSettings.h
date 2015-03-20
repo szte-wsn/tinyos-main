@@ -3,8 +3,11 @@
 
 enum {
 	TX1 = 0, //sendWave 1
+	TX1A = TX1,
 	TX2 = 1, //sendWave 2
+	TX2A = TX2,
 	RX = 2, //sampleRSSI
+	RXA = RX,
 	SSYN=3, //sends sync message
 	RSYN=4, //waits for sync message
 	DEB = 5,
@@ -15,6 +18,9 @@ enum {
 	W100 = 10,
 	DSYN = 11,
 	WCAL = 12,
+	TX1B = 13,
+	TX2B = 14,
+	RXB = 15,
 };
 
 #define FOUR_MOTE 2
@@ -400,7 +406,20 @@ enum {
 		{	RX,	TX2,	W10,	RSYN,	TX2,	W10,	RSYN,	RSYN,	SSYN,	RSYN	},
 		{	RX,	RX,	W10,	SSYN,	RX,	W10,	RSYN,	RSYN,	RSYN,	SSYN	}
 	};
-	
+
+//TODO just an idea for now
+// 	const_uint8_t txOther[2][NUMBER_OF_SLOTS] = {
+// 		{2,3,0,0,3,0,0,0,0,0},
+// 		{1,1,0,0,2,0,0,0,0,0},
+// 	}
+// 	
+// 	const_uint8_t presetTrims[NUMBER_OF_INFRAST_NODES][NUMBER_OF_INFRAST_NODES] = {
+// 		{0, 2, 0, 0},
+// 		{5, 0, 2, 0},
+// 		{5, 5, 0, 0},
+// 		{0, 0, 0, 0},
+// 	}
+	#define USE_PRESET_TRIMS
 	const_uint8_t presetTrims[3][NUMBER_OF_SLOTS] = {
 		{2,2,0,0,0,0,0,0,0,0},
 		{5,0,0,2,0,0,0,0,0,0},
@@ -425,6 +444,7 @@ enum {
 	{	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN	}
 	};
 	
+	#define USE_PRESET_TRIMS
 	const_uint8_t presetTrims[10][NUMBER_OF_SLOTS] = {
 	//	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19	
 	{	0,	2,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0	},

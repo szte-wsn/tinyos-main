@@ -25,6 +25,10 @@ implementation{
 
 	components MeasureWave3C as MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
+	
+	components MeasureSettingsC;
+	App.MeasureSettings -> MeasureSettingsC;
+	
 	#ifdef ENABLE_AUTOTRIM
 	components AutoTrimC as AutoTrimC;
 	App.AutoTrim -> AutoTrimC;
@@ -42,5 +46,7 @@ implementation{
 	components DiagMsgC;
 	App.DiagMsg -> DiagMsgC;
 	#endif
+	
+	
 }
 
