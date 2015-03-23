@@ -44,6 +44,8 @@ enum {
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
+#elif MEASURE_TYPE==0
+#error "Unknown MEASURE_TYPE"
 #endif
 
 #if MEASURE_TYPE == FOUR_MOTE
