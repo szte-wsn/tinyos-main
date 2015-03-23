@@ -358,6 +358,15 @@ std::vector<std::vector<uint8_t>> RipsDat::SCHEDULER_AND_RSSI_LOC_TESTER = {
 	{	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN	}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::FIVE_MOTE_AB = {
+	//   0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24
+	{ TX1A, TX1B, TX1A, TX1B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX1A, TX1B, RSYN, TX1A, TX1B,  RXA,  RXB, RSYN },
+	{  RXA,  RXB, TX2A, TX2B, RSYN, TX1A, TX1B, TX1A, TX1B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX1A, TX1B, RSYN },
+	{  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX2A, TX2B, RSYN, TX1A, TX1B,  RXA,  RXB, RSYN, TX1A, TX1B, TX2A, TX2B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN },
+	{  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX1A, TX1B, RSYN, TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B, TX2A, TX2B, SSYN },
+	{ TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B, TX2A, TX2B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN }
+};
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -372,7 +381,8 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"LOC_4TX_NOANCHORRX", LOC_4TX_NOANCHORRX},
 	{"PHASEMAP_TEST_8", PHASEMAP_TEST_8},
 	{"MULT_RX_1", MULT_RX_1},
-	{"SCHEDULER_AND_RSSI_LOC_TESTER", SCHEDULER_AND_RSSI_LOC_TESTER}
+	{"SCHEDULER_AND_RSSI_LOC_TESTER", SCHEDULER_AND_RSSI_LOC_TESTER},
+	{"FIVE_MOTE_AB", FIVE_MOTE_AB},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {

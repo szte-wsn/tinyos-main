@@ -40,6 +40,7 @@ enum {
 #define MULT_RX_1 16
 #define SCHEDULER_AND_RSSI_LOC_TESTER 17
 #define COMPETITION 18
+#define FIVE_MOTE_AB 19
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
@@ -224,6 +225,18 @@ enum {
 		{ RSYN,   RX,  W10, SSYN, RSYN},
 		{ RSYN,   RX,  W10, RSYN, SSYN}
 	};
+#elif MEASURE_TYPE == FIVE_MOTE_AB
+	#define NUMBER_OF_INFRAST_NODES 5
+	#define NUMBER_OF_SLOTS 25
+	#define NUMBER_OF_RX 12
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+		//   0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24
+		{ TX1A, TX1B, TX1A, TX1B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX1A, TX1B, RSYN, TX1A, TX1B,  RXA,  RXB, RSYN },
+		{  RXA,  RXB, TX2A, TX2B, RSYN, TX1A, TX1B, TX1A, TX1B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX1A, TX1B, RSYN },
+		{  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX2A, TX2B, RSYN, TX1A, TX1B,  RXA,  RXB, RSYN, TX1A, TX1B, TX2A, TX2B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN },
+		{  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB, TX1A, TX1B, RSYN, TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B, TX2A, TX2B, SSYN },
+		{ TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B, TX2A, TX2B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN }
+	};
 #elif MEASURE_TYPE == PROCESSING_DEBUG
 	//for processing debug it falls out of sync!
 	#define NUMBER_OF_INFRAST_NODES 4
@@ -401,10 +414,11 @@ enum {
 	#define NUMBER_OF_SLOTS 10
 	#define NUMBER_OF_RX 2
 	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
-		{	TX1,	TX1,	W10,	RSYN,	RX,	W10,	SSYN,	RSYN,	RSYN,	RSYN	},
-		{	TX2,	RX,	W10,	RSYN,	TX1,	W10,	RSYN,	SSYN,	RSYN,	RSYN	},
-		{	RX,	TX2,	W10,	RSYN,	TX2,	W10,	RSYN,	RSYN,	SSYN,	RSYN	},
-		{	RX,	RX,	W10,	SSYN,	RX,	W10,	RSYN,	RSYN,	RSYN,	SSYN	}
+		//    0     1     2     3     4     5     6     7     8     9 
+		{   TX1,  TX1,  W10, RSYN,   RX,  W10, SSYN, RSYN, RSYN, RSYN },
+		{   TX2,   RX,  W10, RSYN,  TX1,  W10, RSYN, SSYN, RSYN, RSYN },
+		{    RX,  TX2,  W10, RSYN,  TX2,  W10, RSYN, RSYN, SSYN, RSYN },
+		{    RX,   RX,  W10, SSYN,   RX,  W10, RSYN, RSYN, RSYN, SSYN }
 	};
 
 //TODO just an idea for now
@@ -479,5 +493,4 @@ enum {
 #else
 	#error "Unknown MEASURE_TYPE"
 #endif
-
 #endif

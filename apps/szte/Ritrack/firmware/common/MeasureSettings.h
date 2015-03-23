@@ -35,10 +35,10 @@ enum inSlotTiming {
 };
 
 enum measureParameters {
-	CHANNELA = 17,
+	CHANNELA = 11,
 	TRIM1A = 2,
 	TRIM2A = 4,
-	CHANNELB = 17,
+	CHANNELB = 26,
 	TRIM1B = 2,
 	TRIM2B = 4,
 	POWERA = RFA1_DEF_RFPOWER,

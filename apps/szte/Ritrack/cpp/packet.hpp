@@ -154,8 +154,14 @@ public:
 private:
 	enum {
 		TX1 = 0, //sendWave 1
+		TX1A = TX1,
+		TX1B = TX1,
 		TX2 = 1, //sendWave 2
+		TX2A = TX2,
+		TX2B = TX2,
 		RX = 2, //sampleRSSI
+		RXA = RX,
+		RXB = RX,
 		SSYN=3, //sends sync message
 		RSYN=4, //waits for sync message
 		DEB = 5,
@@ -182,6 +188,7 @@ private:
 	static std::vector<std::vector<uint8_t>> PHASEMAP_TEST_8;
 	static std::vector<std::vector<uint8_t>> MULT_RX_1;
 	static std::vector<std::vector<uint8_t>> SCHEDULER_AND_RSSI_LOC_TESTER;
+	static std::vector<std::vector<uint8_t>> FIVE_MOTE_AB;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
