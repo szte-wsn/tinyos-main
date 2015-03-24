@@ -60,6 +60,10 @@
 #define RFA1_DEF_CHANNEL	26
 #endif
 
+/**
+ * This sets the number of neighbors the radio stack stores information (like sequence number)
+ */
+#define RFA1_NEIGHBORHOOD_SIZE 5
 
 /* The number of microseconds a sending mote will wait for an acknowledgement */
 #ifndef SOFTWAREACK_TIMEOUT
