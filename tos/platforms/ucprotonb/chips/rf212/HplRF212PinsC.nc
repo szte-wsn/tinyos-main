@@ -21,44 +21,29 @@
  * Author: Miklos Maroti
  */
 
-#include "atm128hardware.h"
+#include <RadioConfig.h>
 
-module HplRF212P
+configuration HplRF212PinsC
 {
 	provides
 	{
-		interface GpioCapture as IRQ;
-	}
+		interface GeneralIO as SELN;
+		interface Resource as SpiResource;
+		interface FastSpiByte;
 
-	uses
-	{
-		interface GpioInterrupt as Interrupt;
-		interface LocalTime<TRadio>;
+		interface GeneralIO as SLP_TR;
+		interface GeneralIO as RSTN;
 	}
 }
 
 implementation
 {
-	
-	async event void Interrupt.fired() {
-		uint16_t time = call LocalTime.get();
-		signal IRQ.captured(time);
-	}
-	
-	async command error_t IRQ.captureRisingEdge()
-	{
-		return call Interrupt.enableRisingEdge();
-	}
+	components Atm128SpiC as SpiC;
+	SpiResource = SpiC.Resource[unique("Atm128SpiC.Resource")];
+	FastSpiByte = SpiC;
 
-	async command error_t IRQ.captureFallingEdge()
-	{
-		return call Interrupt.enableFallingEdge();
-	}
-
-	async command void IRQ.disable()
-	{
-		call Interrupt.disable();
-	}
-	
-	default async event void IRQ.captured(uint16_t time){}
+	components AtmegaGeneralIOC as IO;
+	SLP_TR = IO.PortG2;
+	RSTN = IO.PortG5;
+	SELN = IO.PortF0;
 }

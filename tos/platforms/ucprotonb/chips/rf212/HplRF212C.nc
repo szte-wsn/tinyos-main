@@ -42,14 +42,13 @@ configuration HplRF212C
 
 implementation
 {
-	components Atm128SpiC as SpiC;
-	SpiResource = SpiC.Resource[unique("Atm128SpiC.Resource")];
-	FastSpiByte = SpiC;
+	components HplRF212PinsC;
+	SpiResource = HplRF212PinsC;
+	FastSpiByte = HplRF212PinsC;
 
-	components AtmegaGeneralIOC as IO;
-	SLP_TR = IO.PortG2;
-	RSTN = IO.PortG5;
-	SELN = IO.PortF0;
+	SLP_TR = HplRF212PinsC.SLP_TR;
+	RSTN = HplRF212PinsC.RSTN;
+	SELN = HplRF212PinsC.SELN;
 
 #ifdef RFA1_RADIO_TIMER1_MCU
 	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC;
@@ -64,6 +63,4 @@ implementation
 	HplRF212P.LocalTime -> LocalTimeC;
 	IRQ = HplRF212P;
 	HplRF212P -> AtmegaPinChange0C.GpioInterrupt[4];
-	components NoLedsC as LedsC;
-	HplRF212P.Leds->LedsC;
 }
