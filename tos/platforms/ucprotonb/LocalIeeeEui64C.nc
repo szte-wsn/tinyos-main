@@ -1,3 +1,4 @@
+// $Id: LocalIeeeEui64C.nc,v 1.1 2010/02/23 06:45:38 sdhsdh Exp $
 /*
  * Copyright (c) 2007, Vanderbilt University
  * All rights reserved.
@@ -12,7 +13,7 @@
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ * - Neither the name of the copyright holders nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -27,20 +28,33 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THE POSSIBILITY OF SUCH DAMAGE.* All rights reserved.
  *
- * Author: Miklos Maroti
+ *  Stephen Dawson-Haggerty <stevedh@eecs.berkeley.edu>
+ *  Dummy Extended Address for micaz
  */
 
-generic configuration NeighborhoodFlagC()
-{
-	provides interface NeighborhoodFlag;
-}
+#include "IeeeEui64.h"
 
-implementation
-{
-	components NeighborhoodP;
+module LocalIeeeEui64C {
+  provides interface LocalIeeeEui64;
+} implementation {
+  command ieee_eui64_t LocalIeeeEui64.getId() {
+    ieee_eui64_t id;
+    /* this is UCB's OUI */
+    id.data[0] = 0x00;
+    id.data[1] = 0x12;
+    id.data[2] = 0x6d;
 
-	// TODO: make sure that no more than 8 flags are used at a time
-	NeighborhoodFlag = NeighborhoodP.NeighborhoodFlag[unique("NeighborhoodFlag")];
+    /* UCB will let anyone use this OUI so long as these two octets
+       are 'LO' -- "local".  All other octets are reserved.  */
+    /* SDH -- 9/10/2010 */
+    id.data[3] = 'L';
+    id.data[4] = 'O';
+
+    id.data[5] = 0;
+    id.data[6] = TOS_NODE_ID >> 8;
+    id.data[7] = TOS_NODE_ID & 0xff;
+    return id;
+  }
 }

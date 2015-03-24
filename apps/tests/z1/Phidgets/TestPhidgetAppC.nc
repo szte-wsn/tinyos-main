@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2007, Vanderbilt University
+ * Copyright (c) 2010-2011 DEXMA SENSORS SL
+ * Copyright (c) 2011-2014 ZOLERTIA LABS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -8,11 +9,13 @@
  *
  * - Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
+ *
  * - Redistributions in binary form must reproduce the above copyright
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ *
+ * - Neither the name of the copyright holders nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -28,102 +31,30 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Author: Miklos Maroti
  */
 
-#include <Tasklet.h>
-#include <RadioAssert.h>
+/*
+ * Simple test application to test analog phidget sensors
+ * http://www.phidgets.com
+ *
+ * @author: Antonio Linan <alinan@zolertia.com>
+ */
 
-module RF212TaskletC
-{
-	provides interface Tasklet;
+
+#include "PrintfUART.h"
+
+configuration TestPhidgetAppC {}
+
+implementation {
+  components MainC, TestPhidgetC as App, LedsC;
+  App.Leds -> LedsC;
+  App.Boot -> MainC.Boot;
+
+  components new TimerMilliC() as TestTimer;
+  App.TestTimer -> TestTimer;
+  
+  components new PhidgetC();
+  App.Phidgets -> PhidgetC;
 }
 
-implementation
-{
-#ifdef TASKLET_IS_TASK
 
-	task void tasklet()
-	{
-		signal Tasklet.run();
-	}
-
-	inline async command void Tasklet.schedule()
-	{
-		post tasklet();
-	}
-
-	inline command void Tasklet.suspend()
-	{
-	}
-
-	inline command void Tasklet.resume()
-	{
-	}
-
-#else
-	
-	/**
-	 * The lower 7 bits contain the number of suspends plus one if the run 
-	 * event is currently beeing executed. The highest bit is set if the run 
-	 * event needs to be called again when the suspend count goes down to zero.
-	 */
-	uint8_t state;
-
-	void doit()
-	{
-		for(;;)
-		{
-			signal Tasklet.run();
-
-			atomic
-			{
-				if( state == 1 )
-				{
-					state = 0;
-					return;
-				}
-
-				RADIO_ASSERT( state == 0x81 );
-				state = 1;
-			}
-		}
-	}
-
-	inline command void Tasklet.suspend()
-	{
-		atomic ++state;
-	}
-
-	command void Tasklet.resume()
-	{
-		atomic
-		{
-			if( --state != 0x80 )
-				return;
-
-			state = 1;
-		}
-
-		doit();
-	}
-
-	async command void Tasklet.schedule()
-	{
-		atomic
-		{
-			if( state != 0 )
-			{
-				state |= 0x80;
-				return;
-			}
-
-			state = 1;
-		}
-
-		doit();
-	}
-
-#endif
-}

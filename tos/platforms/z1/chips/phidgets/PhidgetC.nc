@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Vanderbilt University
+ * Copyright (c) 2014 ZOLERTIA LABS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -8,11 +8,13 @@
  *
  * - Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
+ *
  * - Redistributions in binary form must reproduce the above copyright
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ *
+ * - Neither the name of the copyright holders nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -28,39 +30,30 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Author: Miklos Maroti
  */
 
-generic configuration RFA1UniqueLayerC()
-{
-	provides
-	{
-		// NOTE, this is a combined layer, should be hooked up at two places
-		interface BareSend as Send;
-		interface RadioReceive;
-	}
-	uses
-	{
-		interface BareSend as SubSend;
-		interface RadioReceive as SubReceive;
+/*
+ * Basic analog driver to read data from a Phidget sensor
+ * http://www.phidgets.com
+ *
+ * @author: Antonio Linan <alinan@zolertia.com>
+ */
 
-		interface UniqueConfig as Config;
-	}
+generic configuration PhidgetC() {
+  provides {
+    interface Phidgets;
+  }
 }
 
-implementation
-{
-	components new UniqueLayerP(), MainC, RFA1NeighborhoodC as NeighborhoodC, new RFA1NeighborhoodFlagC() as NeighborhoodFlagC;
+implementation {
 
-	MainC.SoftwareInit -> UniqueLayerP;
-	UniqueLayerP.Neighborhood -> NeighborhoodC;
-	UniqueLayerP.NeighborhoodFlag -> NeighborhoodFlagC;
+  components PhidgetP;
+  Phidgets = PhidgetP;
 
-	Send = UniqueLayerP;
-	SubSend = UniqueLayerP;
+  components new AdcReadClientC();
+  PhidgetP.ReadFromPhidget -> AdcReadClientC;
+  AdcReadClientC.AdcConfigure -> PhidgetP;
 
-	RadioReceive = UniqueLayerP;
-	SubReceive = UniqueLayerP;
-	Config = UniqueLayerP;
+  components new BatteryC();
+  PhidgetP.Battery -> BatteryC;  
 }

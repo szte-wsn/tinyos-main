@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, Vanderbilt University
+ * Copyright (c) 2014 ZOLERTIA LABS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -8,11 +8,13 @@
  *
  * - Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
+ *
  * - Redistributions in binary form must reproduce the above copyright
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the
  *   distribution.
- * - Neither the name of the copyright holder nor the names of
+ *
+ * - Neither the name of the copyright holders nor the names of
  *   its contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -28,30 +30,54 @@
  * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Author: Miklos Maroti
  */
 
-#include "RadioConfig.h"
+/*
+ * Basic analog driver to read data from a Phidget sensor
+ * http://www.phidgets.com
+ *
+ * [1] http://zolertia.sourceforge.net/wiki/images/e/e8/Z1_RevC_Datasheet.pdf
+ *
+ * @author: Antonio Linan <alinan@zolertia.com>
+ */
 
-generic configuration RF212RadioAlarmC()
-{
-	provides
-	{
-		interface RadioAlarm[uint8_t id]; // use unique
-	}
+#include "phidgets.h"
+#include "Msp430Adc12.h"
 
-	uses
-	{
-		interface Alarm<TRadio, tradio_size> @exactlyonce();
-	}
-}
+interface Phidgets {
 
-implementation
-{
-	components new RadioAlarmP(), RF212TaskletC;
+  /**
+   * Configure the phidget analog port and phidget sensor to be used
+   * @param port Phidget analog port (North port, see [1], Msp430Adc12.h file)
+   * @param phidget Phidget type, see phidgets.h header
+   * @return EINVAL if invalid port/unsupported phidget sensor, EALREADY if the
+   *         sensor was already configured, else SUCCESS
+   */
 
-	RadioAlarm = RadioAlarmP;
-	Alarm = RadioAlarmP;
-	RadioAlarmP.Tasklet -> RF212TaskletC;
+  command error_t enable (uint8_t port, uint16_t phidget);
+
+  /**
+   * Disables a given phidget port
+   * @param port Phidget analog port
+   * @return EINVAL if invalid port, EALREADY if already disabled, else SUCCESS
+   */
+
+  command error_t disable (uint8_t port);
+
+  /**
+   * Requests a reading from the configured Phidget sensor
+   * @return EOFF if not configured, SUCCESS otherwise
+   */
+
+  command error_t read (void);
+
+  /**
+   * Returns a reading from the configured Phidget sensor
+   * @param error SUCCESS, else FAIL if something fails
+   * @param phidget Connected phidget
+   * @param data sensor information, already processed
+   */
+
+  event void readDone(error_t error, uint8_t phidget, uint16_t data);
+
 }

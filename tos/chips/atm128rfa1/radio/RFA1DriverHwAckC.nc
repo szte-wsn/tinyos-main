@@ -30,12 +30,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Author: Miklos Maroti
+ * Author: Andras Biro
  */
 
 #include <RadioConfig.h>
-#include <RF212DriverLayer.h>
+#include <RFA1DriverLayer.h>
 
-configuration RF212DriverLayerC
+configuration RFA1DriverHwAckC
 {
 	provides
 	{
@@ -53,75 +54,83 @@ configuration RF212DriverLayerC
 
 		interface LocalTime<TRadio> as LocalTimeRadio;
 		interface Alarm<TRadio, tradio_size>;
+		
+		interface PacketAcknowledgements;
 	}
 
 	uses
 	{
-		interface RF212DriverConfig as Config;
+		interface RFA1DriverConfig as Config;
 		interface PacketTimeStamp<TRadio, uint32_t>;
+		interface Ieee154PacketLayer;
 
 		interface PacketFlag as TransmitPowerFlag;
 		interface PacketFlag as RSSIFlag;
 		interface PacketFlag as TimeSyncFlag;
-		interface RadioAlarm;
+		interface PacketFlag as AckReceivedFlag;
+		interface AsyncStdControl as ExtAmpControl;
+		interface Tasklet;
 	}
 }
 
 implementation
 {
-	components RF212DriverLayerP, HplRF212C, BusyWaitMicroC, RF212TaskletC as TaskletC, MainC;
+	components RFA1DriverHwAckP as RFA1DriverLayerP, BusyWaitMicroC,
+		LocalTime62khzC, new Alarm62khz32C(), HplAtmRfa1TimerMacC, ActiveMessageAddressC;
 
-	RadioState = RF212DriverLayerP;
-	RadioSend = RF212DriverLayerP;
-	RadioReceive = RF212DriverLayerP;
-	RadioCCA = RF212DriverLayerP;
-	RadioPacket = RF212DriverLayerP;
+	RadioState = RFA1DriverLayerP;
+	RadioSend = RFA1DriverLayerP;
+	RadioReceive = RFA1DriverLayerP;
+	RadioCCA = RFA1DriverLayerP;
+	RadioPacket = RFA1DriverLayerP;
 
-	LocalTimeRadio = HplRF212C;
+	LocalTimeRadio = LocalTime62khzC;
 
-	Config = RF212DriverLayerP;
+	Config = RFA1DriverLayerP;
 
-	PacketTransmitPower = RF212DriverLayerP.PacketTransmitPower;
-	TransmitPowerFlag = RF212DriverLayerP.TransmitPowerFlag;
+	PacketTransmitPower = RFA1DriverLayerP.PacketTransmitPower;
+	TransmitPowerFlag = RFA1DriverLayerP.TransmitPowerFlag;
 
-	PacketRSSI = RF212DriverLayerP.PacketRSSI;
-	RSSIFlag = RF212DriverLayerP.RSSIFlag;
+	PacketRSSI = RFA1DriverLayerP.PacketRSSI;
+	RSSIFlag = RFA1DriverLayerP.RSSIFlag;
 
-	PacketTimeSyncOffset = RF212DriverLayerP.PacketTimeSyncOffset;
-	TimeSyncFlag = RF212DriverLayerP.TimeSyncFlag;
+	PacketTimeSyncOffset = RFA1DriverLayerP.PacketTimeSyncOffset;
+	TimeSyncFlag = RFA1DriverLayerP.TimeSyncFlag;
 
-	PacketLinkQuality = RF212DriverLayerP.PacketLinkQuality;
-	PacketTimeStamp = RF212DriverLayerP.PacketTimeStamp;
-	LinkPacketMetadata = RF212DriverLayerP;
+	PacketLinkQuality = RFA1DriverLayerP.PacketLinkQuality;
+	PacketTimeStamp = RFA1DriverLayerP.PacketTimeStamp;
+	LinkPacketMetadata = RFA1DriverLayerP;
 
-	RF212DriverLayerP.LocalTime -> HplRF212C;
+	RFA1DriverLayerP.LocalTime -> LocalTime62khzC;
+	RFA1DriverLayerP.SfdCapture -> HplAtmRfa1TimerMacC.SfdCapture;
 
-	Alarm = HplRF212C.Alarm;
-	RadioAlarm = RF212DriverLayerP.RadioAlarm;
+	Alarm = Alarm62khz32C;
 
-	RF212DriverLayerP.SELN -> HplRF212C.SELN;
-	RF212DriverLayerP.SpiResource -> HplRF212C.SpiResource;
-	RF212DriverLayerP.FastSpiByte -> HplRF212C;
-
-	RF212DriverLayerP.SLP_TR -> HplRF212C.SLP_TR;
-	RF212DriverLayerP.RSTN -> HplRF212C.RSTN;
-
-	RF212DriverLayerP.IRQ -> HplRF212C.IRQ;
-	RF212DriverLayerP.Tasklet -> TaskletC;
-	RF212DriverLayerP.BusyWait -> BusyWaitMicroC;
+	Tasklet = RFA1DriverLayerP.Tasklet;
+	RFA1DriverLayerP.BusyWait -> BusyWaitMicroC;
 
 #ifdef RADIO_DEBUG
 	components DiagMsgC;
-	RF212DriverLayerP.DiagMsg -> DiagMsgC;
+	RFA1DriverLayerP.DiagMsg -> DiagMsgC;
 #endif
+
+	components MainC, RealMainP;
+	RealMainP.PlatformInit -> RFA1DriverLayerP.PlatformInit;
+	MainC.SoftwareInit -> RFA1DriverLayerP.SoftwareInit;
+
+	components McuSleepC;
+	RFA1DriverLayerP.McuPowerState -> McuSleepC;
+	RFA1DriverLayerP.McuPowerOverride <- McuSleepC;
+
+	ExtAmpControl = RFA1DriverLayerP;
 	
-#ifdef RADIO_DEBUG_LEDS
-	components LedsC;
-	RF212DriverLayerP.Leds -> LedsC;
-#endif
-
-	MainC.SoftwareInit -> RF212DriverLayerP.SoftwareInit;
-
-	components RealMainP;
-	RealMainP.PlatformInit -> RF212DriverLayerP.PlatformInit;
+	AckReceivedFlag = RFA1DriverLayerP.AckReceivedFlag;
+	RFA1DriverLayerP.ActiveMessageAddress -> ActiveMessageAddressC;
+	PacketAcknowledgements = RFA1DriverLayerP;
+	Ieee154PacketLayer = RFA1DriverLayerP;
+	
+	#ifdef RFA1_HWACK_64BIT
+	components LocalIeeeEui64C;
+	RFA1DriverLayerP.LocalIeeeEui64 -> LocalIeeeEui64C;
+	#endif
 }
