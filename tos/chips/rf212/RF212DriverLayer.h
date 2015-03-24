@@ -224,4 +224,14 @@ enum rf212_spi_command_enums
 	RF212_CMD_SRAM_WRITE = 0x40,
 };
 
+enum rf212_spi_cmd_mode_enums
+{
+  RF212_SPI_CMD_MODE_MASK = 0x0C,
+  
+  RF212_SPI_CMD_MODE_DEFAULT = 0 << 2,
+  RF212_SPI_CMD_MODE_TRX_STATUS = 1 << 2,
+  RF212_SPI_CMD_MODE_PHY_RSSI = 2 << 2,
+  RF212_SPI_CMD_MODE_IRQ_STATUS = 3 << 2,
+};
+
 #endif//__RF212DRIVERLAYER_H__

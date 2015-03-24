@@ -31,6 +31,17 @@
 //#define RADIO_DEBUG_MESSAGES
 /* * common part  */
 
+//the two radio must use the same timer base 
+#ifdef RFA1_RADIO_TIMER1_MCU
+ #define RF212_RADIO_TIMER1_MCU
+#elif defined(RFA1_RADIO_TIMER1_MICRO)
+ #define RF212_RADIO_TIMER1_MICRO
+#elif defined(RF212_RADIO_TIMER1_MCU)
+ #define RFA1_RADIO_TIMER1_MCU
+#elif defined(RF212_RADIO_TIMER1_MICRO)
+ #define RFA1_RADIO_TIMER1_MICRO
+#endif
+
 #ifdef RFA1_RADIO_TIMER1_MCU
 /**
  * This is the timer type of the radio alarm interface

@@ -50,9 +50,9 @@ implementation
 	RSTN = HplRF212PinsC.RSTN;
 	SELN = HplRF212PinsC.SELN;
 
-#ifdef RFA1_RADIO_TIMER1_MCU
+#ifdef RF212_RADIO_TIMER1_MCU
 	components LocalTimeMcuC as LocalTimeC, new AlarmMcu32C() as AlarmC;
-#elif defined(RFA1_RADIO_TIMER1_MICRO)
+#elif defined(RF212_RADIO_TIMER1_MICRO)
 	components LocalTimeMicroC as LocalTimeC, new AlarmMicro32C() as AlarmC;
 #else
 	components LocalTime62khzC as LocalTimeC, new Alarm62khz32C() as AlarmC;

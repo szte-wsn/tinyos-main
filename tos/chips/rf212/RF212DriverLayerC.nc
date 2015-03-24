@@ -54,7 +54,12 @@ configuration RF212DriverLayerC
 		interface LocalTime<TRadio> as LocalTimeRadio;
 		interface Alarm<TRadio, tradio_size>;
 		
+		#ifdef ATMELRADIOTEST
 		interface AtmelRadioTest;
+		#endif
+		#ifdef CONTINOUS_WAVE
+		interface RadioContinuousWave;
+		#endif
 	}
 
 	uses
@@ -80,7 +85,6 @@ implementation
 	RadioCCA = RF212DriverLayerP;
 	RadioPacket = RF212DriverLayerP;
 	
-	AtmelRadioTest = RF212DriverLayerP;
 
 	LocalTimeRadio = HplRF212C;
 
@@ -124,4 +128,11 @@ implementation
 
 	components RealMainP;
 	RealMainP.PlatformInit -> RF212DriverLayerP.PlatformInit;
+	
+	#ifdef ATMELRADIOTEST
+	AtmelRadioTest = RF212DriverLayerP;
+	#endif
+	#ifdef CONTINOUS_WAVE
+	RadioContinuousWave = RF212DriverLayerP;
+	#endif
 }
