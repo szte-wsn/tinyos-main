@@ -6,18 +6,11 @@
 */
 
 #include "InfrastructureSettings.h"
+#include "MeasureSettings.h"
 #include "TestAlarm.h"
 #include "RadioConfig.h"
 
-#define SENDING_TIME 1920UL
 
-#define TX1_THRESHOLD 0UL
-#define TX2_THRESHOLD 200UL
-#define RX_THRESHOLD 200UL
-
-//rx-tx diff: 130us
-
-#define NO_SYNC_TOLERANCE NUMBER_OF_SLOTS
 
 module TestAlarmP{
 	uses interface Boot;
@@ -29,6 +22,7 @@ module TestAlarmP{
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
 	uses interface MeasureWave;
+	uses interface MeasureSettings;
 	#ifdef ENABLE_AUTOTRIM
 	uses interface AutoTrim;
 	uses interface AMPacket;
@@ -44,34 +38,6 @@ module TestAlarmP{
 }
 implementation{
 
-	enum {
-		CHANNEL = 17,
-		TRIM1 = 2,
-		TRIM2 = 4,
-	};
-#if (!defined ENABLE_AUTOTRIM || defined USE_PRESET_TRIMS)
-	enum {
-		MEAS_SLOT = 2560,
-		SYNC_SLOT = 4800,
-		DEBUG_SLOT = 96000UL*NUMBER_OF_RX,
-		WAIT_SLOT_1 = 2000,
-		WAIT_SLOT_10 = 20000UL,
-		WAIT_SLOT_100 = 200000UL,
-		WAIT_SLOT_CAL = 2976,
-	};
-#else
-	//increased slot times because of processing overhead    ***NOT OPTIMIZED YET***
-	enum {
-		MEAS_SLOT = 3200, //measure slot
-		SYNC_SLOT = 16000, //sync slot
-		DEBUG_SLOT = 96000UL*NUMBER_OF_RX,
-		WAIT_SLOT_1 = 2000,
-		WAIT_SLOT_10 = 20000UL,
-		WAIT_SLOT_100 = 200000UL,
-		WAIT_SLOT_CAL = 2976,
-	};
-#endif
-
 	typedef nx_struct sync_message_t{
 		nx_uint8_t frame;
 		nx_uint8_t freq[NUMBER_OF_RX];
@@ -81,13 +47,9 @@ implementation{
 
 	enum {
 		NO_SYNC = 0,
+		NO_SYNC_TOLERANCE = NUMBER_OF_SLOTS,
 	};
 
-	typedef struct schedule_t{
-		uint8_t work;
-	}schedule_t;
-
-	message_t debugPacket;
 	message_t syncPacket[2];
 	uint8_t currentSyncPacket=0;
 	sync_message_t* currentSyncPayload;
@@ -103,7 +65,12 @@ implementation{
 	
 	norace uint8_t unsynchronized;
 	
+	task void sendSync();
+	task void sendDummySync();
+	task void processData();
+	
 	#ifdef ENABLE_DEBUG_SLOTS
+	message_t debugPacket;
 	uint16_t sendedBytesCounter=0;
 	norace uint8_t sendedMeasureCounter = 0;
 	uint8_t sendedMessageCounter = 0;
@@ -111,12 +78,9 @@ implementation{
 	task void sendWaveform();
 	task void debugProcess();
 	#endif
-	task void sendSync();
-	task void sendDummySync();
-	task void processData();
 	
 	event void Boot.booted(){
-		#if (defined ENABLE_AUTOTRIM && !defined USE_PRESET_TRIMS)
+		#ifdef ENABLE_AUTOTRIM
 		call AutoTrim.processSchedule();
 		#endif
 		call SplitControl.start();
@@ -162,51 +126,22 @@ implementation{
 	}
 
 	void startAlarm(uint8_t nextMeas, uint32_t start,uint32_t fire){
-		uint8_t nextMeasType = read_uint8_t(&(motesettings[TOS_NODE_ID-1][nextMeas]));
-		if(nextMeasType==TX1){
-				call Alarm.startAt(start,fire+TX1_THRESHOLD);
-			}else if(nextMeasType==TX2){
-				call Alarm.startAt(start,fire+TX2_THRESHOLD);
-			}else if(nextMeasType==RX){
-				call Alarm.startAt(start,fire+RX_THRESHOLD);
-			}else{
-				call Alarm.startAt(start,fire);
-		}
+		call Alarm.startAt(start, fire + call MeasureSettings.getDelay(read_uint8_t(&(motesettings[TOS_NODE_ID-1][nextMeas]))));
 	}
 
 	async event void Alarm.fired(){
 		uint8_t measType = read_uint8_t(&(motesettings[TOS_NODE_ID-1][activeMeasure]));
+		uint8_t prevMeasure = activeMeasure; //activeMeasure points the next slot in most of this function
 		error_t err = SUCCESS;
-		//set up the next alarm first
-		switch( measType ){
-			case RSYN:
-			case SSYN:
-			case DSYN:{
-				startOfFrame = startOfFrame+firetime;
-				firetime = SYNC_SLOT;
-			} break;
-			case TX1:
-			case TX2:
-			case RX:
-			case NTRX:{
-				firetime += MEAS_SLOT;
-			}break;
-			case W1:{
-				firetime += WAIT_SLOT_1;
-			}break;
-			case W10:{
-				firetime += WAIT_SLOT_10;
-			}break;
-			case W100:{
-				firetime += WAIT_SLOT_100;
-			}break;
-			case DEB:
-			case NDEB:{
-				firetime += DEBUG_SLOT;
-			}break;
+		
+		//set up timing for next slot
+		if( measType == RSYN || measType == SSYN || measType == DSYN ){
+			startOfFrame = startOfFrame+firetime;
+			firetime = 0;
 		}
+		firetime += call MeasureSettings.getSlotTime(measType);
 		activeMeasure = (activeMeasure+1)%NUMBER_OF_SLOTS;
-		startAlarm(activeMeasure,startOfFrame,firetime);
+		call Alarm.startAt(startOfFrame, firetime + call MeasureSettings.getDelay(read_uint8_t(&(motesettings[TOS_NODE_ID-1][activeMeasure]))));
 		
 		switch( measType ){
 			case RSYN:{
@@ -222,34 +157,27 @@ implementation{
 				syncFrame = activeMeasure;
 				post sendDummySync();
 			} break;
-			case TX1:{
+			case TX1A:
+			case TX2A:
+			case TX1B:
+			case TX2B:{
 				if(unsynchronized != NO_SYNC){
-					#ifdef ENABLE_AUTOTRIM
-					uint8_t trim = call AutoTrim.getTrim(activeMeasure-1);
-					err = call RadioContinuousWave.sendWave(CHANNEL,trim, RFA1_DEF_RFPOWER, SENDING_TIME);
-					#else
-					err = call RadioContinuousWave.sendWave(CHANNEL,TRIM1, RFA1_DEF_RFPOWER, SENDING_TIME);
-					#endif
+					err = call RadioContinuousWave.sendWave(
+									call MeasureSettings.getChannel(measType, prevMeasure),
+									call MeasureSettings.getTrim(measType, prevMeasure),
+									call MeasureSettings.getTxPower(measType, prevMeasure),
+									call MeasureSettings.getSendTime());
 				}
 			} break;
-			case TX2:{
-				if(unsynchronized != NO_SYNC){
-					#ifdef ENABLE_AUTOTRIM
-					uint8_t trim = call AutoTrim.getTrim(activeMeasure-1);
-					err = call RadioContinuousWave.sendWave(CHANNEL,trim, RFA1_DEF_RFPOWER, SENDING_TIME);
-					#else
-					err = call RadioContinuousWave.sendWave(CHANNEL,TRIM2, RFA1_DEF_RFPOWER, SENDING_TIME);
-					#endif
-				}
-			} break;
-			case RX:{
+			case RXA:
+			case RXB:{
 				if(unsynchronized != NO_SYNC){
 					uint16_t time = 0;
 					#ifndef DEBUG_COLLECTOR
-					err = call RadioContinuousWave.sampleRssi(CHANNEL, buffer[measureBuffer], BUFFER_LEN, &time);
+					err = call RadioContinuousWave.sampleRssi(call MeasureSettings.getChannel(measType, prevMeasure), buffer[measureBuffer], BUFFER_LEN, &time);
 					#else
 					for(time=0;time<BUFFER_LEN;time++){
-						buffer[measureBuffer][time]=activeMeasure-1;
+						buffer[measureBuffer][time]=prevMeasure;
 					}
 					#endif
 					if( !processing ){
@@ -260,11 +188,13 @@ implementation{
 					measureBuffer = (measureBuffer + 1) % NUMBER_OF_RX;
 				}
 			}break;
+			#ifdef ENABLE_DEBUG_SLOTS
 			case DEB:{
 				if(unsynchronized != NO_SYNC){
 					post debugProcess();
 				}
 			}break;
+			#endif
 		}
 		
 		if( err != SUCCESS ){
@@ -294,7 +224,7 @@ implementation{
 		
 		atomic{
 			currentSyncPayload->frame = syncFrame;
-			
+			measureBuffer = 0;
 		}
 		
 		//workaround
@@ -316,7 +246,6 @@ implementation{
 	task void sendDummySync(){
 		atomic{
 			currentSyncPayload->frame = syncFrame;
-			measureBuffer = 0;
 		}
 		//workaround
 		if( 0 < (int32_t)(call Alarm.getNow()-startOfFrame) ){
@@ -362,7 +291,7 @@ implementation{
 				}else{
 					startOfFrame = call TimeSyncPacket.eventTime(bufPtr);
 					firetime = SYNC_SLOT;
-					#if (defined ENABLE_AUTOTRIM && !defined USE_PRESET_TRIMS)
+					#ifdef ENABLE_AUTOTRIM
 					call AutoTrim.processSyncMessage((uint8_t)(call AMPacket.source(bufPtr)),payload);
 					#endif
 				}
@@ -371,8 +300,12 @@ implementation{
 					activeMeasure = msg->frame;
 					measureBuffer = 0;
 					for(i=0;i<activeMeasure;i++){
-						if( read_uint8_t(&(motesettings[TOS_NODE_ID-1][i])) == RX ){
+						uint8_t typeTemp = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
+						if( typeTemp == RX ){
 							measureBuffer++;
+						}
+						if( typeTemp == SSYN){
+							measureBuffer = 0;
 						}
 					}
 					measureBuffer = measureBuffer%NUMBER_OF_RX;
