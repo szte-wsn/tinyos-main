@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	Writer<PhaseUnwrap::Packet> writer;
 	PhaseUnwrap unwrap(25, 6, 1, 1);
 //	Writer<RipsQuad::Packet> writer;
-	RipsQuad ripsquad(2, 3, 1, 5);
+	RipsQuad ripsquad(1, 3, 4, 5);
 	RipsDat2 ripsdat2;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;

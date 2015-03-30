@@ -2,5 +2,6 @@
 *.d
 recorder
 phaseplot
-test
 dump
+test
+test2
