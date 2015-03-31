@@ -367,6 +367,18 @@ std::vector<std::vector<uint8_t>> RipsDat::FIVE_MOTE_AB = {
 	{ TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B,  RXA,  RXB, RSYN, TX2A, TX2B, TX2A, TX2B, SSYN,  RXA,  RXB,  RXA,  RXB, RSYN,  RXA,  RXB,  RXA,  RXB, RSYN }
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::TXPAIR_TEST = {
+	{	TX1,	RX,	RX,	RX,	W10,	W10,	W10,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN	},
+	{	TX2,	RX,	RX,	RX,	W10,	W10,	W10,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN	},
+	{	RX,	TX1,	RX,	RX,	W10,	W10,	W10,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN	},
+	{	RX,	TX2,	RX,	RX,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN	},
+	{	RX,	RX,	TX1,	RX,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN,	RSYN	},
+	{	RX,	RX,	TX2,	RX,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN,	RSYN	},
+	{	RX,	RX,	RX,	TX1,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	RSYN	},
+	{	RX,	RX,	RX,	TX2,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN	},
+	{	RX,	RX,	RX,	RX,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN	}
+};
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -383,6 +395,7 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"MULT_RX_1", MULT_RX_1},
 	{"SCHEDULER_AND_RSSI_LOC_TESTER", SCHEDULER_AND_RSSI_LOC_TESTER},
 	{"FIVE_MOTE_AB", FIVE_MOTE_AB},
+	{"TXPAIR_TEST", TXPAIR_TEST},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
@@ -609,10 +622,10 @@ bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::ve
 }
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
-	stream << packet.sender1 << ", " << packet.sender2;
+	stream << std::setw(2) << packet.sender1 << ", " << std::setw(2) << packet.sender2;
 	for (RipsDat::Measurement mnt : packet.measurements) {
-		stream << ",\t" << mnt.nodeid << ", " << mnt.phase << ", " << mnt.period;
-		stream << ", " << mnt.rssi1 << ", " << mnt.rssi2;
+		stream << ",\t" << std::setw(2) << mnt.nodeid << "," << std::setw(3) << mnt.phase << "," << std::setw(2) << mnt.period;
+		stream << "," << std::setw(2) << mnt.rssi1 << "," << std::setw(2) << mnt.rssi2;
 	}
 	return stream;
 }

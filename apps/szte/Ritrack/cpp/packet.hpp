@@ -39,6 +39,7 @@
 #include <vector>
 #include <utility>
 #include <sstream>
+#include <iomanip>
 
 uint16_t read_uint16(std::vector<unsigned char>::const_iterator pos);
 uint32_t read_uint32(std::vector<unsigned char>::const_iterator pos);
@@ -189,6 +190,7 @@ private:
 	static std::vector<std::vector<uint8_t>> MULT_RX_1;
 	static std::vector<std::vector<uint8_t>> SCHEDULER_AND_RSSI_LOC_TESTER;
 	static std::vector<std::vector<uint8_t>> FIVE_MOTE_AB;
+	static std::vector<std::vector<uint8_t>> TXPAIR_TEST;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
