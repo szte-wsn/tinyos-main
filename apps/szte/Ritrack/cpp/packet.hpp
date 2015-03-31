@@ -320,5 +320,26 @@ private:
 
 std::ostream& operator <<(std::ostream& stream, const RipsQuad2::Packet &packet);
 
+class SuperFilter : public Block {
+public:
+	struct Data {
+		float phase;			// [0.0,1.0) range, -1.0 if not valid
+		int rssi1;			// -1 if not valid
+		int rssi2;			// -1 if not valid
+	};
+
+	struct Slot {
+		uint slot;
+		uint sender1;
+		uint sender2;
+		float period;			// -1.0 if not valid
+		std::vector<Data> data;		// indexed by nodeid
+	};
+
+	struct Frame {
+		ulong frame;
+		std::vector<Slot> slots;
+	};
+};
 
 #endif//__PACKET_HPP__
