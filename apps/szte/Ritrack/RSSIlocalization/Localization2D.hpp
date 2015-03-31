@@ -1,5 +1,5 @@
-#ifndef LOCALIZATION_HPP
-#define LOCALIZATION_HPP
+#ifndef LOCALIZATION2D_HPP
+#define LOCALIZATION2D_HPP
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
@@ -22,7 +22,6 @@ public:
 	
 private:
 	Config& config;
-	double deviation;
 	double angleStep;
 	double step;
 	double xStart, xEnd, yStart, yEnd;

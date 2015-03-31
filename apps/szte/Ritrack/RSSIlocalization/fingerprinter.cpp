@@ -39,7 +39,7 @@ int main(int argc, char** argv){
 	fsP << classID << ":" << posX << "," << posY << std::endl;
 	
 	char in_array[100];
-	while(1){
+	while(!std::cin.eof()){
 		std::cin.getline(in_array,100);
 		std::string in(in_array);
 		if(in == "q"){

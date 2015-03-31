@@ -17,9 +17,9 @@ int main(int argc, char** argv){
 	}
 	
 	InputParser input;
-	RSSIFilter rssifilter((short)numberOfData,(short)selectedMote,false);
+	RSSIFilter rssifilter((short)numberOfData,(short)selectedMote,true);
 	char in_array[150];
-	while(1){
+	while(!std::cin.eof()){
 		std::cin.getline(in_array,150);
 		std::string in(in_array);
 		if(in == "q"){

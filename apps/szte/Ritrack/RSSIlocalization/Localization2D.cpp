@@ -38,6 +38,7 @@ cv::Mat Localization2D::calculateLocations(std::vector<Measurement> measures){
 	Localization2D::locationMap = cv::Mat::zeros(round(1+(yStart-yEnd)/step),round(1+(xEnd-xStart)/step), CV_64F);
 	//for all measures:
 	for(std::vector<Measurement>::iterator measureit=measures.begin() ; measureit < measures.end(); measureit++) {
+		std::cout << *measureit << std::endl;
 		//for all pixels
 		int i=0;
 		int j=0;
@@ -50,32 +51,53 @@ cv::Mat Localization2D::calculateLocations(std::vector<Measurement> measures){
 					double correlation = 0.0;
 					//for all pairs
 					for(std::vector<std::pair<Mote,Mote>>::iterator pairit=config.getPairs().begin() ; pairit < config.getPairs().end(); pairit++) {
-						if( measureit->phases.count(pairit->first)==0 || measureit->phases.count(pairit->second)==0){
+						if( measureit->phases.count(pairit->first.getID())==0 || measureit->phases.count(pairit->second.getID())==0){
 							continue;
 						}
+						
+						Mote Tx1(-1,0.0,0.0);
+						Mote Tx2(-1,0.0,0.0);
+						//Mote Rx1;
+						//Mote Rx2;
+						
+						if( config.isMobile(measureit->tx1) ){
+							Tx1 = config.getMobile(measureit->tx1);
+						}else{
+							Tx1 = config.getStable(measureit->tx1);
+						}
+						if( config.isMobile(measureit->tx2) ){
+							Tx2 = config.getMobile(measureit->tx2);
+						}else{
+							Tx2 = config.getStable(measureit->tx2);
+						}
+						
 						Position<double> moteFirstPos(0.0,0.0);
 						if( config.isMobile(pairit->first.getID()) ){
 							moteFirstPos = Position<double>(x,y).rotatedPosition( pairit->first.getPosition() + Position<double>(x,y), ang*DEGINRAD );
+							//Rx1 = config.getMobile(pairit->first.getID());
 						}else{
 							moteFirstPos = pairit->first.getPosition();
+							//Rx1 = config.getStable(pairit->first.getID());
 						}
 						Position<double> moteSecondPos(0.0,0.0); 
 						if( config.isMobile(pairit->second.getID()) ){
 							moteSecondPos = Position<double>(x,y).rotatedPosition( pairit->second.getPosition() + Position<double>(x,y), ang*DEGINRAD );
+							//Rx2 = config.getMobile(pairit->second.getID());
 						}else{
 							moteSecondPos = pairit->second.getPosition();
+							//Rx2 = config.getStable(pairit->second.getID());
 						}
-						double absPhaseFirstTx1 = PhaseCalculator::absPhase(measureit->getTx1().getPosition(),moteFirstPos);
-						double absPhaseFirstTx2 = PhaseCalculator::absPhase(measureit->getTx2().getPosition(),moteFirstPos);
-						double absPhaseSecondTx1 = PhaseCalculator::absPhase(measureit->getTx1().getPosition(),moteSecondPos);
-						double absPhaseSecondTx2 = PhaseCalculator::absPhase(measureit->getTx2().getPosition(),moteSecondPos);
+						double absPhaseFirstTx1 = PhaseCalculator::absPhase(Tx1.getPosition(),moteFirstPos);
+						double absPhaseFirstTx2 = PhaseCalculator::absPhase(Tx2.getPosition(),moteFirstPos);
+						double absPhaseSecondTx1 = PhaseCalculator::absPhase(Tx1.getPosition(),moteSecondPos);
+						double absPhaseSecondTx2 = PhaseCalculator::absPhase(Tx2.getPosition(),moteSecondPos);
 						double absPhaseFirst = PhaseCalculator::phaseDiff(absPhaseFirstTx1,absPhaseFirstTx2);
 						double absPhaseSecond = PhaseCalculator::phaseDiff(absPhaseSecondTx1,absPhaseSecondTx2);
 						double calculatedRelPhase = PhaseCalculator::phaseDiff(absPhaseFirst,absPhaseSecond);
-						double measuredRelPhase = PhaseCalculator::relPhase(	measureit->phases[pairit->first],
-						                                                		measureit->periods[pairit->first],
-						                                                		measureit->phases[pairit->second],
-						                                                		measureit->periods[pairit->second] );
+						double measuredRelPhase = PhaseCalculator::relPhase(		measureit->phases[pairit->first.getID()],
+						                                                		measureit->periods[pairit->first.getID()],
+						                                                		measureit->phases[pairit->second.getID()],
+						                                                		measureit->periods[pairit->second.getID()] );
 						correlation += PhaseCalculator::phaseCorrelation(calculatedRelPhase,measuredRelPhase);
 						//std::cout << x << " , " << y << std::endl;
 						//std::cout << moteFirstPos << " , " << moteSecondPos << std::endl;
