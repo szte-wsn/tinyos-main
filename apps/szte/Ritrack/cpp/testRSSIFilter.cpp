@@ -30,9 +30,9 @@ private:
 	bool median;
 	std::map<short,short> histogram;
 	std::vector<std::vector<short>> buffer;
-	int superFrameCounter;
+	unsigned int superFrameCounter;
 	
-	short referenceTx1,referenceTx2;
+	unsigned short referenceTx1,referenceTx2;
 	
 	void addMeasure(std::vector<std::vector<short>> oneMeasure);
 	void processRssis();
@@ -132,9 +132,9 @@ void RSSIFilter::processRssis(){
 	if(!median){
 		std::string str = "";
 		short avarages[selectedMote-1];
-		for(int i=0; i<selectedMote-1 ;i++){
+		for(unsigned short i=0; i<selectedMote-1 ;i++){
 			int sum = 0;
-			for(int j=0;j<rssis[i].size();j++){
+			for(unsigned short j=0;j<rssis[i].size();j++){
 				sum += rssis[i][j];
 			}
 			if(rssis[i].size() != 0){
@@ -167,7 +167,7 @@ void RSSIFilter::processRssis(){
 }
 
 std::ostream& operator <<(std::ostream& stream, const RSSIFilter::Packet &packet) {
-	
+	return stream;
 }
 
 int main(int argc, char *argv[]) {
