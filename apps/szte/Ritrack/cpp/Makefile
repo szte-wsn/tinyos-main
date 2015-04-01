@@ -4,7 +4,7 @@ LDFLAGS = -pthread
 SOURCES = $(wildcard *.cpp)
 DEPENDS = ${SOURCES:.cpp=.d}
 
-all: recorder phaseplot dump test test2 testRSSIFilter
+all: recorder phaseplot dump dump2 test test2 testRSSIFilter
 
 testRSSIFilter: testRSSIFilter.o block.o serial.o packet.o
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -35,7 +35,7 @@ phaseplot: phaseplot.o
 .PHONY: clean socat
 
 clean:
-	$(RM) test dump recorder phaseplot ${SOURCES:.cpp=.o} $(DEPENDS)
+	$(RM) recorder phaseplot dump dump2 test test2 testRSSIFilter ${SOURCES:.cpp=.o} $(DEPENDS)
 
 socat:
 	socat -d -d STDIO PTY
