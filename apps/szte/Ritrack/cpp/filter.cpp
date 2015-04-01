@@ -325,12 +325,56 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			}
 		}
 
+		// create empty data
+		for (uint nodeid : nodes) {
+			Data data;
+			data.nodeid = nodeid;
+			data.rssi1 = -1;
+			data.rssi2 = -1;
+			data.phase = -1.0f;
+
+			for (Slot &slot : frame.slots)
+				slot.data.push_back(data);
+		}
+
+		// compute average rssi values
+		for (Slot &slot : frame.slots) {
+			for (Data &data : slot.data) {
+				std::vector<int> rssi1;
+				std::vector<int> rssi2;
+
+				for (const BasicFilter::Packet &packet : packets) {
+					if (packet.slot == slot.slot) {
+						for (const BasicFilter::Measurement &mnt : packet.measurements) {
+							if (mnt.nodeid == data.nodeid) {
+								rssi1.push_back(mnt.rssi1);
+								rssi2.push_back(mnt.rssi2);
+							}
+						}
+					}
+				}
+
+				data.rssi1 = average_rssi(rssi1);
+				data.rssi2 = average_rssi(rssi2);
+			}
+		}
+
 		out.send(frame);
 		packets.clear();
 	}
 
 	packets.push_back(packet);
 	lastframe = packet.frame;
+}
+
+int FrameMerger::average_rssi(std::vector<int> &rssi) {
+	if (rssi.size() == 0)
+		return -1;
+	else if (rssi.size() == 1)
+		return rssi.front();
+
+	std::sort(rssi.begin(), rssi.end());
+	return rssi[rssi.size()/2];
 }
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame) {
@@ -343,7 +387,8 @@ std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame)
 		stream << ", " << std::setw(4) << slot.period;
 
 		for (FrameMerger::Data data : slot.data) {
-			stream << ",\t" << std::setw(4) << data.phase;
+			stream << ",\t" << std::setw(2) << data.nodeid;
+			stream << ", " << std::setw(4) << data.phase;
 			stream << ", " << std::setw(2) << data.rssi1;
 			stream << ", " << std::setw(2) << data.rssi2;
 		}

@@ -190,6 +190,7 @@ private:
 	std::vector<BasicFilter::Packet> packets;
 
 	void decode(const BasicFilter::Packet &pkt);
+	int average_rssi(std::vector<int> &rssi);
 };
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &packet);
