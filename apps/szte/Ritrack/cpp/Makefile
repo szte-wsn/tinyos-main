@@ -4,7 +4,10 @@ LDFLAGS = -pthread
 SOURCES = $(wildcard *.cpp)
 DEPENDS = ${SOURCES:.cpp=.d}
 
-all: recorder phaseplot dump test test2
+all: recorder phaseplot dump test test2 xfilter
+
+xfilter: xfilter.o block.o serial.o packet.o filter.o
+	$(CXX) $(LDFLAGS) -o $@ $^
 
 test: test.o block.o serial.o packet.o viterbi.o
 	$(CXX) $(LDFLAGS) -o $@ $^
