@@ -36,7 +36,7 @@
 #define __VITERBI_HPP__
 
 #include "block.hpp"
-#include "packet.hpp"
+#include "filter.hpp"
 #include <vector>
 #include <queue>
 #include <cfloat>

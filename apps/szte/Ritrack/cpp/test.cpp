@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	PhaseUnwrap unwrap(25, 6, 1, 1);
 //	Writer<RipsQuad::Packet> writer;
 	RipsQuad ripsquad(1, 3, 4, 5);
-	RipsDat2 ripsdat2;
+	BasicFilter filter;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
 	connect(reader.out, tosmsg.sub_in);
 	connect(tosmsg.out, ripsmsg.in);
 	connect(ripsmsg.out, ripsdat.in);
-	connect(ripsdat.out, ripsdat2.in);
-	connect(ripsdat2.out, ripsquad.in);
+	connect(ripsdat.out, filter.in);
+	connect(filter.out, ripsquad.in);
 	connect(ripsquad.out, unwrap.in);
 	connect(unwrap.out, writer.in);
 //	connect(ripsquad.out, writer.in);

@@ -34,11 +34,12 @@
 
 #include "serial.hpp"
 #include "packet.hpp"
+#include "filter.hpp"
 
 int main(int argc, char *argv[]) {
 	Writer<RipsQuad2::Packet> writer;
 	RipsQuad2 ripsquad(1, 3, 4, 5);
-	RipsDat2 ripsdat2;
+	BasicFilter filter;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
@@ -47,8 +48,8 @@ int main(int argc, char *argv[]) {
 	connect(reader.out, tosmsg.sub_in);
 	connect(tosmsg.out, ripsmsg.in);
 	connect(ripsmsg.out, ripsdat.in);
-	connect(ripsdat.out, ripsdat2.in);
-	connect(ripsdat2.out, ripsquad.in);
+	connect(ripsdat.out, filter.in);
+	connect(filter.out, ripsquad.in);
 	connect(ripsquad.out, writer.in);
 
 	reader.run();

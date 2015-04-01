@@ -97,6 +97,60 @@ private:
 
 std::ostream& operator <<(std::ostream& stream, const BasicFilter::Packet &packet);
 
+// ------- RipsQuad
+
+class RipsQuad : public Block {
+public:
+	struct Packet {
+		ulong frame;
+		float subframe;
+		float period;
+		float relphase;
+	};
+
+	Input<BasicFilter::Packet> in;
+	Output<Packet> out;
+
+	RipsQuad(uint sender1, uint sender2, uint receiver1, uint receiver2);
+
+private:
+	uint sender1, sender2, receiver1, receiver2;
+
+	void decode(const BasicFilter::Packet &pkt);
+};
+
+std::ostream& operator <<(std::ostream& stream, const RipsQuad::Packet &packet);
+
+// ------- RipsQuad2
+
+class RipsQuad2 : public Block {
+public:
+	struct Packet {
+		ulong frame;
+		float period1;
+		float period2;
+		float relphase1;
+		float relphase2;
+	};
+
+	Input<BasicFilter::Packet> in;
+	Output<Packet> out;
+
+	RipsQuad2(uint sender1, uint sender2, uint receiver1, uint receiver2);
+
+private:
+	uint sender1, sender2, receiver1, receiver2;
+	int slot1, slot2;
+	float avgphase1, avgphase2, period1, period2;
+	ulong lastframe;
+
+	float calcavg(float avgphase, float relphase);
+
+	void decode(const BasicFilter::Packet &pkt);
+};
+
+std::ostream& operator <<(std::ostream& stream, const RipsQuad2::Packet &packet);
+
 // ------- FrameMerger
 
 class FrameMerger : public Block {

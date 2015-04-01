@@ -35,10 +35,11 @@
 #include "block.hpp"
 #include "serial.hpp"
 #include "packet.hpp"
+#include "filter.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<RipsDat2::Packet> writer;
-	RipsDat2 ripsdat2;
+	Writer<BasicFilter::Packet> writer;
+	BasicFilter filter;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
@@ -47,8 +48,8 @@ int main(int argc, char *argv[]) {
 	connect(reader.out, tosmsg.sub_in);
 	connect(tosmsg.out, ripsmsg.in);
 	connect(ripsmsg.out, ripsdat.in);
-	connect(ripsdat.out, ripsdat2.in);
-	connect(ripsdat2.out, writer.in);
+	connect(ripsdat.out, filter.in);
+	connect(filter.out, writer.in);
 	reader.run();
 	return 0;
 }
