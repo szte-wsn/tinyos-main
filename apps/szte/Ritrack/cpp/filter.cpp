@@ -384,7 +384,7 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			counts.resize(slot.data.size(), 0);
 
 			for (const BasicFilter::Packet &packet : packets) {
-				if (packet.slot == slot.slot) {
+				if (packet.slot == slot.slot && packet.measurements.size() >= 2) {
 					std::vector<std::complex<float>> phases;
 					extract_complex_phases(slot.data, packet.measurements, phases, counts);
 					phases_table.push_back(phases);
