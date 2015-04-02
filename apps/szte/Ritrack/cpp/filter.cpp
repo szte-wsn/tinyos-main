@@ -327,6 +327,8 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			}
 		}
 
+		std::sort(frame.slots.begin(), frame.slots.end(), slot_order);
+
 		// create empty data
 		for (uint nodeid : nodes) {
 			Data data;
@@ -335,15 +337,20 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			data.rssi2 = -1;
 			data.phase = -1.0f;
 
-			for (Slot &slot : frame.slots)
-				slot.data.push_back(data);
+			for (Slot &slot : frame.slots) {
+				if (slot.sender1 != nodeid && slot.sender2 != nodeid)
+					slot.data.push_back(data);
+			}
 		}
 
 		// compute average rssi values
+		std::vector<int> rssi1;
+		std::vector<int> rssi2;
+
 		for (Slot &slot : frame.slots) {
 			for (Data &data : slot.data) {
-				std::vector<int> rssi1;
-				std::vector<int> rssi2;
+				rssi1.clear();
+				rssi2.clear();
 
 				for (const BasicFilter::Packet &packet : packets) {
 					if (packet.slot == slot.slot) {
@@ -360,6 +367,42 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 				data.rssi2 = average_rssi(rssi2);
 			}
 		}
+
+		std::vector<std::complex<float>> approx1;
+		std::vector<std::complex<float>> approx2;
+
+		// compute average phases
+		for (Slot &slot : frame.slots) {
+			std::vector<std::vector<std::complex<float>>> phases_table;
+			for (const BasicFilter::Packet &packet : packets) {
+				if (packet.slot == slot.slot) {
+					std::vector<std::complex<float>> phases;
+					extract_complex_phases(slot.data, packet.measurements, phases);
+					phases_table.push_back(phases);
+				}
+			}
+
+			if (phases_table.empty())
+				continue;
+
+			approx1.clear();
+			approx1.resize(phases_table.front().size());
+
+			for (const std::vector<std::complex<float>> &phases : phases_table)
+				find_best_rotation(approx1, phases, approx1);
+
+			approx2.clear();
+			approx2.resize(phases_table.front().size());
+
+			for (const std::vector<std::complex<float>> &phases : phases_table)
+				find_best_rotation(approx1, phases, approx2);
+
+			export_complex_phases(approx2, slot.data);
+		}
+
+		// prune data
+		for (Slot &slot : frame.slots)
+			prune_data(slot.data);
 
 		out.send(frame);
 		packets.clear();
@@ -379,8 +422,82 @@ int FrameMerger::average_rssi(std::vector<int> &rssi) {
 	return rssi[rssi.size()/2];
 }
 
+void FrameMerger::extract_complex_phases(const std::vector<Data> &data,
+	const std::vector<BasicFilter::Measurement> &measurements,
+	std::vector<std::complex<float>> &output)
+{
+	assert(output.empty());
+	output.resize(data.size(), std::complex<float>(0.0f, 0.0f));
+
+	float TWOPI = 6.2831853f;
+
+	for (const BasicFilter::Measurement &m : measurements) {
+		if (m.phase == -1.0f)
+			continue;
+		assert(0.0f <= m.phase && m.phase < 1.0f);
+
+		uint i;
+		for (i = 0; i < data.size(); i++) {
+			if (data[i].nodeid == m.nodeid) {
+				float p = TWOPI * m.phase;
+				output[i] = std::complex<float>(std::cos(p), std::sin(p));
+				break;
+			}
+		}
+	}
+}
+
+void FrameMerger::find_best_rotation(const std::vector<std::complex<float>> &target,
+	const std::vector<std::complex<float>> &input,
+	std::vector<std::complex<float>> &accum)
+{
+	assert(target.size() == input.size() && input.size() == accum.size());
+
+	std::complex<float> s(0.0f, 0.0f);
+	for(uint i = 0; i < input.size(); i++)
+		s += normalize(target[i]) * std::conj(input[i]);
+
+	float a = std::abs(s);
+	if (a <= 0.0f) {
+		for (uint i = 0; i < input.size(); i++)
+			accum[i] += input[i];
+	}
+	else {
+		s = s/a;
+		for (uint i = 0; i < input.size(); i++)
+			accum[i] += input[i] * s;
+	}
+}
+
+void FrameMerger::export_complex_phases(std::vector<std::complex<float>> &input,
+	std::vector<Data> &data)
+{
+	assert(input.size() == data.size());
+
+	float TWOPI = 6.2831853f;
+
+	for (uint i = 0; i < data.size(); i++) {
+		std::complex<float> c = input[i];
+		if (c.real() == 0.0f && c.imag() == 0.0f)
+			data[i].phase = -1.0;
+		else {
+			float a = std::arg(c) / TWOPI;
+			assert(-0.5f <= a && a <= 0.5f);
+
+			if (a < 0.0f)
+				a += 1.0f;
+
+			data[i].phase = a;
+		}
+	}
+}
+
+void FrameMerger::prune_data(std::vector<Data> &data) {
+	data.erase(std::remove_if(data.begin(), data.end(), empty_data), data.end());
+}
+
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame) {
-	stream.precision(1);
+	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	for (FrameMerger::Slot slot : frame.slots) {

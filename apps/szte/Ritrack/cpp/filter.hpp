@@ -36,6 +36,7 @@
 #define __FILTER_HPP__
 
 #include "packet.hpp"
+#include <complex>
 
 // ------- BasicFilter (based on historic period and RSSI)
 
@@ -185,12 +186,38 @@ public:
 	FrameMerger(uint framecount);
 
 private:
+	static bool slot_order(const Slot &slot1, const Slot &slot2) {
+		return slot1.slot < slot2.slot;
+	}
+
+	static bool empty_data(const Data &data) {
+		return data.phase == -1.0f && data.rssi1 == -1 && data.rssi2 == -1;
+	}
+
 	const uint framecount;
 	ulong lastframe;
 	std::vector<BasicFilter::Packet> packets;
 
 	void decode(const BasicFilter::Packet &pkt);
-	int average_rssi(std::vector<int> &rssi);
+	static int average_rssi(std::vector<int> &rssi);
+
+	static void extract_complex_phases(const std::vector<Data> &data,
+		const std::vector<BasicFilter::Measurement> &measurements,
+		std::vector<std::complex<float>> &output);
+
+	static void find_best_rotation(const std::vector<std::complex<float>> &target,
+		const std::vector<std::complex<float>> &input,
+		std::vector<std::complex<float>> &accum);
+
+	static void export_complex_phases(std::vector<std::complex<float>> &input,
+		std::vector<Data> &data);
+
+	static void prune_data(std::vector<Data> &data);
+
+	static std::complex<float> normalize(std::complex<float> c) {
+		float a = std::abs(c);
+		return a > 0.0f ? c / a : c;
+	}
 };
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &packet);

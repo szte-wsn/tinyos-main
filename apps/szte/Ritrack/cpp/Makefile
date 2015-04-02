@@ -1,3 +1,5 @@
+# TODO: use -DNDEBUG in CXXFLAGS to disable asserts for the release
+
 CXX = g++
 CXXFLAGS = -std=c++11 -O3 -Wall -MMD
 LDFLAGS = -pthread
