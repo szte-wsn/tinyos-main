@@ -156,9 +156,10 @@ class FrameMerger : public Block {
 public:
 	struct Data {
 		uint nodeid;
-		float phase;			// [0.0,1.0) range, -1.0 if not valid
 		int rssi1;			// -1 if not valid
 		int rssi2;			// -1 if not valid
+		float phase;			// [0.0,1.0) range, -1.0 if not valid
+		float conf;			// confidence in [0.0, 1.0]
 	};
 
 	struct Slot {
@@ -201,13 +202,15 @@ private:
 
 	static void extract_complex_phases(const std::vector<Data> &data,
 		const std::vector<BasicFilter::Measurement> &measurements,
-		std::vector<std::complex<float>> &output);
+		std::vector<std::complex<float>> &output,
+		std::vector<int> &counts);
 
 	static void find_best_rotation(const std::vector<std::complex<float>> &target,
 		const std::vector<std::complex<float>> &input,
 		std::vector<std::complex<float>> &accum);
 
 	static void export_complex_phases(std::vector<std::complex<float>> &input,
+		const std::vector<int> &counts,
 		std::vector<Data> &data);
 
 	static void prune_data(std::vector<Data> &data);
