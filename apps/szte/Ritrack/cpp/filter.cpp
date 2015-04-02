@@ -304,7 +304,9 @@ FrameMerger::FrameMerger(uint framecount) : in(bind(&FrameMerger::decode, this))
 void FrameMerger::decode(const BasicFilter::Packet &packet) {
 	ulong d = packet.frame - lastframe;
 	if (d > framecount) {
+
 		Frame frame;
+		frame.frame = lastframe;
 
 		// create slots and nodes
 		std::set<uint> nodes;
@@ -361,10 +363,10 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 
 		out.send(frame);
 		packets.clear();
+		lastframe = packet.frame;
 	}
 
 	packets.push_back(packet);
-	lastframe = packet.frame;
 }
 
 int FrameMerger::average_rssi(std::vector<int> &rssi) {
@@ -378,7 +380,7 @@ int FrameMerger::average_rssi(std::vector<int> &rssi) {
 }
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame) {
-	stream.precision(2);
+	stream.precision(1);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	for (FrameMerger::Slot slot : frame.slots) {
@@ -392,6 +394,8 @@ std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame)
 			stream << ", " << std::setw(2) << data.rssi1;
 			stream << ", " << std::setw(2) << data.rssi2;
 		}
+
+		stream << std::endl;
 	}
 
 	return stream;
