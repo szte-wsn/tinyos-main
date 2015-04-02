@@ -504,7 +504,7 @@ void FrameMerger::export_complex_phases(std::vector<std::complex<float>> &input,
 				a += 1.0f;
 
 			data[i].phase = a;
-			data[i].conf = std::abs(c) / counts[i];
+			data[i].conf = std::abs(c) / (1 + counts[i]);
 		}
 	}
 }
