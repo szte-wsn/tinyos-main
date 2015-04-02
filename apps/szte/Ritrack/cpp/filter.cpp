@@ -40,20 +40,24 @@
 
 // ------- BasicFilter
 
-BasicFilter::BasicFilter() : in(bind(&BasicFilter::decode, this)), skip_packets(1) {
+BasicFilter::BasicFilter(int high_rssi_level, int high_rssi_count)
+	: in(bind(&BasicFilter::decode, this)),
+	high_rssi_level(high_rssi_level), high_rssi_count(high_rssi_count),
+	skip_packets(1)
+{
 }
 
 void BasicFilter::decode(const RipsDat::Packet &packet) {
-	uint c = 0;
+	int c = 0;
 	for (const RipsDat::Measurement &m : last_packet.measurements) {
-		if (m.rssi1 >= HIGH_RSSI_LEVEL || m.rssi2 >= HIGH_RSSI_LEVEL)
+		if (m.rssi1 >= high_rssi_level || m.rssi2 >= high_rssi_level)
 			c += 1;
 	}
 	for (const RipsDat::Measurement &m : packet.measurements) {
-		if (m.rssi1 >= HIGH_RSSI_LEVEL || m.rssi2 >= HIGH_RSSI_LEVEL)
+		if (m.rssi1 >= high_rssi_level || m.rssi2 >= high_rssi_level)
 			c += 1;
 	}
-	if (c >= HIGH_RSSI_COUNT)
+	if (c >= high_rssi_count)
 		skip_packets = 2;
 
 	if (skip_packets > 0)
@@ -135,10 +139,11 @@ std::ostream& operator <<(std::ostream& stream, const BasicFilter::Packet &packe
 	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
-	stream << packet.sender1 << ", " << packet.sender2 << ", " << packet.period;
+	stream << std::setw(2) << packet.sender1 << ", " << std::setw(2) << packet.sender2;
+	stream << ", " << std::setw(5) << packet.period;
 	for (BasicFilter::Measurement mnt : packet.measurements) {
-		stream << ",\t" << mnt.nodeid << ", " << mnt.phase;
-		stream << ", " << mnt.rssi1 << ", " << mnt.rssi2;
+		stream << ",  " << std::setw(2) << mnt.nodeid << ", " << std::setw(4) << mnt.phase;
+		stream << ", " << std::setw(2) << mnt.rssi1 << ", " << std::setw(2) << mnt.rssi2;
 	}
 
 	return stream;
@@ -494,6 +499,23 @@ void FrameMerger::export_complex_phases(std::vector<std::complex<float>> &input,
 
 void FrameMerger::prune_data(std::vector<Data> &data) {
 	data.erase(std::remove_if(data.begin(), data.end(), empty_data), data.end());
+
+	float p = -1.0f;
+	for (Data &d : data) {
+		if (d.phase != -1.0f) {
+			assert(0.0f <= d.phase && d.phase < 1.0f);
+
+			if (p == -1.0f)
+				p = d.phase;
+
+			float q = d.phase - p;
+			if (q < 0.0f)
+				q += 1.0f;
+
+			assert(0.0f <= q && q < 1.0f);
+			d.phase = q;
+		}
+	}
 }
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame) {
@@ -503,10 +525,10 @@ std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame)
 	for (FrameMerger::Slot slot : frame.slots) {
 		stream << std::setw(2) << frame.frame << ", " << std::setw(2) << slot.slot;
 		stream << ", " << std::setw(2) << slot.sender1 << ", " << std::setw(2) << slot.sender2;
-		stream << ", " << std::setw(4) << slot.period;
+		stream << ", " << std::setw(5) << slot.period;
 
 		for (FrameMerger::Data data : slot.data) {
-			stream << ",\t" << std::setw(2) << data.nodeid;
+			stream << ",  " << std::setw(2) << data.nodeid;
 			stream << ", " << std::setw(4) << data.phase;
 			stream << ", " << std::setw(2) << data.rssi1;
 			stream << ", " << std::setw(2) << data.rssi2;

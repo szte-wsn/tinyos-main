@@ -64,7 +64,7 @@ public:
 	Input<RipsDat::Packet> in;
 	Output<Packet> out;
 
-	BasicFilter();
+	BasicFilter(int high_rssi_level, int high_rssi_count);
 
 private:
 	class Slot {
@@ -86,10 +86,8 @@ private:
 
 	std::vector<Slot> slots;
 
-	enum {
-		HIGH_RSSI_LEVEL = 10,	// too close or produced by WIFI
-		HIGH_RSSI_COUNT = 3,	// a single slot must have fewer high RSSI values
-	};
+	const int high_rssi_level; // too close or produced by WIFI
+	const int high_rssi_count; // a slot must have fewer high RSSI values
 
 	uint skip_packets;
 	RipsDat::Packet last_packet;
