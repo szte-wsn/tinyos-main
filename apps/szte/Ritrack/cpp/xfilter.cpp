@@ -37,8 +37,8 @@
 
 int main(int argc, char *argv[]) {
 	Writer<FrameMerger::Frame> writer;
-	FrameMerger merger(5);
-	BasicFilter filter;
+	FrameMerger merger(20);
+	BasicFilter filter(16, 2);
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;

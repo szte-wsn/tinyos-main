@@ -39,7 +39,7 @@
 int main(int argc, char *argv[]) {
 	Writer<RipsQuad2::Packet> writer;
 	RipsQuad2 ripsquad(1, 3, 4, 5);
-	BasicFilter filter;
+	BasicFilter filter(15, 3);
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;

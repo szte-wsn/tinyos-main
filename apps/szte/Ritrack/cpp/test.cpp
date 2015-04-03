@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	PhaseUnwrap unwrap(25, 6, 1, 1);
 //	Writer<RipsQuad::Packet> writer;
 	RipsQuad ripsquad(1, 3, 4, 5);
-	BasicFilter filter;
+	BasicFilter filter(15, 3);
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;

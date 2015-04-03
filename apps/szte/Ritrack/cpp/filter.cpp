@@ -40,20 +40,24 @@
 
 // ------- BasicFilter
 
-BasicFilter::BasicFilter() : in(bind(&BasicFilter::decode, this)), skip_packets(1) {
+BasicFilter::BasicFilter(int high_rssi_level, int high_rssi_count)
+	: in(bind(&BasicFilter::decode, this)),
+	high_rssi_level(high_rssi_level), high_rssi_count(high_rssi_count),
+	skip_packets(1)
+{
 }
 
 void BasicFilter::decode(const RipsDat::Packet &packet) {
-	uint c = 0;
+	int c = 0;
 	for (const RipsDat::Measurement &m : last_packet.measurements) {
-		if (m.rssi1 >= HIGH_RSSI_LEVEL || m.rssi2 >= HIGH_RSSI_LEVEL)
+		if (m.rssi1 >= high_rssi_level || m.rssi2 >= high_rssi_level)
 			c += 1;
 	}
 	for (const RipsDat::Measurement &m : packet.measurements) {
-		if (m.rssi1 >= HIGH_RSSI_LEVEL || m.rssi2 >= HIGH_RSSI_LEVEL)
+		if (m.rssi1 >= high_rssi_level || m.rssi2 >= high_rssi_level)
 			c += 1;
 	}
-	if (c >= HIGH_RSSI_COUNT)
+	if (c >= high_rssi_count)
 		skip_packets = 2;
 
 	if (skip_packets > 0)
@@ -120,7 +124,7 @@ void BasicFilter::Slot::decode(const RipsDat::Packet &pkt, Output<Packet> &out) 
 
 			measurement.nodeid = mnt.nodeid;
 			measurement.phase = 1.0 * mnt.phase / mnt.period;
-			assert(0.0f <= measurement.phase && measurement.phase < 1.0f);
+			assert(0.0f <= measurement.phase && measurement.phase <= 1.0f);
 			measurement.rssi1 = mnt.rssi1;
 			measurement.rssi2 = mnt.rssi2;
 
@@ -135,10 +139,11 @@ std::ostream& operator <<(std::ostream& stream, const BasicFilter::Packet &packe
 	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
-	stream << packet.sender1 << ", " << packet.sender2 << ", " << packet.period;
+	stream << std::setw(2) << packet.sender1 << ", " << std::setw(2) << packet.sender2;
+	stream << ", " << std::setw(5) << packet.period;
 	for (BasicFilter::Measurement mnt : packet.measurements) {
-		stream << ",\t" << mnt.nodeid << ", " << mnt.phase;
-		stream << ", " << mnt.rssi1 << ", " << mnt.rssi2;
+		stream << ",  " << std::setw(2) << mnt.nodeid << ", " << std::setw(4) << mnt.phase;
+		stream << ", " << std::setw(2) << mnt.rssi1 << ", " << std::setw(2) << mnt.rssi2;
 	}
 
 	return stream;
@@ -176,7 +181,7 @@ void RipsQuad::decode(const BasicFilter::Packet &pkt) {
 		return;
 
 	float relphase = std::fmod(mnt1->phase - mnt2->phase + 2.0f, 1.0);
-	assert(0.0f <= relphase && relphase < 1.0f);
+	assert(0.0f <= relphase && relphase <= 1.0f);
 
 	Packet packet;
 	packet.frame = pkt.frame;
@@ -227,7 +232,7 @@ void RipsQuad2::decode(const BasicFilter::Packet &pkt) {
 	}
 
 	float relphase = std::fmod(mnt1->phase - mnt2->phase + 2.0f, 1.0);
-	assert(0.0f <= relphase && relphase < 1.0f);
+	assert(0.0f <= relphase && relphase <= 1.0f);
 
 	if ((int) pkt.slot == slot1 || slot1 == -1) {
 		slot1 = pkt.slot;
@@ -245,8 +250,8 @@ void RipsQuad2::decode(const BasicFilter::Packet &pkt) {
 }
 
 float RipsQuad2::calcavg(float avgphase, float relphase) {
-	assert(0.0f <= avgphase && avgphase < 1.0f);
-	assert(0.0f <= relphase && relphase < 1.0f);
+	assert(0.0f <= avgphase && avgphase <= 1.0f);
+	assert(0.0f <= relphase && relphase <= 1.0f);
 
 	float d = relphase - avgphase;
 	if (d > 0.5f)
@@ -304,7 +309,9 @@ FrameMerger::FrameMerger(uint framecount) : in(bind(&FrameMerger::decode, this))
 void FrameMerger::decode(const BasicFilter::Packet &packet) {
 	ulong d = packet.frame - lastframe;
 	if (d > framecount) {
+
 		Frame frame;
+		frame.frame = lastframe;
 
 		// create slots and nodes
 		std::set<uint> nodes;
@@ -325,6 +332,8 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			}
 		}
 
+		std::sort(frame.slots.begin(), frame.slots.end(), slot_order);
+
 		// create empty data
 		for (uint nodeid : nodes) {
 			Data data;
@@ -333,15 +342,20 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			data.rssi2 = -1;
 			data.phase = -1.0f;
 
-			for (Slot &slot : frame.slots)
-				slot.data.push_back(data);
+			for (Slot &slot : frame.slots) {
+				if (slot.sender1 != nodeid && slot.sender2 != nodeid)
+					slot.data.push_back(data);
+			}
 		}
 
 		// compute average rssi values
+		std::vector<int> rssi1;
+		std::vector<int> rssi2;
+
 		for (Slot &slot : frame.slots) {
 			for (Data &data : slot.data) {
-				std::vector<int> rssi1;
-				std::vector<int> rssi2;
+				rssi1.clear();
+				rssi2.clear();
 
 				for (const BasicFilter::Packet &packet : packets) {
 					if (packet.slot == slot.slot) {
@@ -359,12 +373,52 @@ void FrameMerger::decode(const BasicFilter::Packet &packet) {
 			}
 		}
 
+		std::vector<std::complex<float>> approx1;
+		std::vector<std::complex<float>> approx2;
+
+		// compute average phases
+		for (Slot &slot : frame.slots) {
+			std::vector<std::vector<std::complex<float>>> phases_table;
+
+			std::vector<int> counts;
+			counts.resize(slot.data.size(), 0);
+
+			for (const BasicFilter::Packet &packet : packets) {
+				if (packet.slot == slot.slot && packet.measurements.size() >= 2) {
+					std::vector<std::complex<float>> phases;
+					extract_complex_phases(slot.data, packet.measurements, phases, counts);
+					phases_table.push_back(phases);
+				}
+			}
+
+			if (phases_table.empty())
+				continue;
+
+			approx1.clear();
+			approx1.resize(phases_table.front().size());
+
+			for (const std::vector<std::complex<float>> &phases : phases_table)
+				find_best_rotation(approx1, phases, approx1);
+
+			approx2.clear();
+			approx2.resize(phases_table.front().size());
+
+			for (const std::vector<std::complex<float>> &phases : phases_table)
+				find_best_rotation(approx1, phases, approx2);
+
+			export_complex_phases(approx2, counts, slot.data);
+		}
+
+		// prune data
+		for (Slot &slot : frame.slots)
+			prune_data(slot.data);
+
 		out.send(frame);
 		packets.clear();
+		lastframe = packet.frame;
 	}
 
 	packets.push_back(packet);
-	lastframe = packet.frame;
 }
 
 int FrameMerger::average_rssi(std::vector<int> &rssi) {
@@ -377,21 +431,122 @@ int FrameMerger::average_rssi(std::vector<int> &rssi) {
 	return rssi[rssi.size()/2];
 }
 
+void FrameMerger::extract_complex_phases(const std::vector<Data> &data,
+	const std::vector<BasicFilter::Measurement> &measurements,
+	std::vector<std::complex<float>> &output,
+	std::vector<int> &counts)
+{
+	assert(output.empty());
+	output.resize(data.size(), std::complex<float>(0.0f, 0.0f));
+
+	assert(counts.size() == data.size());
+
+	float TWOPI = 6.2831853f;
+
+	for (const BasicFilter::Measurement &m : measurements) {
+		if (m.phase == -1.0f)
+			continue;
+		assert(0.0f <= m.phase && m.phase <= 1.0f);
+
+		uint i;
+		for (i = 0; i < data.size(); i++) {
+			if (data[i].nodeid == m.nodeid) {
+				float p = TWOPI * m.phase;
+				output[i] = std::complex<float>(std::cos(p), std::sin(p));
+				counts[i] += 1;
+				break;
+			}
+		}
+	}
+}
+
+void FrameMerger::find_best_rotation(const std::vector<std::complex<float>> &target,
+	const std::vector<std::complex<float>> &input,
+	std::vector<std::complex<float>> &accum)
+{
+	assert(target.size() == input.size() && input.size() == accum.size());
+
+	std::complex<float> s(0.0f, 0.0f);
+	for(uint i = 0; i < input.size(); i++)
+		s += normalize(target[i]) * std::conj(input[i]);
+
+	float a = std::abs(s);
+	if (a <= 0.0f) {
+		for (uint i = 0; i < input.size(); i++)
+			accum[i] += input[i];
+	}
+	else {
+		s = s/a;
+		for (uint i = 0; i < input.size(); i++)
+			accum[i] += input[i] * s;
+	}
+}
+
+void FrameMerger::export_complex_phases(std::vector<std::complex<float>> &input,
+	const std::vector<int> &counts,
+	std::vector<Data> &data)
+{
+	assert(input.size() == data.size());
+
+	float TWOPI = 6.2831853f;
+
+	for (uint i = 0; i < data.size(); i++) {
+		std::complex<float> c = input[i];
+		if (counts[i] <= 0 || (c.real() == 0.0f && c.imag() == 0.0f)) {
+			data[i].phase = -1.0;
+			data[i].conf = 0.0;
+		}
+		else {
+			float a = std::arg(c) / TWOPI;
+			assert(-0.5f <= a && a <= 0.5f);
+
+			if (a < 0.0f)
+				a += 1.0f;
+
+			data[i].phase = a;
+			data[i].conf = std::abs(c) / (1 + counts[i]);
+		}
+	}
+}
+
+void FrameMerger::prune_data(std::vector<Data> &data) {
+	data.erase(std::remove_if(data.begin(), data.end(), empty_data), data.end());
+
+	float p = -1.0f;
+	for (Data &d : data) {
+		if (d.phase != -1.0f) {
+			assert(0.0f <= d.phase && d.phase <= 1.0f);
+
+			if (p == -1.0f)
+				p = d.phase;
+
+			float q = d.phase - p;
+			if (q < 0.0f)
+				q += 1.0f;
+
+			assert(0.0f <= q && q <= 1.0f);
+			d.phase = q;
+		}
+	}
+}
+
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame) {
 	stream.precision(2);
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	for (FrameMerger::Slot slot : frame.slots) {
-		stream << std::setw(2) << frame.frame << ", " << std::setw(2) << slot.slot;
-		stream << ", " << std::setw(2) << slot.sender1 << ", " << std::setw(2) << slot.sender2;
-		stream << ", " << std::setw(4) << slot.period;
+		// stream << std::setw(2) << frame.frame << ", " << std::setw(2) << slot.slot << ", ";
+		stream << std::setw(2) << slot.sender1 << "," << std::setw(2) << slot.sender2 << ", " << std::setw(5) << slot.period;
 
 		for (FrameMerger::Data data : slot.data) {
-			stream << ",\t" << std::setw(2) << data.nodeid;
-			stream << ", " << std::setw(4) << data.phase;
+			stream << ", " << std::setw(2) << data.nodeid;
 			stream << ", " << std::setw(2) << data.rssi1;
-			stream << ", " << std::setw(2) << data.rssi2;
+			stream << "," << std::setw(2) << data.rssi2;
+			stream << ", " << std::setw(4) << data.phase;
+			stream << "," << std::setw(4) << data.conf;
 		}
+
+		stream << std::endl;
 	}
 
 	return stream;

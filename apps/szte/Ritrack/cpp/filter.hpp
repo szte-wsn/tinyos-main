@@ -36,6 +36,7 @@
 #define __FILTER_HPP__
 
 #include "packet.hpp"
+#include <complex>
 
 // ------- BasicFilter (based on historic period and RSSI)
 
@@ -63,7 +64,7 @@ public:
 	Input<RipsDat::Packet> in;
 	Output<Packet> out;
 
-	BasicFilter();
+	BasicFilter(int high_rssi_level, int high_rssi_count);
 
 private:
 	class Slot {
@@ -85,10 +86,8 @@ private:
 
 	std::vector<Slot> slots;
 
-	enum {
-		HIGH_RSSI_LEVEL = 10,	// too close or produced by WIFI
-		HIGH_RSSI_COUNT = 3,	// a single slot must have fewer high RSSI values
-	};
+	const int high_rssi_level; // too close or produced by WIFI
+	const int high_rssi_count; // a slot must have fewer high RSSI values
 
 	uint skip_packets;
 	RipsDat::Packet last_packet;
@@ -157,9 +156,10 @@ class FrameMerger : public Block {
 public:
 	struct Data {
 		uint nodeid;
-		float phase;			// [0.0,1.0) range, -1.0 if not valid
 		int rssi1;			// -1 if not valid
 		int rssi2;			// -1 if not valid
+		float phase;			// [0.0,1.0) range, -1.0 if not valid
+		float conf;			// confidence in [0.0, 1.0]
 	};
 
 	struct Slot {
@@ -185,12 +185,40 @@ public:
 	FrameMerger(uint framecount);
 
 private:
+	static bool slot_order(const Slot &slot1, const Slot &slot2) {
+		return slot1.slot < slot2.slot;
+	}
+
+	static bool empty_data(const Data &data) {
+		return data.phase == -1.0f && data.rssi1 == -1 && data.rssi2 == -1;
+	}
+
 	const uint framecount;
 	ulong lastframe;
 	std::vector<BasicFilter::Packet> packets;
 
 	void decode(const BasicFilter::Packet &pkt);
-	int average_rssi(std::vector<int> &rssi);
+	static int average_rssi(std::vector<int> &rssi);
+
+	static void extract_complex_phases(const std::vector<Data> &data,
+		const std::vector<BasicFilter::Measurement> &measurements,
+		std::vector<std::complex<float>> &output,
+		std::vector<int> &counts);
+
+	static void find_best_rotation(const std::vector<std::complex<float>> &target,
+		const std::vector<std::complex<float>> &input,
+		std::vector<std::complex<float>> &accum);
+
+	static void export_complex_phases(std::vector<std::complex<float>> &input,
+		const std::vector<int> &counts,
+		std::vector<Data> &data);
+
+	static void prune_data(std::vector<Data> &data);
+
+	static std::complex<float> normalize(std::complex<float> c) {
+		float a = std::abs(c);
+		return a > 0.0f ? c / a : c;
+	}
 };
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &packet);
