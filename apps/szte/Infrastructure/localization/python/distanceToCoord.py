@@ -3,8 +3,18 @@ import scipy.optimize as opt
 from numpy import cos
 import sys
 
-unknownSign = 6000; #what is the unknown coordinate sign
-fileName = "RMMeasuredDistances.txt"
+def isNaN(num):
+    return num != num
+
+#run, while found good result
+#5000 = 50m is the maximum possible value
+#ignore the negative positions
+maxValueInCm = 5000
+changeValueInCm = 100
+goodnessThresholdValue = 5000000000 #if the goodnessFunction above this value, then stop
+fileName = "RMCalcDistances.txt"
+#RMCalcDistances
+#RMMeasuredDistances
 enableStdout = False;
 printPartialResult = False;
 numpy.set_printoptions(linewidth=200)
@@ -20,7 +30,7 @@ def goodnessFunction(unknownCoordinates, originalCoordinatesArray, d):
   for j in range(0,len(originalCoordinatesArray[0])):
     for i in range(0,len(originalCoordinatesArray)):
 		  #print 'i: %d, j: %d' % (i,j)
-      if originalCoordinatesArray[i][j] == unknownSign:
+      if isNaN(originalCoordinatesArray[i][j]):
         tmpCoordinate[i][j] = unknownCoordinates[k];
         k = k + 1;
       else:
@@ -94,7 +104,7 @@ for i in range (0,coordinateSize):
   #print words
   for word in words:
     coordinate[j][i] = (float(word));
-    if coordinate[j][i] == unknownSign:
+    if isNaN(coordinate[j][i]):
     	unknownSize = unknownSize + 1;
     j = j+1
   j = 0
@@ -140,7 +150,7 @@ k = 0;
 for i in range(0,len(coordinate)):
   for j in range(0,len(coordinate[0])):
 		#print 'i: %d, j: %d' % (i,j)
-    if coordinate[i][j] == unknownSign:
+    if isNaN(coordinate[i][j]):
       if enableStdout == True:
         print tmpCoordinate[i][j],
         print unknownCoordinates[k]
@@ -173,33 +183,32 @@ for i in range (0,coordinateSize):
       secondArray[j][index] = tmpCoordinate[j][i]
 
 start = unknownCoordinates
-start[0] = 0
-start[1] = 0
-start[2] = 0
 #start = (1000, 1000, 1000, 1000, 1000)
 #print start
 #start = (9,91)
 if enableStdout == True:
-  print 'firstArray'
-  print firstArray
-  print 'secondArray'
-  print secondArray
-  print 'distance'
-  print distances
-  print 'start'
-  print start
-  print 'coordinateSize'
-  print coordinateSize
-  print 'coordinateLegth'
-  print len(coordinate)
-  print 'parameterek:'
-  print 'start'
-  print start
-  print 'coordinate'
-  print coordinate
-  print 'distances'
-  print distances[2]
-  print 'metodus'
+	print 'firstArray'
+	print firstArray
+	print 'secondArray'
+	print secondArray
+	print 'distance'
+	print distances
+	print 'start'
+	print start
+	print 'coordinateSize'
+	print coordinateSize
+	print 'coordinateLegth'
+	print len(coordinate)
+	print 'tmpCoordinate'
+	print tmpCoordinate
+	print 'parameterek:'
+	print 'start'
+	print start
+	print 'coordinate'
+	print coordinate
+	print 'distances'
+	print distances[2]
+	print 'metodus'
 bnds = list()
 for i in range (0,len(unknownCoordinates)):
   bnds.append((0, None))
@@ -209,12 +218,6 @@ if enableStdout == True:
 #'L-BFGS-B' 'TNC' - only x >= 0
 #'COBYLA' 'SLSQP' - any bounds, equality and inequality-based constraints
 
-#run, while found good result
-#5000 = 50m is the maximum possible value
-#ignore the negative positions
-maxValueInCm = 5000
-changeValueInCm = 100
-goodnessThresholdValue = 5000000000 #if the goodnessFunction above this value, then stop
 ResultXValue = numpy.zeros(shape=(unknownSize)) #If the result x value is the same in few iteration (for example above 3), then change this x's start value, to this value
 cntResultXValue = numpy.zeros(shape=(unknownSize))
 end = 1
@@ -272,7 +275,9 @@ while end == 1:
 #print 'result'
 #print result
 
-print 'found x coordinates'
+print 'found x coordinates:'
 print result.x
+print 'goodnessFunction:'
+print result.fun
   
 f.close()
