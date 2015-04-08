@@ -1,12 +1,18 @@
 # TODO: use -DNDEBUG in CXXFLAGS to disable asserts for the release
 
 CXX = g++
-CXXFLAGS = -std=c++11 -O3 -Wall -MMD
+CXXFLAGS = -std=c++11 -Wall -O3 -MMD
 LDFLAGS = -pthread
 SOURCES = $(wildcard *.cpp)
 DEPENDS = ${SOURCES:.cpp=.d}
 
+OPENCVCFLAGS =-ggdb `pkg-config --cflags opencv`
+OPENCVLFLAGS=`pkg-config --libs opencv`
+
 all: recorder phaseplot dump dump2 test test2 testRSSIFilter xfilter
+
+testLocalizer: testLocalizer.cpp Localizer.cpp Config.o Mote.o Position.o PhaseCalculator.o block.o serial.o packet.o filter.o
+	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LFLAGS) $(OPENCVLFLAGS)
 
 xfilter: xfilter.o block.o serial.o packet.o filter.o
 	$(CXX) $(LDFLAGS) -o $@ $^
