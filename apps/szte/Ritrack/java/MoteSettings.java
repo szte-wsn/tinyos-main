@@ -95,6 +95,11 @@ public class MoteSettings {
 	
 	public ArrayList<Integer> getSlotNumbersBetween(int nodeid, String type, int before, String betweenType){
 		ArrayList<Integer> temp = new ArrayList<>();
+		boolean getAll = false;
+		if( before == -1 ){
+			before = slotNumber - 1;
+			getAll = true;
+		}
 		if( before >= slotNumber )
 			before = slotNumber-1;
 		
@@ -106,6 +111,8 @@ public class MoteSettings {
 			if( !adding ){//searching for before
 				if( currentType.equals(betweenType) ){
 					adding = true;
+					if( getAll )
+						checked = 0;
 				} 
 			} else {
 				if( currentType.equals(type) ){

@@ -136,7 +136,9 @@ public class SuperFrameMerger implements MessageListener{
 			}
 		} else if( m instanceof WaveForm ){
 			WaveForm msg = (WaveForm)m;
-			ArrayList<Integer> rxSlots = ms.getSlotNumbers(dataSource, MoteSettings.RX);
+//			//this wont work with multiple SSYN/mote, but those schedules reuse their buffer in a superframe,
+			//so it would be difficult to fix it, and this is just a debug function anyway.
+			ArrayList<Integer> rxSlots = ms.getSlotNumbersBetween(dataSource, MoteSettings.RX, -1, MoteSettings.SSYN);
 			if( rxSlots.size() > msg.get_whichWaveform() ){
 				int receivedslot = rxSlots.get(msg.get_whichWaveform());//which slot
 				superFrames.getLast().get(receivedslot).addtoWaveform(dataSource, 
