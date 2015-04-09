@@ -75,13 +75,12 @@ public class WaveformPlotter implements plotWaveform{
 		 */
 		public WaveformChart(String chartTitle){
 			this.title = chartTitle;
-			this.setLayout(new GridLayout());
-			XYDataset dataset = createDataset(new Short[Consts.BUFFER_LEN_MIG] );         
+			this.setLayout(new GridLayout());      
 			JFreeChart xylineChart = ChartFactory.createXYLineChart(
 					chartTitle ,
 					"Sample" ,
 					"RSSI" ,
-					dataset ,
+					null ,
 					PlotOrientation.VERTICAL ,
 					false , true , false);   
 			chartPanel = new ChartPanel( xylineChart );   
@@ -97,7 +96,7 @@ public class WaveformPlotter implements plotWaveform{
 		private XYDataset createDataset( Short[] data) 
 		{
 			XYSeries waveform = new XYSeries( "Waveform" );         
-			for (int i = 0; i < Consts.BUFFER_LEN_MIG; i++)    
+			for (int i = 0; i < data.length; i++)    
 			{
 				try 
 				{
