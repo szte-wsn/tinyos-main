@@ -3,7 +3,7 @@
 
 #include "InfrastructureSettings.h"
 #define WAVE_MESSAGE_LENGTH 96
-#define BUFFER_LEN 480
+#define BUFFER_LEN 240
 
 enum {
   AM_SYNCMSG = 8,

@@ -18,6 +18,7 @@ module TestAlarmP{
 	uses interface Leds;
 	uses interface Alarm<TMcu, uint32_t> as Alarm;
 	uses interface RadioContinuousWave;
+	uses interface SplitControl as CWControl;
 	uses interface TimeSyncAMSend<TRadio, uint32_t> as TimeSyncAMSend;
 	uses interface TimeSyncPacket<TRadio, uint32_t> as TimeSyncPacket;
 	uses interface Receive as SyncReceive;
@@ -32,9 +33,9 @@ module TestAlarmP{
 	uses interface Timer<TMilli>;
 	uses interface BusyWait<TMicro, uint16_t>;
 	#endif
-	#if defined(TEST_CALCULATION_TIMING)
+// 	#if defined(TEST_CALCULATION_TIMING)
 	uses interface DiagMsg;
-	#endif
+// 	#endif
 }
 implementation{
 
@@ -83,9 +84,13 @@ implementation{
 		#ifdef ENABLE_AUTOTRIM
 		call AutoTrim.processSchedule();
 		#endif
-		call SplitControl.start();
+		call CWControl.start();
 		unsynchronized = NO_SYNC;
 		//call Leds.set(0xff);
+	}
+	
+	event void CWControl.startDone(error_t error){
+		call SplitControl.start();
 	}
 	
 	event void SplitControl.startDone(error_t error){
@@ -98,6 +103,7 @@ implementation{
 	}
 
 	event void SplitControl.stopDone(error_t error){}
+	event void CWControl.stopDone(error_t error){}
 	
 	//to store error values and the freezeError initial value
 	enum{
@@ -161,7 +167,7 @@ implementation{
 			case TX2A:
 			case TX1B:
 			case TX2B:{
-				if(unsynchronized != NO_SYNC){
+			if(unsynchronized != NO_SYNC){
 					err = call RadioContinuousWave.sendWave(
 									call MeasureSettings.getChannel(measType, prevMeasure),
 									call MeasureSettings.getTrim(measType, prevMeasure),
@@ -177,7 +183,7 @@ implementation{
 					err = call RadioContinuousWave.sampleRssi(call MeasureSettings.getChannel(measType, prevMeasure), buffer[measureBuffer], BUFFER_LEN, &time);
 					#else
 					for(time=0;time<BUFFER_LEN;time++){
-						buffer[measureBuffer][time]=prevMeasure;
+						buffer[measureBuffer][0]=prevMeasure;
 					}
 					#endif
 					if( !processing ){
@@ -259,13 +265,14 @@ implementation{
 		#ifndef DISABLE_PROCESSING
 		if ( !processing ) //the message was sent between processData tasks
 			return;
+		#ifdef DEBUG_COLLECTOR
+		currentSyncPayload->freq[processBuffer] = buffer[processBuffer][0];
+		#else
 		call MeasureWave.changeData(buffer[processBuffer], BUFFER_LEN);
 		currentSyncPayload->freq[processBuffer] = call MeasureWave.getPeriod();
 		currentSyncPayload->phase[processBuffer] = call MeasureWave.getPhase();
 		currentSyncPayload->rssis[processBuffer] = (call MeasureWave.getRssi1()>0xf?0xf:call MeasureWave.getRssi1()) << 4;
 		currentSyncPayload->rssis[processBuffer] |= call MeasureWave.getRssi2()>0xf?0xf:call MeasureWave.getRssi2();
-		#ifdef DEBUG_COLLECTOR
-		currentSyncPayload->freq[processBuffer] = buffer[processBuffer][0];
 		#endif
 		
 		processBuffer = (processBuffer+1)%NUMBER_OF_RX;
@@ -296,21 +303,28 @@ implementation{
 					#endif
 				}
 				if(unsynchronized==NO_SYNC){
-					int i;
+					int8_t i;
 					activeMeasure = msg->frame;
+					i = activeMeasure - 1;
 					measureBuffer = 0;
-					for(i=0;i<activeMeasure;i++){
-						uint8_t typeTemp = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i]));
-						if( typeTemp == RX ){
+					while(i > -1*NUMBER_OF_SLOTS ) { //should only exit with this if there's no SSYN
+						uint8_t typeTemp = read_uint8_t(&(motesettings[TOS_NODE_ID-1][i>=0?i:NUMBER_OF_SLOTS+i]));
+						if ( typeTemp == SSYN )
+							break;
+						else if ( typeTemp == RXA || typeTemp == RXB )
 							measureBuffer++;
-						}
-						if( typeTemp == SSYN){
-							measureBuffer = 0;
-						}
+						i--;
 					}
-					measureBuffer = measureBuffer%NUMBER_OF_RX;
+					if ( measureBuffer >= NUMBER_OF_RX ) //shouldn't be larger
+						measureBuffer = 0;
 					call Alarm.startAt(startOfFrame,firetime);
-          //call Leds.set(0);
+					//call Leds.set(0);
+// 					if( call DiagMsg.record() ){
+// 						call DiagMsg.chr('R');
+// 						call DiagMsg.uint8(activeMeasure);
+// 						call DiagMsg.uint8(measureBuffer);
+// 						call DiagMsg.send();
+// 					}
 				}
 				unsynchronized = NO_SYNC_TOLERANCE;
 			}

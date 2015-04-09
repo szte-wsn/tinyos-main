@@ -22,6 +22,7 @@ implementation{
 
 	components  RF212ActiveMessageC as RfxlinkAMC;
 	App.RadioContinuousWave -> RfxlinkAMC;
+	App.CWControl -> RfxlinkAMC;
 
 	components MeasureWave3C as MeasureWaveC;
 	App.MeasureWave -> MeasureWaveC;
@@ -42,10 +43,10 @@ implementation{
 	App.BusyWait -> BusyWaitMicroC;
 	#endif
 
-	#if defined(TEST_CALCULATION_TIMING)
+// 	#if defined(TEST_CALCULATION_TIMING)
 	components DiagMsgC;
 	App.DiagMsg -> DiagMsgC;
-	#endif
+// 	#endif
 	
 	
 }
