@@ -191,6 +191,7 @@ private:
 	static std::vector<std::vector<uint8_t>> SCHEDULER_AND_RSSI_LOC_TESTER;
 	static std::vector<std::vector<uint8_t>> FIVE_MOTE_AB;
 	static std::vector<std::vector<uint8_t>> TXPAIR_TEST;
+	static std::vector<std::vector<uint8_t>> TRIM_SET;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
