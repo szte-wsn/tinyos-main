@@ -42,6 +42,7 @@ enum {
 #define COMPETITION 18
 #define FIVE_MOTE_AB 19
 #define TRIM_SET 20
+#define FOUR_MOTE_2CH 21
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
@@ -59,6 +60,17 @@ enum {
 		{RSYN,  TX2,  TX1,  TX1, SSYN,   RX,  TX1,   RX, RSYN,   RX,  TX1,   RX, RSYN,  TX2,   RX,   RX},
 		{RSYN,   RX,  TX2,   RX, RSYN,  TX2 , TX2 , TX1, SSYN,   RX,   RX,  TX1, RSYN,   RX,  TX2,   RX},
 		{RSYN,   RX,   RX,  TX2, RSYN,   RX,   RX,  TX2, RSYN,  TX2,  TX2,  TX2, SSYN,   RX,   RX,  TX2}
+	};
+#elif MEASURE_TYPE == FOUR_MOTE_2CH
+	#define NUMBER_OF_INFRAST_NODES 4
+	#define NUMBER_OF_SLOTS 32
+	#define NUMBER_OF_RX 6
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+		//  0     1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23    24    25    26    27    28    29    30    31
+		{SSYN, TX1A,  RXA,  RXA, RSYN, TX1A,  RXA,  RXA, RSYN, TX1A,  RXA,  RXA, RSYN, TX2A, TX2A, TX2A, SSYN, TX1B,  RXB,  RXB, RSYN, TX1B,  RXB,  RXB, RSYN, TX1B,  RXB,  RXB, RSYN, TX2B, TX2B,  TX2},
+		{RSYN, TX2A, TX1A, TX1A, SSYN,  RXA, TX2A,  RXA, RSYN,  RXA, TX2A,  RXA, RSYN, TX1A,  RXA,  RXA, RSYN, TX2B, TX1B, TX1B, SSYN,  RXB, TX2B,  RXB, RSYN,  RXB, TX2B,  RXB, RSYN, TX1B,  RXB,   RX},
+		{RSYN,  RXA, TX2A,  RXA, RSYN,  TX2 , TX1 ,TX1A, SSYN,  RXA,  RXA, TX2A, RSYN,  RXA, TX1A,  RXA, RSYN,  RXB, TX2B,  RXB, RSYN,  TX2 , TX1 ,TX1B, SSYN,  RXB,  RXB, TX2B, RSYN,  RXB, TX1B,   RX},
+		{RSYN,  RXA,  RXA, TX2A, RSYN,  RXA,  RXA, TX2A, RSYN, TX2A, TX1A, TX1A, SSYN,  RXA,  RXA, TX1A, RSYN,  RXB,  RXB, TX2B, RSYN,  RXB,  RXB, TX2B, RSYN, TX2B, TX1B, TX1B, SSYN,  RXB,  RXB,  TX1}
 	};
 #elif MEASURE_TYPE == FOUR_MOTE_WF
 	#define NUMBER_OF_INFRAST_NODES 4
