@@ -495,13 +495,13 @@ enum {
 	};
 #elif MEASURE_TYPE == TRIM_SET
 	#define NUMBER_OF_INFRAST_NODES 3
-	#define NUMBER_OF_SLOTS 11
+	#define NUMBER_OF_SLOTS 12
 	#define NUMBER_OF_RX 9
 	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
-		//   0     1     2     3     4     5     6     7     8     9    10
-		{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  W10, RSYN},
-		{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  W10, RSYN},
-		{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,  W10, SSYN}
+		//   0     1     2     3     4     5     6     7     8     9    10    11
+		{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1, SSYN,  W10, RSYN},
+		{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2, RSYN,  W10, RSYN},
+		{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX, RSYN,  W10, SSYN}
 	};
 
 	#define USE_PRESET_TRIMS

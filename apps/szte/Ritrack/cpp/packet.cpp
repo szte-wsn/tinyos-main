@@ -379,6 +379,14 @@ std::vector<std::vector<uint8_t>> RipsDat::TXPAIR_TEST = {
 	{	RX,	RX,	RX,	RX,	W10,	W10,	W10,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN	}
 };
 
+std::vector<std::vector<uint8_t>> RipsDat::TRIM_SET = {
+	//   0     1     2     3     4     5     6     7     8     9    10    11
+	{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1, SSYN,  W10, RSYN},
+	{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2, RSYN,  W10, RSYN},
+	{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX, RSYN,  W10, SSYN}
+};
+
+
 std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> RipsDat::NAMES = {
 	{"FOUR_MOTE", FOUR_MOTE},
 	{"SIX_MOTE", SIX_MOTE},
@@ -396,6 +404,7 @@ std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> R
 	{"SCHEDULER_AND_RSSI_LOC_TESTER", SCHEDULER_AND_RSSI_LOC_TESTER},
 	{"FIVE_MOTE_AB", FIVE_MOTE_AB},
 	{"TXPAIR_TEST", TXPAIR_TEST},
+	{"TRIM_SET", TRIM_SET},
 };
 
 const std::vector<std::vector<uint8_t>> &RipsDat::get_schedule(const char *schedule) {
