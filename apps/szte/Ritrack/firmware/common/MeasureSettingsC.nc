@@ -29,20 +29,24 @@ implementation {
 				return POWERA;
 		}
 	}
-	
+
+#if !defined(USE_PRESET_TRIMS) && !defined(TRIM_MOTE)
+#define TRIM_MOTE 0
+#warning "TRIM_MOTE not defined, using 0"
+#endif
 	async command uint8_t MeasureSettings.getTrim(uint8_t slotType, uint8_t slotNumber){
 		#ifdef USE_PRESET_TRIMS
 		return read_uint8_t(&(presetTrims[TOS_NODE_ID-1][slotNumber]));
 		#else
 		switch( slotType ){
 			case TX1B:
-				return TRIM1B;
+				return TRIM1B + TRIM_MOTE;
 			case TX2B:
-				return TRIM2B;
+				return TRIM2B + TRIM_MOTE;
 			case TX2A:
-				return TRIM2A;
+				return TRIM2A + TRIM_MOTE;
 			default:
-				return TRIM1A;
+				return TRIM1A + TRIM_MOTE;
 		}
 		#endif
 	}
