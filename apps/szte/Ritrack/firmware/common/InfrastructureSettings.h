@@ -41,6 +41,7 @@ enum {
 #define SCHEDULER_AND_RSSI_LOC_TESTER 17
 #define COMPETITION 18
 #define FIVE_MOTE_AB 19
+#define TRIM_SET 20
 
 #ifndef MEASURE_TYPE
 #error "Please define MEASURE_TYPE"
@@ -491,6 +492,23 @@ enum {
 {	RSYN,	NTRX,	NTRX,	NTRX,	NTRX,	RSYN,	RSYN,	SSYN,	RSYN,	NTRX,	NTRX,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	TX2,	TX1,	RX,	TX2,	RSYN,	RSYN,	RSYN,	RSYN	},
 {	RSYN,	NTRX,	NTRX,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	NTRX,	NTRX,	SSYN,	RSYN,	RSYN,	RSYN,	RX,	TX2,	TX2,	RX,	RSYN,	RSYN,	RSYN,	RSYN	},
 {	SSYN,	RX,	RX,	RX,	RX,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RX,	RX,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RX,	RX,	RSYN,	RSYN,	RSYN,	RSYN	}
+	};
+#elif MEASURE_TYPE == TRIM_SET
+	#define NUMBER_OF_INFRAST_NODES 3
+	#define NUMBER_OF_SLOTS 11
+	#define NUMBER_OF_RX 9
+	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
+		//   0     1     2     3     4     5     6     7     8     9    10
+		{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  W10, RSYN},
+		{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  W10, RSYN},
+		{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,  W10, SSYN}
+	};
+
+	#define USE_PRESET_TRIMS
+	const_uint8_t presetTrims[3][NUMBER_OF_SLOTS] = {
+		{4,4,4,4,4,4,4,4,4,0,0},
+		{0,1,2,3,4,5,6,7,8,0,0},
+		{0,0,0,0,0,0,0,0,0,0,0}
 	};
 #else
 	#error "Unknown MEASURE_TYPE"
