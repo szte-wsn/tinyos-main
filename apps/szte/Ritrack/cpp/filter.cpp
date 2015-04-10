@@ -140,7 +140,7 @@ std::ostream& operator <<(std::ostream& stream, const BasicFilter::Packet &packe
 	stream.setf(std::ios::fixed, std::ios::floatfield);
 
 	stream << std::setw(2) << packet.sender1 << ", " << std::setw(2) << packet.sender2;
-	stream << ", " << std::setw(5) << packet.period;
+	stream << ", " << std::setw(2) << packet.slot << ", " << std::setw(5) << packet.period;
 	for (BasicFilter::Measurement mnt : packet.measurements) {
 		stream << ",  " << std::setw(2) << mnt.nodeid << ", " << std::setw(4) << mnt.phase;
 		stream << ", " << std::setw(2) << mnt.rssi1 << ", " << std::setw(2) << mnt.rssi2;

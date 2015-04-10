@@ -434,7 +434,7 @@ RipsDat::RipsDat() : in(bind(&RipsDat::search, this)), schedule(NULL) {
 void RipsDat::analize_schedule() {
 	assert(schedule != NULL);
 
-	if (schedule->size() < 4)
+	if (schedule->size() < 3)
 		throw std::invalid_argument("RipsDat schedule: not enough nodes");
 
 	node_count = schedule->size();
