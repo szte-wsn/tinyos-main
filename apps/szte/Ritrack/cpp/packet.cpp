@@ -381,9 +381,9 @@ std::vector<std::vector<uint8_t>> RipsDat::TXPAIR_TEST = {
 
 std::vector<std::vector<uint8_t>> RipsDat::TRIM_SET = {
 	//   0     1     2     3     4     5     6     7     8     9    10    11
-	{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1, SSYN,  W10, RSYN},
-	{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2, RSYN,  W10, RSYN},
-	{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX, RSYN,  W10, SSYN}
+	{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1, SSYN,  RSYN, RSYN},
+	{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2, RSYN,  SSYN, RSYN},
+	{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX, RSYN,  RSYN, SSYN}
 };
 
 
@@ -632,6 +632,7 @@ bool RipsDat::contradicts(const RipsMsg::Packet &rips, const std::vector<std::ve
 
 std::ostream& operator <<(std::ostream& stream, const RipsDat::Packet &packet) {
 	stream << std::setw(2) << packet.sender1 << ", " << std::setw(2) << packet.sender2;
+	stream << ", " << std::setw(2) << packet.slot;
 	for (RipsDat::Measurement mnt : packet.measurements) {
 		stream << ",\t" << std::setw(2) << mnt.nodeid << "," << std::setw(3) << mnt.phase << "," << std::setw(2) << mnt.period;
 		stream << "," << std::setw(2) << mnt.rssi1 << "," << std::setw(2) << mnt.rssi2;

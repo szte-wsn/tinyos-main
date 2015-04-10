@@ -19,7 +19,7 @@ CFLAGS += -DTOSH_DATA_LENGTH=100
 #Enables auto Trim algorithm
 # CFLAGS += -DENABLE_AUTOTRIM
 #Measure types: FOUR_MOTE, FOUR_MOTE_WF, PHASEMAP_TEST_13, PHASEMAP_TEST_18, PROCESSING_DEBUG
-CFLAGS += -DMEASURE_TYPE=PHASEMAP_TEST_4
+CFLAGS += -DMEASURE_TYPE=TRIM_SET
 
 #disables waveform processing
 # CFLAGS += -DDISABLE_PROCESSING
@@ -59,7 +59,7 @@ WaveForm.java:
 Consts.java:
 	nescc-ncg java $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -java-classname=Consts BUFFER_LEN_MIG -o $@
 
-SyncMsg.py: 
+SyncMsg.py:
 	nescc-mig python $(CFLAGS) $(NESC_PFLAGS) TestAlarm.h -python-classname=SyncMsg real_sync_message_t -o $@
 
 

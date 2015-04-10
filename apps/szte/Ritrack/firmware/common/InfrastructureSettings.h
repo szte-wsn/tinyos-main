@@ -176,7 +176,7 @@ enum {
 		{ RSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, SSYN, RSYN},
 		{ RSYN,   RX,   RX,  W10, RSYN, RSYN, RSYN, RSYN, SSYN}
 	};
-//elfelejtettem melyik kell, amiben 2 vagy amiben 3 meres van	
+//elfelejtettem melyik kell, amiben 2 vagy amiben 3 meres van
 //#elif MEASURE_TYPE == PHASEMAP_TEST_8
 //	#define NUMBER_OF_INFRAST_NODES 8
 //	#define NUMBER_OF_SLOTS 10
@@ -417,7 +417,7 @@ enum {
 	#define NUMBER_OF_SLOTS 10
 	#define NUMBER_OF_RX 2
 	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
-		//    0     1     2     3     4     5     6     7     8     9 
+		//    0     1     2     3     4     5     6     7     8     9
 		{   TX1,  TX1,  W10, RSYN,   RX,  W10, SSYN, RSYN, RSYN, RSYN },
 		{   TX2,   RX,  W10, RSYN,  TX1,  W10, RSYN, SSYN, RSYN, RSYN },
 		{    RX,  TX2,  W10, RSYN,  TX2,  W10, RSYN, RSYN, SSYN, RSYN },
@@ -429,7 +429,7 @@ enum {
 // 		{2,3,0,0,3,0,0,0,0,0},
 // 		{1,1,0,0,2,0,0,0,0,0},
 // 	}
-// 	
+//
 // 	const_uint8_t presetTrims[NUMBER_OF_INFRAST_NODES][NUMBER_OF_INFRAST_NODES] = {
 // 		{0, 2, 0, 0},
 // 		{5, 0, 2, 0},
@@ -447,7 +447,7 @@ enum {
 #define NUMBER_OF_SLOTS 19
 #define NUMBER_OF_RX 2
 	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
-	//	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19	
+	//	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19
 	{	RSYN,	TX1,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	SSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN	},
 	{	RSYN,	RX,	TX1,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	SSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN	},
 	{	RSYN,	RX,	TX2,	RSYN,	RSYN,	RSYN,	RSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	SSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN	},
@@ -460,10 +460,10 @@ enum {
 	{	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	SSYN,	RSYN,	NTRX,	NTRX,	RSYN,	RSYN,	RSYN,	RSYN,	RX,	TX2,	RSYN,	RSYN,	RSYN	},
 	{	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN,	SSYN,	RX,	RX,	RSYN,	RSYN,	RSYN	}
 	};
-	
+
 	#define USE_PRESET_TRIMS
 	const_uint8_t presetTrims[10][NUMBER_OF_SLOTS] = {
-	//	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19	
+	//	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19
 	{	0,	2,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0	},
 	{	0,	0,	2,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0	},
 	{	0,	0,	5,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0,	0	},
@@ -498,17 +498,17 @@ enum {
 	#define NUMBER_OF_SLOTS 12
 	#define NUMBER_OF_RX 9
 	const_uint8_t motesettings[NUMBER_OF_INFRAST_NODES][NUMBER_OF_SLOTS] = {
-		//   0     1     2     3     4     5     6     7     8     9    10    11
-		{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1, SSYN,  W10, RSYN},
-		{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2, RSYN,  W10, RSYN},
-		{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX, RSYN,  W10, SSYN}
+		//   0     1     2     3     4     5     6     7     8     9    10   11    12
+		{  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1,  TX1, SSYN,  RSYN, RSYN},
+		{  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2,  TX2, RSYN,  SSYN, RSYN},
+		{   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX,   RX, RSYN,  RSYN, SSYN}
 	};
 
 	#define USE_PRESET_TRIMS
 	const_uint8_t presetTrims[3][NUMBER_OF_SLOTS] = {
-		{4,4,4,4,4,4,4,4,4,0,0},
-		{0,1,2,3,4,5,6,7,8,0,0},
-		{0,0,0,0,0,0,0,0,0,0,0}
+		{0,0,0,0,0,0,0,0,0,0,0,0},
+		{0,1,2,3,4,5,6,7,8,0,0,0},
+		{0,0,0,0,0,0,0,0,0,0,0,0}
 	};
 #else
 	#error "Unknown MEASURE_TYPE"
