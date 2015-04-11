@@ -13,6 +13,7 @@
 #include <map>
 #include <set>
 #include "filter.hpp"
+#include <opencv2/ml/ml.hpp>
 
 
 class Localizer : public Block{
@@ -23,14 +24,16 @@ private:
 	cv::Mat locationMap;
 	cv::Mat binaryMap;
 	cv::Mat mask;
-	Config& config;
+	Config config;
 	unsigned short mobileId;
 	Mote mobileMote;
 	
 	std::vector<std::pair<uint,uint>> boxPairs;
 	std::vector<uint> maxRSSIs;
+	std::vector<std::pair<int,std::pair<float,float>>> coordinates;
 	
 	void decode(const FrameMerger::Frame &frame);
+	CvKNearest knn;
 	
 	std::set<short> getSelectedSlots(const FrameMerger::Frame& frame);
 	cv::Mat* getCorrelationMap(const FrameMerger::Frame& frame, std::set<short> selectedSlots);
@@ -41,7 +44,7 @@ public:
 	Input<FrameMerger::Frame> in;
 	Output<Position<double>> out;
 		
-	Localizer(Config& config, float step_in=0.01, float xStart_in=0.0, float yStart_in=10.0, float xEnd_in=10.0, float yEnd_in=0.0);
+	Localizer(float step_in=0.01, float xStart_in=0.0, float yStart_in=10.0, float xEnd_in=10.0, float yEnd_in=0.0);
 
 };
 

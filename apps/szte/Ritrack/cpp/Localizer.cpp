@@ -41,8 +41,8 @@ float RSSIdifference(int rssi1, int rssi2){
 	}
 }
 
-Localizer::Localizer(Config& config_in, float step_in, float xStart_in, float yStart_in, float xEnd_in, float yEnd_in)
-	: config(config_in), mobileMote(-1,0.0,0.0), in(bind(&Localizer::decode, this))
+Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd_in, float yEnd_in)
+	: mobileMote(-1,0.0,0.0), in(bind(&Localizer::decode, this))
 {
 	Localizer::step = step_in;
 	Localizer::xStart = xStart_in;
@@ -53,14 +53,6 @@ Localizer::Localizer(Config& config_in, float step_in, float xStart_in, float yS
 	Localizer::binaryMap = cv::Mat::zeros(round(1+(yStart-yEnd)/step),round(1+(xEnd-xStart)/step), CV_8UC1);
 	Localizer::mask = cv::imread("mask.bmp",CV_LOAD_IMAGE_GRAYSCALE);
 	cv::resize(mask,mask,locationMap.size());
-	std::vector<Mote>& mobileMote = config.getMobiles();
-	if(mobileMote.size() != 1){
-		std::cerr << "This version can only handle one mobile mote!" << std::endl;
-		throw std::runtime_error("Too many mobile motes.");
-	}else{
-		Localizer::mobileId = mobileMote[0].getID();
-		Localizer::mobileMote = mobileMote[0];
-	}
 	boxPairs.push_back(std::pair<uint,uint>(1,2));
 	boxPairs.push_back(std::pair<uint,uint>(2,3));
 	boxPairs.push_back(std::pair<uint,uint>(3,4));
@@ -73,6 +65,37 @@ Localizer::Localizer(Config& config_in, float step_in, float xStart_in, float yS
 	for(uint i=0;i<boxPairs.size();i++){
 		maxRSSIs.push_back(0);
 	}
+	cv::Mat datas;
+	cv::Mat classes;
+	std::vector<Competition::TrainingData> data;
+	
+	Competition::read_training_data(data);
+	
+	for(uint i=0; i<data.size(); i++){
+		for(uint j=0; j<data[i].fingerprints.size(); j++){
+			cv::Mat temp(1 , data[i].fingerprints[j].size() ,  CV_32FC1);
+			for(uint k=0; k<data[i].fingerprints[j].size(); k++){
+				temp.at<float>(0,k) = data[i].fingerprints[j][k];
+			}
+			cv::Mat classesTemp(1,1,CV_32FC1);
+			classesTemp.at<float>(0,0) = (float)data[i].id;
+			datas.push_back(temp.clone());
+			classes.push_back(classesTemp.clone());
+		}
+		coordinates.push_back(std::pair<int,std::pair<float,float>>(data[i].id,std::pair<float,float>(data[i].x,data[i].y)));
+	}
+	knn = CvKNearest(datas,classes);
+	
+	//set config
+	Config config;
+	std::vector<Competition::StaticNode> nodes;
+	Competition::read_static_nodes(nodes);
+	for(uint i=0;i<nodes.size();i++){
+		Mote temp((short)nodes[i].nodeid,nodes[i].x,nodes[i].y);
+		config.addStable(temp);
+	}
+	Localizer::mobileId = Competition::MOBILE_NODEID;
+	//std::cout << config << std::endl;
 }
 
 void Localizer::decode(const FrameMerger::Frame &frame){
@@ -307,6 +330,20 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 			nearestPosition = *maxit;
 		}
 	}
+	std::vector<float> tempRSSIvector = Competition::rssi_fingerprint(frame);
+	cv::Mat temp(1 , tempRSSIvector.size() ,  CV_32FC1);
+	for(uint i=0; i<tempRSSIvector.size(); i++){
+		temp.at<float>(0,i) = tempRSSIvector[i];
+	}
+	
+	int K=5;
+	int result = (int)round(knn.find_nearest(temp , K));
+	for(uint i=0;i<coordinates.size();i++){
+		if(coordinates[i].first == result){
+			nearestPosition = Position<double>(coordinates[i].second.first,coordinates[i].second.second);
+		}
+	}
+	
 	return nearestPosition;
 }
 
