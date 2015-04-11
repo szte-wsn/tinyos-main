@@ -551,3 +551,24 @@ std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &frame)
 
 	return stream;
 }
+
+// ------- Competition
+
+uint Competition::MOBILE_NODEID = 31;
+
+std::vector<uint> Competition::RSSI_FINGERPRINT_SLOTS = { 0,1, 3,4, 7,8, 10,11, 14,15, 17,18, 21,22, 24,25, 28,29, 31,32 };
+
+std::vector<float> Competition::rssi_fingerprint(FrameMerger::Frame &frame) {
+	std::vector<float> fingerprint;
+
+	for (uint slotid : RSSI_FINGERPRINT_SLOTS) {
+		FrameMerger::Slot *slot = frame.get_slot(slotid);
+		FrameMerger::Data *data = slot != NULL ? slot->get_data(MOBILE_NODEID) : NULL;
+
+		fingerprint.push_back(data != NULL ? data->rssi1 : -1.0f);
+		fingerprint.push_back(data != NULL ? data->rssi2 : -1.0f);
+	}
+
+	return fingerprint;
+}
+

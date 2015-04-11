@@ -223,4 +223,14 @@ private:
 
 std::ostream& operator <<(std::ostream& stream, const FrameMerger::Frame &packet);
 
+// ------- Competition
+
+class Competition {
+public:
+	static uint MOBILE_NODEID;
+	static std::vector<uint> RSSI_FINGERPRINT_SLOTS;
+
+	static std::vector<float> rssi_fingerprint(FrameMerger::Frame &frame);
+};
+
 #endif//__FILTER_HPP__
