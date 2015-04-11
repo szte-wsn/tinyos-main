@@ -654,3 +654,7 @@ int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints
 	log.close();
 	return count;
 }
+
+void Competition::read_static_nodes(std::vector<StaticNode> &nodes, const std::string &config) {
+}
+

@@ -243,6 +243,14 @@ public:
 
 	static void read_training_data(std::vector<TrainingData> &training_data, const std::string &config = "config.txt");
 	static int read_fingerprints(std::vector<std::vector<float>> &fingerprints, const std::string &logfile);
+
+	struct StaticNode {
+		int nodeid;
+		float x;
+		float y;
+	};
+
+	static void read_static_nodes(std::vector<StaticNode> &nodes, const std::string &config = "config.txt");
 };
 
 #endif//__FILTER_HPP__
