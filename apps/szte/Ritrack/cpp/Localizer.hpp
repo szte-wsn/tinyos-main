@@ -31,6 +31,10 @@ private:
 	std::vector<std::pair<uint,uint>> boxPairs;
 	std::vector<uint> maxRSSIs;
 	std::vector<std::pair<int,std::pair<float,float>>> coordinates;
+	std::vector<Mote> stables;
+	
+	cv::Mat datas;
+	cv::Mat classes;
 	
 	void decode(const FrameMerger::Frame &frame);
 	CvKNearest knn;

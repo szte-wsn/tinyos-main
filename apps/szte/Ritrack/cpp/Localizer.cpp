@@ -65,8 +65,7 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 	for(uint i=0;i<boxPairs.size();i++){
 		maxRSSIs.push_back(0);
 	}
-	cv::Mat datas;
-	cv::Mat classes;
+
 	std::vector<Competition::TrainingData> data;
 	
 	Competition::read_training_data(data);
@@ -84,18 +83,27 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 		}
 		coordinates.push_back(std::pair<int,std::pair<float,float>>(data[i].id,std::pair<float,float>(data[i].x,data[i].y)));
 	}
-	knn = CvKNearest(datas,classes);
+	
 	
 	//set config
-	Config config;
 	std::vector<Competition::StaticNode> nodes;
 	Competition::read_static_nodes(nodes);
 	for(uint i=0;i<nodes.size();i++){
-		Mote temp((short)nodes[i].nodeid,nodes[i].x,nodes[i].y);
-		config.addStable(temp);
+		stables.push_back(Mote((short)nodes[i].nodeid,nodes[i].x,nodes[i].y));
+		config.addStable(stables[i]);
 	}
 	Localizer::mobileId = Competition::MOBILE_NODEID;
-	//std::cout << config << std::endl;
+	mobileMote.setID(mobileId);
+	config.addMobile(mobileMote);
+	//need to set pairs
+	for(uint i=0;i<boxPairs.size();i++){
+		if(!config.pairExists(mobileId,(boxPairs[i].first)*3)){
+			config.addPair(mobileMote,config.getStable( (boxPairs[i].first)*3 ));
+		}
+		if(!config.pairExists(mobileId,(boxPairs[i].second)*3)){
+			config.addPair(mobileMote,config.getStable( (boxPairs[i].second)*3 ));
+		}
+	}
 }
 
 void Localizer::decode(const FrameMerger::Frame &frame){
@@ -108,6 +116,7 @@ void Localizer::decode(const FrameMerger::Frame &frame){
 }
 
 std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
+	std::cout << config << std::endl;
 	std::set<short> selectedSlots;
 	unsigned short selectedPair = 255;
 	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
@@ -134,7 +143,7 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 		}
 	}
 	
-	float diff1 = 100.0;
+	float diff1 = -1.0;
 	int slotId1 = -1;
 	float diff2 = -1.0;
 	int slotId2 = -1;
@@ -155,7 +164,7 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 			}
 		}
 	}
-	diff1 = 100.0;
+	diff1 = -1.0;
 	slotId1 = -1;
 	diff2 = -1.0;
 	slotId2 = -1;
@@ -176,6 +185,10 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 			}
 		}
 	}
+	//selected Slots:
+	//for(auto it = selectedSlots.begin(); it != selectedSlots.end(); it++){
+	//	std::cout << *it << std::endl;
+	//}
 	return selectedSlots;
 }
 
@@ -330,13 +343,14 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 			nearestPosition = *maxit;
 		}
 	}
+
 	std::vector<float> tempRSSIvector = Competition::rssi_fingerprint(frame);
 	cv::Mat temp(1 , tempRSSIvector.size() ,  CV_32FC1);
 	for(uint i=0; i<tempRSSIvector.size(); i++){
 		temp.at<float>(0,i) = tempRSSIvector[i];
 	}
-	
 	int K=5;
+	CvKNearest knn(datas,classes);
 	int result = (int)round(knn.find_nearest(temp , K));
 	for(uint i=0;i<coordinates.size();i++){
 		if(coordinates[i].first == result){

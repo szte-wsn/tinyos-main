@@ -18,6 +18,7 @@ public:
 	const Position<double>& getPosition() const;
 	void setPosition(const Position<double>& pos_in);
 	void setPosition(const double& x, const double& y);
+	void setID(short id);
 	
 	Mote& operator=(Mote& other);
 	bool operator==(const Mote& other) const;

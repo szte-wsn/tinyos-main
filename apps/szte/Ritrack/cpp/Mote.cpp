@@ -20,6 +20,10 @@ void Mote::setPosition(const double& x, const double& y){
 	Mote::pos.setY(y);
 }
 
+void Mote::setID(short id){
+	this->ID = id;
+}
+
 std::ostream& operator<<(std::ostream& os, const Mote& mote){
 	os << std::setw(2) << mote.ID << ": " << mote.pos;
 }

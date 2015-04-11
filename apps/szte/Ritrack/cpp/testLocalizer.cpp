@@ -40,45 +40,10 @@
 #include <opencv2/contrib/contrib.hpp>
 
 int main(int argc, char *argv[]) {
-	//infrasturcture nodes
-	Mote moteA(1,-3.70, 0.09);
-	Mote moteB(2,-3.60, 0.09);
-	Mote moteC(3,-11.59, 5.90);
-	Mote moteD(4,-11.59, 5.80);
-	Mote moteE(5,-8.24,10.48);
-	Mote moteF(6,-8.14,10.48);
-	Mote moteG(7,-0.09, 4.86);
-	Mote moteH(8,-0.09, 4.76);
-	/*Mote moteA(1,0.00, 0.00);
-	Mote moteB(2,-0.16,0.00);
-	Mote moteC(3,-4.34,2.36);
-	Mote moteD(4,-4.34,2.20);
-	Mote moteE(5,-0.92,4.23);
-	Mote moteF(6,-0.76,4.23);
-	Mote moteG(7,0.70,2.14);
-	Mote moteH(8,0.70,2.30);*/
-	//mobile nodes
-	Mote mote9(9, 0.0, 0.0);
-	
-	//create config object
-	Config config;
-	config.addStables( { moteA,moteB,moteC,moteD,moteE,moteF,moteG,moteH } );
-	config.addMobiles( { mote9 } );
-	//set pairs
-	config.addPairs({   			std::pair<Mote,Mote>( mote9, moteB),
-						std::pair<Mote,Mote>( mote9, moteC),
-						std::pair<Mote,Mote>( mote9, moteA),
-						std::pair<Mote,Mote>( mote9, moteD),
-						std::pair<Mote,Mote>( mote9, moteE),
-						std::pair<Mote,Mote>( mote9, moteF),
-						std::pair<Mote,Mote>( mote9, moteG),
-						std::pair<Mote,Mote>( mote9, moteH) });
-
-
 	Writer<Position<double>> writer;
-	Localizer localizer(config,0.1,-50.0,50.0,1.0,-1.0);
+	Localizer localizer(0.05,-50.0,50.0,0.0,0.0);
 	FrameMerger merger(50);
-	BasicFilter filter(15,1);
+	BasicFilter filter(16,1);
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;

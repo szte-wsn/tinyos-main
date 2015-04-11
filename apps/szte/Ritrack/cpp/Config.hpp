@@ -62,6 +62,7 @@ public:
 	bool addPair(Mote a, Mote b);
 	std::vector<std::pair<Mote,Mote>> getPairs();
 	std::vector<Mote> getPairs(Mote mote);
+	bool pairExists(short id1, short id2);
 	
 	friend std::ostream& operator<<(std::ostream& os, Config& config);
 

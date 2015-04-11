@@ -113,6 +113,15 @@ bool Config::addPair(Mote a, Mote b){
 	return true;
 }
 
+bool Config::pairExists(short id1, short id2){
+	for(auto it = pairs.begin(); it != pairs.end(); it++){
+		if(it->first.getID() == id1  && it->second.getID() == id2){
+			return true;
+		}
+	}
+	return false;
+}
+
 std::vector<std::pair<Mote,Mote>> Config::getPairs(){
 	return Config::pairs;
 }
