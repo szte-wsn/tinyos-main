@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 
 class Slot {
 	public int tx1, tx2, slotId;
@@ -67,15 +68,18 @@ class Slot {
 	}
 	
 	public boolean addtoWaveform(int dataSource, int offset, short[] data) {
-		
+		int length = data.length;
+		if( offset + length > Consts.BUFFER_LEN_MIG ){
+			length = Consts.BUFFER_LEN_MIG - offset;
+		}
 		for(int i=0;i<measurements.size();i++){
 			if( measurements.get(i).nodeid == dataSource ){
-				measurements.get(i).addToWaveForm(offset, data);
+				measurements.get(i).addToWaveForm(offset, data, length);
 				return true;
 			}
 		}
 		SlotMeasurement meas = new SlotMeasurement(dataSource, this);
-		meas.addToWaveForm(offset, data);
+		meas.addToWaveForm(offset, data, length);
 		measurements.add(meas);
 		return false;
 	}

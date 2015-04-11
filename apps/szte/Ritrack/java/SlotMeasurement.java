@@ -57,11 +57,11 @@ class SlotMeasurement {
 		//TODO
 	}
 
-	public void addToWaveForm(int offset, short[] data) {
+	public void addToWaveForm(int offset, short[] data, int length) {
 		hasWaveForm = true;
-		while(waveForm.size() < offset+data.length )
+		while(waveForm.size() < offset+length )
 			waveForm.add((short) -1);
-		for(int i=0;i<data.length;i++)
+		for(int i=0;i<length;i++)
 			waveForm.set(offset+i, data[i]);
 		if( timestamp == 0 )
 			timestamp = new Date().getTime();
@@ -102,7 +102,7 @@ class SlotMeasurement {
 			line = String.format("RX: %5d period: %5d phase: %3d", nodeid, period, phase);
 		System.out.print(line);
 		if( isWaveFormComplete() )
-			System.out.println(" WF saved");
+			System.out.println(" WF saved "+waveForm.get(0));
 		else
 			System.out.println("");
 	}

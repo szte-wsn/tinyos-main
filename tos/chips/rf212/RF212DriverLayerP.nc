@@ -247,6 +247,9 @@ implementation
 		call RSTN.set();
 
 		writeRegister(RF212_TRX_CTRL_0, RF212_TRX_CTRL_0_VALUE);
+		#ifdef CONTINOUS_WAVE
+		writeRegister(RF212_TRX_CTRL_1, RF212_TX_AUTO_CRC_ON | RF212_SPI_CMD_MODE_PHY_RSSI); //just for the spi cmd mode
+		#endif
 		writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
 
 		//this is way too much (should be done in around 200us), but 510 seemd too short, and it happens quite rarely
@@ -270,6 +273,9 @@ implementation
 
 	void initRadio()
 	{
+		#ifdef CW_SYNC_TEST
+		DDRE|=1<<PE6|1<<PE7;
+		#endif
 		call BusyWait.wait(510);
 
 		call RSTN.clr();
@@ -278,6 +284,9 @@ implementation
 		call RSTN.set();
 
 		writeRegister(RF212_TRX_CTRL_0, RF212_TRX_CTRL_0_VALUE);
+		#ifdef CONTINOUS_WAVE
+		writeRegister(RF212_TRX_CTRL_1, RF212_TX_AUTO_CRC_ON | RF212_SPI_CMD_MODE_PHY_RSSI); //just for the spi cmd mode
+		#endif
 		writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
 
 		call BusyWait.wait(510);
@@ -1103,22 +1112,27 @@ implementation
 		RF212_TEST_MODE_CW_MINUS_CMD = 0x00,
 	};
 	
-	void testRadio(void *testBuffer, uint8_t testChannel, uint8_t testPower, uint8_t testMode, uint8_t testLen){
+	void testRadio(void *testBuffer, uint8_t testChannel, uint8_t testPower, uint8_t testMode, uint8_t testLen, uint8_t testTrim){
 		//reset
 		call IRQ.disable();
 		call RSTN.clr();
 		call SLP_TR.clr();
-		call BusyWait.wait(15);
+		call BusyWait.wait(1);
 		call RSTN.set();
-		call BusyWait.wait(1000);
+		call BusyWait.wait(30);
 		
-		writeRegister(RF212_IRQ_MASK, 0);  // we will poll for PLL_LOCK
 		writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
-		writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | testChannel);
-		writeRegister(RF212_PHY_TX_PWR, testPower);
-		writeRegister(RF212_RF_CTRL_0, 2);
+		
 		while( (readRegister(RF212_TRX_STATUS) & RF212_TRX_STATUS_MASK) != RF212_TRX_OFF )
 			;
+
+		writeRegister(RF212_IRQ_MASK, 0);  // we will poll for PLL_LOCK
+		
+		writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | testChannel);
+		writeRegister(RF212_PHY_TX_PWR, testPower);
+		//TODO use GC_TX_OFFS for more power?
+		writeRegister(RF212_XOSC_CTRL, (0xf0 | (testTrim & 0x0f)) );
+			
 		writeRegister(0x36, 0x0F);//Enable test mode step #1
 		if( testMode >= RF212_TEST_MODE_CW_LIMIT ){
 			if( testMode >= RF212_TEST_MODE_CW_BIGSTEP_LIMIT )
@@ -1183,7 +1197,7 @@ implementation
 				power = txPower;
 			
 			state = STATE_TEST;
-			testRadio(data, ch, mode, power, len);
+			testRadio(data, ch, mode, power, len, 0);
 			return SUCCESS;
 		} else
 			return EBUSY;
@@ -1205,7 +1219,7 @@ implementation
 				power = txPower;
 			
 			state = STATE_TEST;
-			testRadio(NULL, ch, mode, power, 0);
+			testRadio(NULL, ch, mode, power, 0, 0);
 			return SUCCESS;
 		} else
 			return EBUSY;
@@ -1232,9 +1246,8 @@ implementation
 #ifdef CONTINOUS_WAVE
 	async command error_t RadioContinuousWave.sampleRssi(uint8_t sampleChannel, uint8_t *buffer, uint16_t length, uint16_t *time){
 		if( state == STATE_RX_ON && cmd == CMD_NONE && isSpiAcquired() && call Tasklet.asyncSuspend() == SUCCESS ){
-			uint8_t trx_ctrl_1;
 			#ifdef CW_SYNC_TEST
-			PORTB|=1<<PB6;
+			PORTE|=1<<PE6;
 			#endif
 			state = STATE_RSSI_MON;
 			
@@ -1242,9 +1255,6 @@ implementation
 				call IRQ.disable();
 				radioIrq = FALSE;
 			}
-			
-			trx_ctrl_1 = readRegister(RF212_TRX_CTRL_1);
-			writeRegister(RF212_TRX_CTRL_1, (trx_ctrl_1 & ~RF212_SPI_CMD_MODE_MASK) | RF212_SPI_CMD_MODE_PHY_RSSI);
 			
 			if( sampleChannel != channel ){
 				writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | channel);
@@ -1265,8 +1275,6 @@ implementation
 				*time = call LocalTime.get() - *time;
 			}
 			
-			writeRegister(RF212_TRX_CTRL_1, trx_ctrl_1);
-			
 			if( sampleChannel != channel ){
 				writeRegister(RF212_PHY_CC_CCA, RF212_CCA_MODE_VALUE | channel);
 				
@@ -1280,7 +1288,7 @@ implementation
 			call Tasklet.asyncResume();
 			
 			#ifdef CW_SYNC_TEST
-			PORTB&=~(1<<PB6);
+			PORTE&=~(1<<PE6);
 			#endif
 			return SUCCESS;
 		} else
@@ -1292,14 +1300,14 @@ implementation
 			uint32_t end = time;
 			state = STATE_CW_SEND;
 			#ifdef CW_SYNC_TEST
-			PORTB|=1<<PB7;
+			PORTE|=1<<PE7;
 			#endif
 			tune = (readRegister(RF212_XOSC_CTRL)&0xf0) | (tune & 0x0f);
 			writeRegister(RF212_XOSC_CTRL, tune);
 			
 			atomic{
 				end += call LocalTime.get();
-				testRadio(NULL, testChannel, power, RF212_TEST_MODE_CW_PLUS_100, 0);
+				testRadio(NULL, testChannel, power, RF212_TEST_MODE_CW_PLUS_100, 0, tune);
 			}
 			while( (int32_t)(end - call LocalTime.get()) > 0 )
 				;
@@ -1307,13 +1315,14 @@ implementation
 			
 			call RSTN.clr();
 			call SLP_TR.clr();
-			call BusyWait.wait(6);
+			call BusyWait.wait(1);
 			call RSTN.set();
+			call BusyWait.wait(30);
 			
 			writeRegister(RF212_TRX_CTRL_0, RF212_TRX_CTRL_0_VALUE);
-			writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
+			writeRegister(RF212_TRX_CTRL_1, RF212_TX_AUTO_CRC_ON | RF212_SPI_CMD_MODE_PHY_RSSI); //just for the spi cmd mode
 			
-			call BusyWait.wait(510);
+			writeRegister(RF212_TRX_STATE, RF212_TRX_OFF);
 			
 			writeRegister(RF212_IRQ_MASK, RF212_IRQ_TRX_UR | RF212_IRQ_PLL_LOCK | RF212_IRQ_TRX_END | RF212_IRQ_RX_START | RF212_IRQ_CCA_ED_DONE);
 			
@@ -1341,7 +1350,7 @@ implementation
 			
 			call Tasklet.asyncResume();
 			#ifdef CW_SYNC_TEST
-			PORTB&=~(1<<PB7);
+			PORTE&=~(1<<PE7);
 			#endif
 			return SUCCESS;
 		} else

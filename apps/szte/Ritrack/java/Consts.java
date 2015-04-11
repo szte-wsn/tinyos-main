@@ -5,5 +5,6 @@
  */
 
 public class Consts  {
-    public static final short BUFFER_LEN_MIG = 480;
+	public static final short BUFFER_LEN_MIG = 480; //rfa1
+//    public static final short BUFFER_LEN_MIG = 240; //rf212
 }

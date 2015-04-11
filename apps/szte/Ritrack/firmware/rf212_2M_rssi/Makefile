@@ -11,22 +11,25 @@ CFLAGS+=-DDISABLE_BATTERY_CHECK
 #for the mini 1
 CFLAGS += -DUCMINI_REV=101
 CFLAGS += -DUCPROTONA_REV=20
+CFLAGS += -DSPI_CLOCKRATE=8000
 CFLAGS += -DNO_COLLISION_LAYER
 CFLAGS += -DRFA1_RADIO_TIMER1_MCU
 #should be at least: 6+NUMBER_OF_RX*5
 CFLAGS += -DTOSH_DATA_LENGTH=100
+CFLAGS += -DRF212_DEF_CHANNEL=10
+CFLAGS += -DRF212_PHY_MODE=RF212_DATA_MODE_OQPSK_SIN_250
 
 #Enables auto Trim algorithm
 # CFLAGS += -DENABLE_AUTOTRIM
 #Measure types: FOUR_MOTE, FOUR_MOTE_WF, PHASEMAP_TEST_13, PHASEMAP_TEST_18, PROCESSING_DEBUG
-CFLAGS += -DMEASURE_TYPE=PHASEMAP_TEST_4
+CFLAGS += -DMEASURE_TYPE=FOUR_MOTE_WF
 
 #disables waveform processing
-# CFLAGS += -DDISABLE_PROCESSING
+CFLAGS += -DDISABLE_PROCESSING
 #copies the buffer before processing (useful for waveform downloading)
 # CFLAGS += -DMEASUREWAVE_SAVE_BUFFER
 #enables GPIO based sync testing (with logic analyzer)
-# CFLAGS += -DCW_SYNC_TEST
+CFLAGS += -DCW_SYNC_TEST
 #sets the period and all bytes of the waveform to the current slot's number. Useful for debugging data downloading
 # CFLAGS += -DDEBUG_COLLECTOR
 #measures cpu load with infinite task. Overwrites measured frequency
@@ -35,7 +38,7 @@ CFLAGS += -DMEASURE_TYPE=PHASEMAP_TEST_4
 #diagmsg based debugs
 #diagmsg configs
 # CFLAGS += -DDIAGMSG_SERIAL_START
-# CFLAGS += -DDIAGMSG_RECORDED_MSGS=70
+CFLAGS += -DDIAGMSG_RECORDED_MSGS=70
 #counts dropped frames
 # CFLAGS += -DTEST_CALCULATION_TIMING
 #measures processing time (might give false readings due to interrupts)
