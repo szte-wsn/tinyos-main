@@ -231,6 +231,17 @@ public:
 	static std::vector<uint> RSSI_FINGERPRINT_SLOTS;
 
 	static std::vector<float> rssi_fingerprint(FrameMerger::Frame &frame);
+
+	struct TrainingData {
+		int id;
+		std::string idname;
+		float x;
+		float y;
+		std::vector<std::string> logs;
+		std::vector<std::vector<float>> fingerprints;
+	};
+
+	static void read_training_data(std::vector<TrainingData> &data, const std::string &config = "config.txt");
 };
 
 #endif//__FILTER_HPP__

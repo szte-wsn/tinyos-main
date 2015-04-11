@@ -37,6 +37,8 @@
 #include <vector>
 #include <set>
 #include <cmath>
+#include <fstream>
+#include <sstream>
 
 // ------- BasicFilter
 
@@ -572,3 +574,30 @@ std::vector<float> Competition::rssi_fingerprint(FrameMerger::Frame &frame) {
 	return fingerprint;
 }
 
+void Competition::read_training_data(std::vector<TrainingData> &data, const std::string &config) {
+	data.clear();
+
+	std::ifstream config_ifs;
+	config_ifs.open(config, std::ifstream::in);
+	if (config_ifs.fail())
+		throw std::runtime_error("Could not open config file:" + config);
+
+	const int MAXLEN = 5000;
+	char line[MAXLEN];
+	while (config_ifs.good()) {
+		line[0] = 0;
+		config_ifs.getline(line, MAXLEN);
+
+		std::istringstream stream(line);
+		stream >> std::ws;
+		if (stream.eof() || stream.peek() == '#')
+			continue;
+
+		std::string idname;
+		float x, y;
+
+		stream >> idname >> std::ws >> x >> std::ws >> y >> std::ws;
+
+		std::cout << idname << "\t" << x << "\t" << y << std::endl;
+	}
+}

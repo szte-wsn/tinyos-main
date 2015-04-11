@@ -32,30 +32,9 @@
  * Author: Miklos Maroti
  */
 
-#include "serial.hpp"
-#include "packet.hpp"
-#include "viterbi.hpp"
+#include "filter.hpp"
 
 int main(int argc, char *argv[]) {
-	Writer<PhaseUnwrap::Packet> writer;
-	PhaseUnwrap unwrap(25, 6, 1, 1);
-//	Writer<RipsQuad::Packet> writer;
-	RipsQuad ripsquad(1, 3, 4, 5);
-	BasicFilter filter(15, 3);
-	RipsDat ripsdat;
-	RipsMsg ripsmsg;
-	TosMsg tosmsg;
-	Reader<std::vector<unsigned char>> reader;
-
-	connect(reader.out, tosmsg.sub_in);
-	connect(tosmsg.out, ripsmsg.in);
-	connect(ripsmsg.out, ripsdat.in);
-	connect(ripsdat.out, filter.in);
-	connect(filter.out, ripsquad.in);
-	connect(ripsquad.out, unwrap.in);
-	connect(unwrap.out, writer.in);
-//	connect(ripsquad.out, writer.in);
-
-	reader.run();
-	return 0;
+	std::vector<Competition::TrainingData> data;
+	Competition::read_training_data(data);
 }
