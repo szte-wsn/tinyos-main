@@ -595,6 +595,11 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 		if (stream.eof() || stream.peek() == '#')
 			continue;
 
+		std::string type;
+		stream >> type >> std::ws;
+		if (type.compare("log") != 0)
+			continue;
+
 		TrainingData data;
 		data.id = training_data.size();
 
@@ -656,5 +661,39 @@ int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints
 }
 
 void Competition::read_static_nodes(std::vector<StaticNode> &nodes, const std::string &config) {
-}
+	nodes.clear();
 
+	std::ifstream config_ifs;
+	config_ifs.open(config, std::ifstream::in);
+	if (config_ifs.fail())
+		throw std::runtime_error("Could not open config file: " + config);
+
+	const int MAXLEN = 5000;
+	char line[MAXLEN];
+	while (config_ifs.good()) {
+		line[0] = 0;
+		config_ifs.getline(line, MAXLEN);
+
+		std::istringstream stream(line);
+		stream >> std::ws;
+		if (stream.eof() || stream.peek() == '#')
+			continue;
+
+		std::string type;
+		stream >> type >> std::ws;
+		if (type.compare("node") != 0)
+			continue;
+
+		StaticNode node;
+		stream >> node.nodeid >> std::ws;
+		stream >> node.x >> std::ws;
+		stream >> node.y >> std::ws;
+
+		if (stream.fail() || !stream.eof()) {
+			std::cerr << "Invalid config line: " << line << std::endl;
+			continue;
+		}
+
+		nodes.push_back(node);
+	}
+}

@@ -37,4 +37,7 @@
 int main(int argc, char *argv[]) {
 	std::vector<Competition::TrainingData> data;
 	Competition::read_training_data(data);
+
+	std::vector<Competition::StaticNode> nodes;
+	Competition::read_static_nodes(nodes);
 }

@@ -1,2 +1,34 @@
-#IDNAME	X	Y	LOGS
-A	2.3	1.2	A.log A2.log
+#log	IDNAME	X	Y	LOGFILES
+log	A	2.3	1.2	A.log A2.log
+
+#node	NODEID	X	Y
+node	1	1.0	2.3
+node	2	1.3	3.4
+node	3	1.0	2.3
+node	4	1.3	3.4
+node	5	1.0	2.3
+node	6	1.3	3.4
+node	7	1.0	2.3
+node	8	1.3	3.4
+node	9	1.0	2.3
+node	10	1.3	3.4
+node	11	1.0	2.3
+node	12	1.3	3.4
+node	13	1.0	2.3
+node	14	1.3	3.4
+node	15	1.0	2.3
+node	16	1.3	3.4
+node	17	1.0	2.3
+node	18	1.3	3.4
+node	19	1.0	2.3
+node	20	1.3	3.4
+node	21	1.0	2.3
+node	22	1.3	3.4
+node	23	1.0	2.3
+node	24	1.3	3.4
+node	25	1.0	2.3
+node	26	1.3	3.4
+node	27	1.0	2.3
+node	28	1.3	3.4
+node	29	1.0	11.2
+node	30	1.3	3.4
