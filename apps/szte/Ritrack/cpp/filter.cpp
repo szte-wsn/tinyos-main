@@ -287,16 +287,16 @@ std::ostream& operator <<(std::ostream& stream, const RipsQuad2::Packet &packet)
 
 // ------- FrameMerger
 
-FrameMerger::Data *FrameMerger::Slot::get_data(uint nodeid) {
-	for(Data &d : data) {
+const FrameMerger::Data *FrameMerger::Slot::get_data(uint nodeid) const {
+	for(const Data &d : data) {
 		if (d.nodeid == nodeid)
 			return &d;
 	}
 	return NULL;
 }
 
-FrameMerger::Slot *FrameMerger::Frame::get_slot(uint slotid) {
-	for(Slot &slot : slots) {
+const FrameMerger::Slot *FrameMerger::Frame::get_slot(uint slotid) const {
+	for(const Slot &slot : slots) {
 		if (slot.slot == slotid)
 			return &slot;
 	}
@@ -560,12 +560,12 @@ uint Competition::MOBILE_NODEID = 31;
 
 std::vector<uint> Competition::RSSI_FINGERPRINT_SLOTS = { 0,1, 3,4, 7,8, 10,11, 14,15, 17,18, 21,22, 24,25, 28,29, 31,32 };
 
-std::vector<float> Competition::rssi_fingerprint(FrameMerger::Frame &frame) {
+std::vector<float> Competition::rssi_fingerprint(const FrameMerger::Frame &frame) {
 	std::vector<float> fingerprint;
 
 	for (uint slotid : RSSI_FINGERPRINT_SLOTS) {
-		FrameMerger::Slot *slot = frame.get_slot(slotid);
-		FrameMerger::Data *data = slot != NULL ? slot->get_data(MOBILE_NODEID) : NULL;
+		const FrameMerger::Slot *slot = frame.get_slot(slotid);
+		const FrameMerger::Data *data = slot != NULL ? slot->get_data(MOBILE_NODEID) : NULL;
 
 		fingerprint.push_back(data != NULL ? data->rssi1 : -1.0f);
 		fingerprint.push_back(data != NULL ? data->rssi2 : -1.0f);
@@ -574,8 +574,8 @@ std::vector<float> Competition::rssi_fingerprint(FrameMerger::Frame &frame) {
 	return fingerprint;
 }
 
-void Competition::read_training_data(std::vector<TrainingData> &data, const std::string &config) {
-	data.clear();
+void Competition::read_training_data(std::vector<TrainingData> &training_data, const std::string &config) {
+	training_data.clear();
 
 	std::ifstream config_ifs;
 	config_ifs.open(config, std::ifstream::in);
@@ -593,11 +593,19 @@ void Competition::read_training_data(std::vector<TrainingData> &data, const std:
 		if (stream.eof() || stream.peek() == '#')
 			continue;
 
-		std::string idname;
-		float x, y;
+		TrainingData data;
+		data.id = training_data.size();
 
-		stream >> idname >> std::ws >> x >> std::ws >> y >> std::ws;
+		stream >> data.name >> std::ws >> data.x >> std::ws >> data.y >> std::ws;
+		if (!stream.good()) {
+			std::cerr << "Invalid config line: " << line << std::endl;
+			continue;
+		}
 
-		std::cout << idname << "\t" << x << "\t" << y << std::endl;
+		while (stream.good()) {
+			std::string log;
+			stream >> log >> std::ws;
+			data.logs.push_back(log);
+		}
 	}
 }

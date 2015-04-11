@@ -169,14 +169,14 @@ public:
 		float period;			// -1.0 if not valid
 		std::vector<Data> data;
 
-		Data *get_data(uint nodeid);
+		const Data *get_data(uint nodeid) const;
 	};
 
 	struct Frame {
 		ulong frame;
 		std::vector<Slot> slots;
 
-		Slot *get_slot(uint slotid);
+		const Slot *get_slot(uint slotid) const;
 	};
 
 	Input<BasicFilter::Packet> in;
@@ -230,18 +230,18 @@ public:
 	static uint MOBILE_NODEID;
 	static std::vector<uint> RSSI_FINGERPRINT_SLOTS;
 
-	static std::vector<float> rssi_fingerprint(FrameMerger::Frame &frame);
+	static std::vector<float> rssi_fingerprint(const FrameMerger::Frame &frame);
 
 	struct TrainingData {
 		int id;
-		std::string idname;
+		std::string name;
 		float x;
 		float y;
 		std::vector<std::string> logs;
 		std::vector<std::vector<float>> fingerprints;
 	};
 
-	static void read_training_data(std::vector<TrainingData> &data, const std::string &config = "config.txt");
+	static void read_training_data(std::vector<TrainingData> &training_data, const std::string &config = "config.txt");
 };
 
 #endif//__FILTER_HPP__
