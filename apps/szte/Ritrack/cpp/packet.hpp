@@ -193,6 +193,7 @@ private:
 	static std::vector<std::vector<uint8_t>> TXPAIR_TEST;
 	static std::vector<std::vector<uint8_t>> TRIM_SET;
 	static std::vector<std::vector<uint8_t>> FOUR_MOTE_2CH;
+	static std::vector<std::vector<uint8_t>> COMPETITION;
 
 	static std::vector<std::pair<const char *, const std::vector<std::vector<uint8_t>>&>> NAMES;
 	const std::vector<std::vector<uint8_t>> &get_schedule(const char *schedule);
