@@ -196,6 +196,13 @@ public:
 			thread->join();
 	}
 
+	void wait() {
+		if (thread != NULL) {
+			thread->join();
+			thread = NULL;
+		}
+	}
+
 private:
 	std::istream &stream;
 	std::unique_ptr<std::thread> thread;
@@ -221,6 +228,27 @@ private:
 
 std::ostream& operator <<(std::ostream& stream, const std::vector<unsigned char> &vector);
 std::istream& operator >>(std::istream& stream, std::vector<unsigned char> &vector);
+
+template <typename DATA> class Collector : public Block {
+public:
+	Input<DATA> in;
+
+	Collector() : in(bind(&Collector::work, this)) { }
+
+	std::vector<DATA> get_result() {
+		std::lock_guard<std::mutex> lock(mutex);
+		return result;
+	}
+
+private:
+	std::mutex mutex;
+	std::vector<DATA> result;
+
+	void work(const DATA &data) {
+		std::lock_guard<std::mutex> lock(mutex);
+		result.push_back(data);
+	}
+};
 
 template <typename DATA> class Buffer : public Block {
 public:

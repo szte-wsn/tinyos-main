@@ -237,11 +237,12 @@ public:
 		std::string name;
 		float x;
 		float y;
-		std::vector<std::string> logs;
+		std::vector<std::string> logfiles;
 		std::vector<std::vector<float>> fingerprints;
 	};
 
 	static void read_training_data(std::vector<TrainingData> &training_data, const std::string &config = "config.txt");
+	static int read_fingerprints(std::vector<std::vector<float>> &fingerprints, const std::string &logfile);
 };
 
 #endif//__FILTER_HPP__

@@ -1,2 +1,2 @@
 #IDNAME	X	Y	LOGS
-STAIR1	2.3	1.2	a1.log a2.log
+A	2.3	1.2	A.log A2.log

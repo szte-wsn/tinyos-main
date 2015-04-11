@@ -580,7 +580,9 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 	std::ifstream config_ifs;
 	config_ifs.open(config, std::ifstream::in);
 	if (config_ifs.fail())
-		throw std::runtime_error("Could not open config file:" + config);
+		throw std::runtime_error("Could not open config file: " + config);
+
+	int fingerprint_count = 0;
 
 	const int MAXLEN = 5000;
 	char line[MAXLEN];
@@ -603,9 +605,52 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 		}
 
 		while (stream.good()) {
-			std::string log;
-			stream >> log >> std::ws;
-			data.logs.push_back(log);
+			std::string logfile;
+			stream >> logfile >> std::ws;
+			data.logfiles.push_back(logfile);
+
+			std::cout << "Reading " << logfile << "\tfor " << data.name << " " << data.x << " " << data.y << std::endl;
+			fingerprint_count += read_fingerprints(data.fingerprints, logfile);
 		}
+
+		if (data.fingerprints.size() != 0)
+			training_data.push_back(data);
 	}
+
+	std::cout << "TOTAL FINGERPRINTS: " << fingerprint_count << std::endl;
+	config_ifs.close();
+}
+
+int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints, const std::string &logfile) {
+	std::ifstream log;
+	log.open(logfile, std::ifstream::in);
+	if (log.fail())
+		throw std::runtime_error("Could not open logfile: " + logfile);
+
+	Collector<FrameMerger::Frame> collector;
+	FrameMerger merger(20);
+	BasicFilter filter(99, 3);
+	RipsDat ripsdat;
+	RipsMsg ripsmsg;
+	TosMsg tosmsg;
+	Reader<std::vector<unsigned char>> reader(log);
+
+	connect(reader.out, tosmsg.sub_in);
+	connect(tosmsg.out, ripsmsg.in);
+	connect(ripsmsg.out, ripsdat.in);
+	connect(ripsdat.out, filter.in);
+	connect(filter.out, merger.in);
+	connect(merger.out, collector.in);
+
+	reader.run();
+	reader.wait();
+
+	std::vector<FrameMerger::Frame> result = collector.get_result();
+	int count = std::min(5, (int) result.size());
+
+	for (uint i = result.size() - count; i < result.size(); i++)
+		fingerprints.push_back(rssi_fingerprint(result[i]));
+
+	log.close();
+	return count;
 }
