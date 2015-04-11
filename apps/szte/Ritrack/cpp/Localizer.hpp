@@ -11,6 +11,7 @@
 #include "Mote.hpp"
 #include <vector>
 #include <map>
+#include <set>
 #include "filter.hpp"
 
 
@@ -26,11 +27,15 @@ private:
 	unsigned short mobileId;
 	Mote mobileMote;
 	
+	std::vector<std::pair<uint,uint>> boxPairs;
+	std::vector<uint> maxRSSIs;
+	
 	void decode(const FrameMerger::Frame &frame);
 	
-	cv::Mat* getCorrelationMap(const FrameMerger::Frame& frame);
+	std::set<short> getSelectedSlots(const FrameMerger::Frame& frame);
+	cv::Mat* getCorrelationMap(const FrameMerger::Frame& frame, std::set<short> selectedSlots);
 	std::vector<Position<double>> getMaximumPositions();
-	Position<double> getMotePosition(std::vector<Position<double>> maximums,const FrameMerger::Frame& frame);
+	Position<double> getMotePosition(std::vector<Position<double>> maximums,const FrameMerger::Frame& frame,std::set<short> selectedSlots);
 
 public:
 	Input<FrameMerger::Frame> in;

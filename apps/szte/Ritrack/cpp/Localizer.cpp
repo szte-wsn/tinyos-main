@@ -5,7 +5,7 @@ void displayMat(cv::Mat& mat){
 	double min, max;
 	cv::minMaxLoc(mat, &min, &max);
 	mat.convertTo(display, CV_8UC1, 255.0 / max, 0);
-	applyColorMap(display, display, cv::COLORMAP_SUMMER);
+	//applyColorMap(display, display, cv::COLORMAP_SUMMER);
 	cv::imshow("Display",display);
 	cv::waitKey(0);
 }
@@ -20,6 +20,23 @@ void tresholdMat(cv::Mat& mat, double tresh){
 			}else{
 				mat.at<double>(i,j)=0.0;
 			}
+		}
+	}
+}
+
+
+float RSSIdifference(int rssi1, int rssi2){
+	if(rssi1 >= rssi2){
+		if(rssi2 != 0){
+			return 1.0*rssi1/rssi2;
+		}else{
+			return 5.0; //TODO: what to do if one of the RRSI is 0, no interference!
+		}
+	}else{
+		if(rssi1 != 0){
+			return 1.0*rssi2/rssi1;
+		}else{
+			return 5.0;
 		}
 	}
 }
@@ -44,21 +61,109 @@ Localizer::Localizer(Config& config_in, float step_in, float xStart_in, float yS
 		Localizer::mobileId = mobileMote[0].getID();
 		Localizer::mobileMote = mobileMote[0];
 	}
+	boxPairs.push_back(std::pair<uint,uint>(1,2));
+	boxPairs.push_back(std::pair<uint,uint>(2,3));
+	boxPairs.push_back(std::pair<uint,uint>(3,4));
+	boxPairs.push_back(std::pair<uint,uint>(1,4));
+	boxPairs.push_back(std::pair<uint,uint>(5,6));
+	boxPairs.push_back(std::pair<uint,uint>(6,7));
+	boxPairs.push_back(std::pair<uint,uint>(7,8));
+	boxPairs.push_back(std::pair<uint,uint>(5,8));
+	boxPairs.push_back(std::pair<uint,uint>(9,10));
+	for(uint i=0;i<boxPairs.size();i++){
+		maxRSSIs.push_back(0);
+	}
 }
 
 void Localizer::decode(const FrameMerger::Frame &frame){
-	getCorrelationMap(frame);  //uses locationMap
+	std::set<short> selectedSlots =  getSelectedSlots(frame);
+	getCorrelationMap(frame,selectedSlots);  //uses locationMap
 	displayMat(locationMap);
 	std::vector<Position<double>> maximums = getMaximumPositions(); //uses locationMap
-	Position<double> maxPos = getMotePosition(maximums,frame);
+	Position<double> maxPos = getMotePosition(maximums,frame,selectedSlots);
 	out.send(maxPos);
 }
 
-cv::Mat* Localizer::getCorrelationMap(const FrameMerger::Frame& frame){
+std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
+	std::set<short> selectedSlots;
+	unsigned short selectedPair = 255;
+	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
+		if(slotit->get_data(mobileId) == NULL){
+			continue;
+		}
+		for(uint i=0;i<boxPairs.size();i++){
+			if( (boxPairs[i].first-1)*3 +1 == slotit->sender1 && (boxPairs[i].first-1)*3 + 2 == slotit->sender2){
+				maxRSSIs[i] += slotit->get_data(mobileId)->rssi1;
+				maxRSSIs[i] += slotit->get_data(mobileId)->rssi2;
+			}
+			if( (boxPairs[i].second-1)*3 +1 == slotit->sender1 && (boxPairs[i].second-1)*3 + 2 == slotit->sender2){
+				maxRSSIs[i] += slotit->get_data(mobileId)->rssi1;
+				maxRSSIs[i] += slotit->get_data(mobileId)->rssi2;
+			}
+		}
+	}
+	uint nearest = maxRSSIs[0];
+	selectedPair = 0;
+	for(uint i=1;i<boxPairs.size();i++){
+		if(maxRSSIs[i] > nearest){
+			nearest = maxRSSIs[i];
+			selectedPair = i;
+		}
+	}
+	
+	float diff1 = 100.0;
+	int slotId1 = -1;
+	float diff2 = -1.0;
+	int slotId2 = -1;
+	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
+		if(slotit->sender1 == (boxPairs[selectedPair].first-1)*3 +1 && slotit->sender2 == (boxPairs[selectedPair].first-1)*3 +2){
+			if(diff1 == -1.0){
+				diff1 = RSSIdifference(slotit->get_data(mobileId)->rssi1,slotit->get_data(mobileId)->rssi2);
+				slotId1 = slotit->slot;
+			}else{
+				diff2 = RSSIdifference(slotit->get_data(mobileId)->rssi1,slotit->get_data(mobileId)->rssi2);
+				slotId2 = slotit->slot;
+				if(diff1 <= diff2){
+					selectedSlots.insert(slotId1);
+				}else{
+					selectedSlots.insert(slotId2);
+				}
+				break;
+			}
+		}
+	}
+	diff1 = 100.0;
+	slotId1 = -1;
+	diff2 = -1.0;
+	slotId2 = -1;
+	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
+		if(slotit->sender1 == (boxPairs[selectedPair].second-1)*3+1 && slotit->sender2 == (boxPairs[selectedPair].second-1)*3 + 2){
+			if(diff1 == -1.0){
+				diff1 = RSSIdifference(slotit->get_data(mobileId)->rssi1,slotit->get_data(mobileId)->rssi2);
+				slotId1 = slotit->slot;
+			}else{
+				diff2 = RSSIdifference(slotit->get_data(mobileId)->rssi1,slotit->get_data(mobileId)->rssi2);
+				slotId2 = slotit->slot;
+				if(diff1 <= diff2){
+					selectedSlots.insert(slotId1);
+				}else{
+					selectedSlots.insert(slotId2);
+				}
+				break;
+			}
+		}
+	}
+	return selectedSlots;
+}
+
+cv::Mat* Localizer::getCorrelationMap(const FrameMerger::Frame& frame,std::set<short> selectedSlots){
 	Localizer::locationMap.setTo(cv::Scalar(0.0));
 	std::cout << frame << std::endl;
 	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
 		if(slotit->get_data(mobileId) == NULL){
+			continue;
+		}
+		if(selectedSlots.count(slotit->slot) == 0){
 			continue;
 		}
 		double mobileMeasuredPhase = slotit->get_data(mobileId)->phase * TWOpi;
@@ -110,12 +215,37 @@ cv::Mat* Localizer::getCorrelationMap(const FrameMerger::Frame& frame){
 			}
 		}
 	}
+	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
+		if(slotit->get_data(mobileId) == NULL){
+			continue;
+		}
+		if(selectedSlots.count(slotit->slot) == 0){
+			continue;
+		}
+		Mote tx1 = config.getStable(slotit->sender1);
+		int motePosY = 0;
+		int motePosX = 0;
+		float avarageRSSI = (slotit->get_data(mobileId)->rssi1 + slotit->get_data(mobileId)->rssi2) / 2.0;
+		motePosY = round( (yStart - tx1.getPosition().getY())/step);
+		motePosX = round((tx1.getPosition().getX() - xStart)/step);
+		short radius = -1;
+		if(avarageRSSI > 10.0){
+			continue;
+		}else if(avarageRSSI > 5.0){
+			radius = 1/step;
+		}else if(avarageRSSI > 0.0){
+			radius = 2/step;
+		}else{
+			radius = 4/step;
+		}
+		cv::circle(locationMap,cv::Point(motePosX,motePosY),radius,cv::Scalar(0,0,0,255),-1);
+	}
 	return &locationMap;			
 }
 
 
 std::vector<Position<double>> Localizer::getMaximumPositions(){
-	double min, max, thres=0.95;
+	double min, max, thres=0.97;
 	std::vector< Position<double> > maximums;
 	cv::minMaxLoc(locationMap, &min, &max);
 	for(int i=0;i<locationMap.size().height;i++){
@@ -129,7 +259,7 @@ std::vector<Position<double>> Localizer::getMaximumPositions(){
 	}
 	displayMat(binaryMap);
 	std::vector<std::vector<cv::Point> > contours;
-	cv::findContours( binaryMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE );
+	cv::findContours( binaryMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_TC89_L1 );
 	//Get the moments
 	std::vector<cv::Moments> mu(contours.size() );
 	for( uint i = 0; i < contours.size(); i++ ){
@@ -149,7 +279,7 @@ std::vector<Position<double>> Localizer::getMaximumPositions(){
 	return maximums;
 }
 
-Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximums, const FrameMerger::Frame& frame){
+Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximums, const FrameMerger::Frame& frame, std::set<short> selectedSlots){
 	//which is the nearest tx based on RSSI
 	unsigned short nearestID = 255;
 	unsigned short maxRSSI = 0;
@@ -160,6 +290,10 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 		if(slotit->get_data(mobileId)->rssi1 >= maxRSSI){
 			maxRSSI = slotit->get_data(mobileId)->rssi1;
 			nearestID = slotit->sender1;
+		}
+		if(slotit->get_data(mobileId)->rssi2 >= maxRSSI){
+			maxRSSI = slotit->get_data(mobileId)->rssi2;
+			nearestID = slotit->sender2;
 		}
 	}
 	Mote nearestTx = config.getStable(nearestID);
