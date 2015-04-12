@@ -12,7 +12,7 @@ OPENCVLFLAGS=`pkg-config --libs opencv`
 all: recorder phaseplot dump dump2 test test2 testRSSIFilter xfilter
 
 testLocalizer: testLocalizer.cpp Localizer.cpp Config.o Mote.o Position.o PhaseCalculator.o block.o serial.o packet.o filter.o
-	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LFLAGS) $(OPENCVLFLAGS)
+	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LDFLAGS) $(OPENCVLFLAGS)
 
 xfilter: xfilter.o block.o serial.o packet.o filter.o
 	$(CXX) $(LDFLAGS) -o $@ $^
