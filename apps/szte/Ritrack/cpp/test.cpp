@@ -74,6 +74,5 @@ void localizer_rssi(const FrameMerger::Frame &frame, float &x, float &y){
 }
 
 int main(int argc, char *argv[]) {
-
 	Competition::test_harness(localizer_rssi);
 }
