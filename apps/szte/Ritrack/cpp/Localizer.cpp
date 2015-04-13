@@ -334,7 +334,7 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 	int result = (int)round(knn.find_nearest(temp , K));
 	for(uint i=0;i<coordinates.size();i++){
 		if(coordinates[i].first == result){
-			rssiPosition = Position<double>(-1.0*coordinates[i].second.first,coordinates[i].second.second);
+			rssiPosition = Position<double>(coordinates[i].second.first,coordinates[i].second.second);
 		}
 	}
 	double minimumDist = 100.0;
