@@ -1,5 +1,6 @@
-#log	IDNAME	X	Y	LOGFILES
-log	A	2.3	1.2	A.log A2.log
+#log	X	Y	LOGFILES
+log	2.3	1.2	p1.log
+test	2.3	1.4	p2.log
 
 #node	NODEID	X	Y
 node	1	1.0	2.3

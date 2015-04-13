@@ -603,7 +603,7 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 		TrainingData data;
 		data.id = training_data.size();
 
-		stream >> data.name >> std::ws >> data.x >> std::ws >> data.y >> std::ws;
+		stream >> data.x >> std::ws >> data.y >> std::ws;
 		if (!stream.good()) {
 			std::cerr << "Invalid config line: " << line << std::endl;
 			continue;
@@ -614,7 +614,7 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 			stream >> logfile >> std::ws;
 			data.logfiles.push_back(logfile);
 
-			std::cout << "Reading " << logfile << "\tfor " << data.name << " " << data.x << " " << data.y << std::endl;
+			std::cout << "Reading " << logfile << "\tfor " << data.x << " " << data.y << std::endl;
 			fingerprint_count += read_fingerprints(data.fingerprints, logfile);
 		}
 
@@ -696,4 +696,86 @@ void Competition::read_static_nodes(std::vector<StaticNode> &nodes, const std::s
 
 		nodes.push_back(node);
 	}
+}
+
+float Competition::test_harness(localizer_func func, const std::string &config) {
+	std::ifstream config_ifs;
+	config_ifs.open(config, std::ifstream::in);
+	if (config_ifs.fail())
+		throw std::runtime_error("Could not open config file: " + config);
+
+	float avg_error = 0.0f;
+	int avg_count = 0;
+
+	const int MAXLEN = 5000;
+	char line[MAXLEN];
+	while (config_ifs.good()) {
+		line[0] = 0;
+		config_ifs.getline(line, MAXLEN);
+
+		std::istringstream stream(line);
+		stream >> std::ws;
+		if (stream.eof() || stream.peek() == '#')
+			continue;
+
+		std::string type;
+		stream >> type >> std::ws;
+		if (type.compare("test") != 0)
+			continue;
+
+		float x, y;
+		std::string logfile;
+
+		stream >> x >> std::ws >> y >> std::ws >> logfile >> std::ws;
+
+		if (stream.fail() || !stream.eof()) {
+			std::cerr << "Invalid config line: " << line << std::endl;
+			continue;
+		}
+
+		std::ifstream log;
+		log.open(logfile, std::ifstream::in);
+		if (log.fail())
+			throw std::runtime_error("Could not open logfile: " + logfile);
+
+		Collector<FrameMerger::Frame> collector;
+		FrameMerger merger(20);
+		BasicFilter filter(99, 3);
+		RipsDat ripsdat;
+		RipsMsg ripsmsg;
+		TosMsg tosmsg;
+		Reader<std::vector<unsigned char>> reader(log);
+
+		connect(reader.out, tosmsg.sub_in);
+		connect(tosmsg.out, ripsmsg.in);
+		connect(ripsmsg.out, ripsdat.in);
+		connect(ripsdat.out, filter.in);
+		connect(filter.out, merger.in);
+		connect(merger.out, collector.in);
+
+		reader.run();
+		reader.wait();
+
+		std::vector<FrameMerger::Frame> result = collector.get_result();
+		if (result.size() < 1)
+			throw std::runtime_error("Logfile " + logfile + " has no valid frame");
+
+		float x2 = 0.0f;
+		float y2 = 0.0f;
+
+		func(result.back(), x2, y2);
+
+		float e = std::sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y));
+
+		std::cout << "Testing " << logfile << " " << x << " " << y << " with " << result.size() << " frames";
+		std::cout << "\t position: " << x2 << " " << y2 << "\t error: " << e << std::endl;
+
+		avg_error += e;
+		avg_count += 1;
+	}
+
+	float e = avg_count > 0 ? avg_error / avg_count : 0.0f;
+	std::cout << "AVG ERROR: " << e << std::endl;
+
+	return e;
 }

@@ -234,7 +234,6 @@ public:
 
 	struct TrainingData {
 		int id;
-		std::string name;
 		float x;
 		float y;
 		std::vector<std::string> logfiles;
@@ -251,6 +250,9 @@ public:
 	};
 
 	static void read_static_nodes(std::vector<StaticNode> &nodes, const std::string &config = "config.txt");
+
+	typedef void (*localizer_func)(const FrameMerger::Frame &frame, float &x, float &y);
+	static float test_harness(localizer_func func, const std::string &config = "config.txt");
 };
 
 #endif//__FILTER_HPP__

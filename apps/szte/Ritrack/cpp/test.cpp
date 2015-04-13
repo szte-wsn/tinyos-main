@@ -34,10 +34,11 @@
 
 #include "filter.hpp"
 
-int main(int argc, char *argv[]) {
-	std::vector<Competition::TrainingData> data;
-	Competition::read_training_data(data);
+void localizer_null(const FrameMerger::Frame &frame, float &x, float &y) {
+	x = 0.0f;
+	y = 0.0f;
+}
 
-	std::vector<Competition::StaticNode> nodes;
-	Competition::read_static_nodes(nodes);
+int main(int argc, char *argv[]) {
+	Competition::test_harness(localizer_null);
 }
