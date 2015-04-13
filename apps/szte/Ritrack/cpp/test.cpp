@@ -35,28 +35,45 @@
 #include "filter.hpp"
 #include "Localizer.hpp"
 
-
 void localizer_null(const FrameMerger::Frame &frame, float &x, float &y) {
 	x = 0.0f;
 	y = 0.0f;
 }
 
-void localizer_rssi(const FrameMerger::Frame &frame, float &x, float &y){
+class Test {
+public:
 	Collector<Position<double>> collector;
-	Localizer localizer(0.05,-50.0,50.0,0.0,0.0);
+	Localizer localizer;
 	Generator<FrameMerger::Frame> generator;
 
-	connect(generator.out, localizer.in);
-	connect(localizer.out, collector.in);
-
-	generator.run(frame);
-	std::vector<Position<double>> result = collector.get_result();
-	if(result.size() != 0){
-		x = result[result.size()-1].getX();
-		y = result[result.size()-1].getY();
+	Test() : localizer(0.05,-50.0,50.0,0.0,0.0) {
+		connect(generator.out, localizer.in);
+		connect(localizer.out, collector.in);
 	}
+
+	void test(const FrameMerger::Frame &frame, float &x, float &y) {
+		collector.clear();
+		generator.run(frame);
+		std::vector<Position<double>> result = collector.get_result();
+		assert(result.size() == 1);
+
+		if(result.size() != 0) {
+			x = result.back().getX();
+			y = result.back().getY();
+		}
+	}
+};
+
+Test *test = NULL;
+
+void localizer_rssi(const FrameMerger::Frame &frame, float &x, float &y){
+	if (test == NULL)
+		test = new Test();
+
+	test->test(frame, x, y);
 }
 
 int main(int argc, char *argv[]) {
+
 	Competition::test_harness(localizer_rssi);
 }

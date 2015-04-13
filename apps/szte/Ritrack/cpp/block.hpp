@@ -240,6 +240,11 @@ public:
 		return result;
 	}
 
+	void clear() {
+		std::lock_guard<std::mutex> lock(mutex);
+		result.clear();
+	}
+
 private:
 	std::mutex mutex;
 	std::vector<DATA> result;
