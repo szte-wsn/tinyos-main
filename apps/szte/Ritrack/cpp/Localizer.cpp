@@ -54,14 +54,14 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 	Localizer::mask = cv::imread("mask.bmp",CV_LOAD_IMAGE_GRAYSCALE);
 	cv::resize(mask,mask,locationMap.size());
 	boxPairs.push_back(std::pair<uint,uint>(1,2));
-	boxPairs.push_back(std::pair<uint,uint>(2,3));
-	boxPairs.push_back(std::pair<uint,uint>(3,4));
-	boxPairs.push_back(std::pair<uint,uint>(1,4));
-	boxPairs.push_back(std::pair<uint,uint>(5,6));
-	boxPairs.push_back(std::pair<uint,uint>(6,7));
-	boxPairs.push_back(std::pair<uint,uint>(7,8));
-	boxPairs.push_back(std::pair<uint,uint>(5,8));
-	boxPairs.push_back(std::pair<uint,uint>(9,10));
+	//boxPairs.push_back(std::pair<uint,uint>(2,3));
+	//boxPairs.push_back(std::pair<uint,uint>(3,4));
+	//boxPairs.push_back(std::pair<uint,uint>(1,4));
+	//boxPairs.push_back(std::pair<uint,uint>(5,6));
+	//boxPairs.push_back(std::pair<uint,uint>(6,7));
+	//boxPairs.push_back(std::pair<uint,uint>(7,8));
+	//boxPairs.push_back(std::pair<uint,uint>(5,8));
+	//boxPairs.push_back(std::pair<uint,uint>(9,10));
 	for(uint i=0;i<boxPairs.size();i++){
 		maxRSSIs.push_back(0);
 	}
@@ -104,19 +104,24 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 			config.addPair(mobileMote,config.getStable( (boxPairs[i].second)*3 ));
 		}
 	}
+	std::cout << "END: Constructor" << std::endl;
 }
 
 void Localizer::decode(const FrameMerger::Frame &frame){
 	std::set<short> selectedSlots =  getSelectedSlots(frame);
+	std::cout << "END: Boxpair selection" << std::endl;
 	getCorrelationMap(frame,selectedSlots);  //uses locationMap
-	displayMat(locationMap);
+	std::cout << "END: Get correlation map" << std::endl;
+	//displayMat(locationMap);
 	std::vector<Position<double>> maximums = getMaximumPositions(); //uses locationMap
+	std::cout << "END: Get maximums" << std::endl;
 	Position<double> maxPos = getMotePosition(maximums,frame,selectedSlots);
+	std::cout << "END: Get position" << std::endl;
 	out.send(maxPos);
 }
 
 std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
-	std::cout << config << std::endl;
+	//std::cout << config << std::endl;
 	std::set<short> selectedSlots;
 	unsigned short selectedPair = 255;
 	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
@@ -194,7 +199,7 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 
 cv::Mat* Localizer::getCorrelationMap(const FrameMerger::Frame& frame,std::set<short> selectedSlots){
 	Localizer::locationMap.setTo(cv::Scalar(0.0));
-	std::cout << frame << std::endl;
+	//std::cout << frame << std::endl;
 	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
 		if(slotit->get_data(mobileId) == NULL){
 			continue;
@@ -293,7 +298,7 @@ std::vector<Position<double>> Localizer::getMaximumPositions(){
 			}
 		}
 	}
-	displayMat(binaryMap);
+	//displayMat(binaryMap);
 	std::vector<std::vector<cv::Point> > contours;
 	cv::findContours( binaryMap, contours, CV_RETR_LIST, CV_CHAIN_APPROX_TC89_L1 );
 	//Get the moments
@@ -311,7 +316,7 @@ std::vector<Position<double>> Localizer::getMaximumPositions(){
 		 	maximums.push_back(Position<double>(xCoord,yCoord));	
 		 }
 	}
-	displayMat(binaryMap);
+	//displayMat(binaryMap);
 	return maximums;
 }
 
@@ -340,7 +345,7 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 	}
 	
 	
-	return finalPosition;
+	return rssiPosition;
 }
 
 
