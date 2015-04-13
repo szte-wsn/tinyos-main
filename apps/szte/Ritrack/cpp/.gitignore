@@ -8,3 +8,5 @@ test2
 xfilter
 dump2
 testRSSIFilter
+*.log
+
