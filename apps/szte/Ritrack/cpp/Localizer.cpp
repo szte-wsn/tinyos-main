@@ -104,19 +104,14 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 			config.addPair(mobileMote,config.getStable( (boxPairs[i].second)*3 ));
 		}
 	}
-	std::cout << "END: Constructor" << std::endl;
 }
 
 void Localizer::decode(const FrameMerger::Frame &frame){
 	std::set<short> selectedSlots =  getSelectedSlots(frame);
-	std::cout << "END: Boxpair selection" << std::endl;
 	getCorrelationMap(frame,selectedSlots);  //uses locationMap
-	std::cout << "END: Get correlation map" << std::endl;
 	//displayMat(locationMap);
 	std::vector<Position<double>> maximums = getMaximumPositions(); //uses locationMap
-	std::cout << "END: Get maximums" << std::endl;
 	Position<double> maxPos = getMotePosition(maximums,frame,selectedSlots);
-	std::cout << "END: Get position" << std::endl;
 	out.send(maxPos);
 }
 
@@ -153,6 +148,9 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 	float diff2 = -1.0;
 	int slotId2 = -1;
 	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
+		if(slotit->get_data(mobileId) == NULL){
+			continue;
+		}
 		if(slotit->sender1 == (boxPairs[selectedPair].first-1)*3 +1 && slotit->sender2 == (boxPairs[selectedPair].first-1)*3 +2){
 			if(diff1 == -1.0){
 				diff1 = RSSIdifference(slotit->get_data(mobileId)->rssi1,slotit->get_data(mobileId)->rssi2);
@@ -174,6 +172,9 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 	diff2 = -1.0;
 	slotId2 = -1;
 	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
+		if(slotit->get_data(mobileId) == NULL){
+			continue;
+		}
 		if(slotit->sender1 == (boxPairs[selectedPair].second-1)*3+1 && slotit->sender2 == (boxPairs[selectedPair].second-1)*3 + 2){
 			if(diff1 == -1.0){
 				diff1 = RSSIdifference(slotit->get_data(mobileId)->rssi1,slotit->get_data(mobileId)->rssi2);
