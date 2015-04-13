@@ -250,6 +250,20 @@ private:
 	}
 };
 
+template <typename DATA> class Generator : public Block {
+public:
+	Output<DATA> out;
+
+	void run(const std::vector<DATA> &data) {
+		for (const DATA d : data)
+			out.send(d);
+	}
+
+	void run(const DATA &data) {
+		out.send(data);
+	}
+};
+
 template <typename DATA> class Buffer : public Block {
 public:
 	Input<DATA> in;
