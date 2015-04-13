@@ -316,34 +316,8 @@ std::vector<Position<double>> Localizer::getMaximumPositions(){
 }
 
 Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximums, const FrameMerger::Frame& frame, std::set<short> selectedSlots){
-	//which is the nearest tx based on RSSI
-	unsigned short nearestID = 255;
-	unsigned short maxRSSI = 0;
-	for(auto slotit = frame.slots.begin(); slotit!=frame.slots.end(); slotit++){
-		if(slotit->get_data(mobileId) == NULL){
-			continue;
-		}
-		if(slotit->get_data(mobileId)->rssi1 >= maxRSSI){
-			maxRSSI = slotit->get_data(mobileId)->rssi1;
-			nearestID = slotit->sender1;
-		}
-		if(slotit->get_data(mobileId)->rssi2 >= maxRSSI){
-			maxRSSI = slotit->get_data(mobileId)->rssi2;
-			nearestID = slotit->sender2;
-		}
-	}
-	Mote nearestTx = config.getStable(nearestID);
-	//which is the nearest maxima from this tx
-	Position<double> nearestPosition(NAN,NAN);
-	double minDistance = 1000.0;
-	for(auto maxit = maximums.begin(); maxit!=maximums.end();maxit++){
-		double dist = nearestTx.getPosition().distance(*maxit);
-		if(dist < minDistance){
-			minDistance = dist;
-			nearestPosition = *maxit;
-		}
-	}
-
+	Position<double> rssiPosition(NAN,NAN);
+	Position<double> finalPosition(NAN,NAN);
 	std::vector<float> tempRSSIvector = Competition::rssi_fingerprint(frame);
 	cv::Mat temp(1 , tempRSSIvector.size() ,  CV_32FC1);
 	for(uint i=0; i<tempRSSIvector.size(); i++){
@@ -354,11 +328,19 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 	int result = (int)round(knn.find_nearest(temp , K));
 	for(uint i=0;i<coordinates.size();i++){
 		if(coordinates[i].first == result){
-			nearestPosition = Position<double>(coordinates[i].second.first,coordinates[i].second.second);
+			rssiPosition = Position<double>(-1.0*coordinates[i].second.first,coordinates[i].second.second);
+		}
+	}
+	double minimumDist = 100.0;
+	for(auto maxit = maximums.begin(); maxit != maximums.end(); maxit++){
+		if(maxit->distance(rssiPosition) < minimumDist){
+			minimumDist = maxit->distance(rssiPosition);
+			finalPosition = *maxit;
 		}
 	}
 	
-	return nearestPosition;
+	
+	return finalPosition;
 }
 
 
