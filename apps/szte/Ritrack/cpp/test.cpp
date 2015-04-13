@@ -33,12 +33,30 @@
  */
 
 #include "filter.hpp"
+#include "Localizer.hpp"
+
 
 void localizer_null(const FrameMerger::Frame &frame, float &x, float &y) {
 	x = 0.0f;
 	y = 0.0f;
 }
 
+void localizer_rssi(const FrameMerger::Frame &frame, float &x, float &y){
+	Collector<Position<double>> collector;
+	Localizer localizer(0.05,-50.0,50.0,0.0,0.0);
+	Generator<FrameMerger::Frame> generator;
+
+	connect(generator.out, localizer.in);
+	connect(localizer.out, collector.in);
+
+	generator.run(frame);
+	std::vector<Position<double>> result = collector.get_result();
+	if(result.size() != 0){
+		x = result[result.size()-1].getX();
+		y = result[result.size()-1].getY();
+	}
+}
+
 int main(int argc, char *argv[]) {
-	Competition::test_harness(localizer_null);
+	Competition::test_harness(localizer_rssi);
 }

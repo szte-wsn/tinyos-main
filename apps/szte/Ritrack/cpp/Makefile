@@ -20,8 +20,8 @@ xfilter: xfilter.o block.o serial.o packet.o filter.o
 testRSSIFilter: testRSSIFilter.o block.o serial.o packet.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-test: test.o block.o serial.o packet.o viterbi.o filter.o
-	$(CXX) $(LDFLAGS) -o $@ $^
+test: test.o Localizer.cpp Config.o Mote.o Position.o PhaseCalculator.o block.o serial.o packet.o viterbi.o filter.o
+	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LDFLAGS) $(OPENCVLFLAGS)
 
 test2: test2.o block.o serial.o packet.o viterbi.o filter.o
 	$(CXX) $(LDFLAGS) -o $@ $^
