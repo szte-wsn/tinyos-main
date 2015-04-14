@@ -699,13 +699,13 @@ int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints
 	reader.wait();
 
 	std::vector<FrameMerger::Frame> result = collector.get_result();
-	int count = std::min(FINGERPRINTS_PER_LOG, (int) result.size());
+	result = get_best_frames(result, FINGERPRINTS_PER_LOG);
 
-	for (uint i = result.size() - count; i < result.size(); i++)
-		fingerprints.push_back(which_fingerprint(which, result[i]));
+	for (const FrameMerger::Frame &frame : result)
+		fingerprints.push_back(which_fingerprint(which, frame));
 
 	log.close();
-	return count;
+	return result.size();
 }
 
 void Competition::read_static_nodes(std::vector<StaticNode> &nodes, const std::string &config) {
@@ -805,8 +805,9 @@ float Competition::test_harness(localizer_func func, const std::string &config) 
 		reader.wait();
 
 		std::vector<FrameMerger::Frame> result = collector.get_result();
+		result = get_best_frames(result, 1);
 		if (result.size() < 1)
-			throw std::runtime_error("Logfile " + logfile + " has no valid frame");
+			throw std::runtime_error("Logfile " + logfile + " has few valid frames");
 
 		float x2 = 0.0f;
 		float y2 = 0.0f;
@@ -826,4 +827,118 @@ float Competition::test_harness(localizer_func func, const std::string &config) 
 	std::cout << "AVG ERROR: " << e << std::endl;
 
 	return e;
+}
+
+float Competition::get_total_confidence(const FrameMerger::Frame &frame) {
+	float total_conf = 0.0f;
+
+	for (uint slotid : RSSI_FINGERPRINT_SLOTS) {
+		const FrameMerger::Slot *slot = frame.get_slot(slotid);
+		if (slot == NULL)
+			continue;
+
+		const FrameMerger::Data *data = slot->get_data(MOBILE_NODEID);
+		if (data == NULL)
+			continue;
+
+		total_conf += data->rssi1 + data->rssi2 + 2;
+		// total_conf += data->conf;
+		// total_conf += 1;
+	}
+
+	return total_conf;
+}
+
+std::vector<FrameMerger::Frame> Competition::get_best_frames(std::vector<FrameMerger::Frame> frames, int count) {
+	std::stable_sort(frames.begin(), frames.end(), compare_total_confidence);
+
+	if (count > (int) frames.size())
+		count = frames.size();
+
+	frames.erase(frames.begin(), frames.end() - count);
+	return frames;
+}
+
+void Competition::read_frame_pos(std::vector<FramePos> &list, const std::string &config) {
+	list.clear();
+
+	std::ifstream config_ifs;
+	config_ifs.open(config, std::ifstream::in);
+	if (config_ifs.fail())
+		throw std::runtime_error("Could not open config file: " + config);
+
+	const int MAXLEN = 5000;
+	char line[MAXLEN];
+	while (config_ifs.good()) {
+		line[0] = 0;
+		config_ifs.getline(line, MAXLEN);
+
+		std::istringstream stream(line);
+		stream >> std::ws;
+		if (stream.eof() || stream.peek() == '#')
+			continue;
+
+		std::string type;
+		stream >> type >> std::ws;
+		if (type.compare("log") != 0 && type.compare("test") != 0)
+			continue;
+
+		float x, y;
+		stream >> x >> std::ws >> y >> std::ws;
+		if (!stream.good()) {
+			std::cerr << "Invalid config line: " << line << std::endl;
+			continue;
+		}
+
+		while (stream.good()) {
+			std::string logfile;
+			stream >> logfile >> std::ws;
+
+			std::vector<FrameMerger::Frame> frames;
+			read_frames(frames, logfile);
+
+			if (frames.size() > 5)
+				frames.erase(frames.begin(), frames.end() - 5);
+
+			for (const FrameMerger::Frame &frame : frames) {
+				FramePos framepos;
+				framepos.x = x;
+				framepos.y = y;
+				framepos.frame = frame;
+				list.push_back(framepos);
+			}
+		}
+	}
+
+	std::cout << "TOTAL FRAMES: " << list.size() << std::endl;
+	config_ifs.close();
+}
+
+void Competition::read_frames(std::vector<FrameMerger::Frame> &frames, const std::string logfile) {
+	std::ifstream log;
+	log.open(logfile, std::ifstream::in);
+	if (log.fail())
+		throw std::runtime_error("Could not open logfile: " + logfile);
+
+	Collector<FrameMerger::Frame> collector;
+	FrameMerger merger;
+	BasicFilter filter;
+	RipsDat ripsdat;
+	RipsMsg ripsmsg;
+	TosMsg tosmsg;
+	Reader<std::vector<unsigned char>> reader(log);
+
+	connect(reader.out, tosmsg.sub_in);
+	connect(tosmsg.out, ripsmsg.in);
+	connect(ripsmsg.out, ripsdat.in);
+	connect(ripsdat.out, filter.in);
+	connect(filter.out, merger.in);
+	connect(merger.out, collector.in);
+
+	reader.run();
+	reader.wait();
+
+	std::vector<FrameMerger::Frame> result = collector.get_result();
+	for (const FrameMerger::Frame &frame : result)
+		frames.push_back(frame);
 }

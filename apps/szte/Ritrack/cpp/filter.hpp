@@ -258,6 +258,22 @@ public:
 
 	typedef void (*localizer_func)(const FrameMerger::Frame &frame, float &x, float &y);
 	static float test_harness(localizer_func func, const std::string &config = "config.txt");
+
+	static float get_total_confidence(const FrameMerger::Frame &frame);
+	static bool compare_total_confidence(const FrameMerger::Frame &a, const FrameMerger::Frame &b) {
+		return get_total_confidence(a) < get_total_confidence(b);
+	}
+
+	static std::vector<FrameMerger::Frame> get_best_frames(std::vector<FrameMerger::Frame> frames, int count);
+
+	struct FramePos {
+		float x;
+		float y;
+		FrameMerger::Frame frame;
+	};
+
+	static void read_frame_pos(std::vector<FramePos> &list, const std::string &config = "config.txt");
+	static void read_frames(std::vector<FrameMerger::Frame> &frames, const std::string logfile);
 };
 
 #endif//__FILTER_HPP__
