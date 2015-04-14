@@ -49,6 +49,8 @@ public:
 	static void static_localize(const FrameMerger::Frame &frame, float &x, float &y);
 
 private:
+	static int WHICH_FINGERPRINT;
+
 	cv::Mat fingerprints;
 	cv::Mat classes;
 	std::map<int, std::pair<float,float>> coordinates;

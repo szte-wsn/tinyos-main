@@ -34,9 +34,11 @@
 
 #include "miklosloc.hpp"
 
+int MiklosLoc::WHICH_FINGERPRINT = 0;
+
 MiklosLoc::MiklosLoc() {
 	std::vector<Competition::TrainingData> training_data;
-	Competition::read_training_data(training_data, 1);
+	Competition::read_training_data(training_data, WHICH_FINGERPRINT);
 
 	for (const Competition::TrainingData &data : training_data) {
 		for (const std::vector<float> &fingerprint : data.fingerprints) {
@@ -56,7 +58,7 @@ MiklosLoc::MiklosLoc() {
 }
 
 void MiklosLoc::localize(const FrameMerger::Frame &frame, float &x, float &y) {
-	std::vector<float> sample = Competition::which_fingerprint(1, frame);
+	std::vector<float> sample = Competition::which_fingerprint(WHICH_FINGERPRINT, frame);
 
 	cv::Mat temp(1, sample.size(),  CV_32FC1);
 	for(uint i = 0; i < sample.size(); i++) {

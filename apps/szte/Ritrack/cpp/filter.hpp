@@ -64,7 +64,7 @@ public:
 	Input<RipsDat::Packet> in;
 	Output<Packet> out;
 
-	BasicFilter(int high_rssi_level, int high_rssi_count);
+	BasicFilter(int high_rssi_level = 99, int high_rssi_count = 1);
 
 private:
 	class Slot {
@@ -182,7 +182,7 @@ public:
 	Input<BasicFilter::Packet> in;
 	Output<Frame> out;
 
-	FrameMerger(uint framecount);
+	FrameMerger(uint framecount = 20);
 
 private:
 	static bool slot_order(const Slot &slot1, const Slot &slot2) {
@@ -229,6 +229,7 @@ class Competition {
 public:
 	static uint MOBILE_NODEID;
 	static std::vector<uint> RSSI_FINGERPRINT_SLOTS;
+	static int FINGERPRINTS_PER_LOG;
 
 	static std::vector<float> rssi_fingerprint(const FrameMerger::Frame &frame);	// which = 0
 	static std::vector<float> rips_fingerprint(const FrameMerger::Frame &frame);	// which = 1
