@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, University of Szeged
+ * Copyright (c) 2015, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,65 +32,28 @@
  * Author: Miklos Maroti
  */
 
+#ifndef MIKLOSLOC_HPP
+#define MIKLOSLOC_HPP
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/ml/ml.hpp>
+#include <vector>
+#include <map>
 #include "filter.hpp"
-#include "Localizer.hpp"
-#include "miklosloc.hpp"
 
-void localizer_null(const FrameMerger::Frame &frame, float &x, float &y) {
-	x = 0.0f;
-	y = 0.0f;
-}
-
-class Test {
+class MiklosLoc {
 public:
-	Collector<Position<double>> collector;
-	Localizer localizer;
-	Generator<FrameMerger::Frame> generator;
+	MiklosLoc();
 
-	Test() : localizer(0.05,-50.0,50.0,0.0,0.0) {
-		connect(generator.out, localizer.in);
-		connect(localizer.out, collector.in);
-	}
+	void localize(const FrameMerger::Frame &frame, float &x, float &y);
+	static void static_localize(const FrameMerger::Frame &frame, float &x, float &y);
 
-	void test(const FrameMerger::Frame &frame, float &x, float &y) {
-		collector.clear();
-		generator.run(frame);
-		std::vector<Position<double>> result = collector.get_result();
-		assert(result.size() == 1);
+private:
+	cv::Mat fingerprints;
+	cv::Mat classes;
+	std::map<int, std::pair<float,float>> coordinates;
 
-		if(result.size() != 0) {
-			x = result.back().getX();
-			y = result.back().getY();
-		}
-	}
+	static MiklosLoc *instance;
 };
 
-Test *test = NULL;
-
-void localizer_rssi(const FrameMerger::Frame &frame, float &x, float &y){
-	if (test == NULL)
-		test = new Test();
-
-	test->test(frame, x, y);
-}
-
-int main(int argc, char *argv[]) {
-	std::string which = "localizer";
-	if (argc >= 2)
-		which = argv[1];
-
-	float err;
-	if (which.compare("null") == 0)
-		err = Competition::test_harness(localizer_null);
-	else if (which.compare("localizer") == 0)
-		err = Competition::test_harness(localizer_rssi);
-	else if (which.compare("miklos") == 0)
-		err = Competition::test_harness(MiklosLoc::static_localize);
-	else {
-		std::cout << "Unknown localizer" << std::endl;
-		return 1;
-	}
-
-	std::cout << std::endl << "RESULT: " << which << " AVG ERROR: " << err << std::endl;
-	return 0;
-}
+#endif //MIKLOSLOC_HPP

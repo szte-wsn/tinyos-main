@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, University of Szeged
+ * Copyright (c) 2015, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,65 +32,56 @@
  * Author: Miklos Maroti
  */
 
-#include "filter.hpp"
-#include "Localizer.hpp"
 #include "miklosloc.hpp"
 
-void localizer_null(const FrameMerger::Frame &frame, float &x, float &y) {
-	x = 0.0f;
-	y = 0.0f;
-}
+MiklosLoc::MiklosLoc() {
+	std::vector<Competition::TrainingData> training_data;
+	Competition::read_training_data(training_data);
 
-class Test {
-public:
-	Collector<Position<double>> collector;
-	Localizer localizer;
-	Generator<FrameMerger::Frame> generator;
+	for (const Competition::TrainingData &data : training_data) {
+		for (const std::vector<float> &fingerprint : data.fingerprints) {
+			cv::Mat temp1(1, fingerprint.size(), CV_32FC1);
+			for(uint k = 0; k < fingerprint.size(); k++)
+				temp1.at<float>(0, k) = fingerprint[k];
+			fingerprints.push_back(temp1.clone());
 
-	Test() : localizer(0.05,-50.0,50.0,0.0,0.0) {
-		connect(generator.out, localizer.in);
-		connect(localizer.out, collector.in);
-	}
-
-	void test(const FrameMerger::Frame &frame, float &x, float &y) {
-		collector.clear();
-		generator.run(frame);
-		std::vector<Position<double>> result = collector.get_result();
-		assert(result.size() == 1);
-
-		if(result.size() != 0) {
-			x = result.back().getX();
-			y = result.back().getY();
+			cv::Mat temp2(1, 1, CV_32FC1);
+			temp2.at<float>(0, 0) = (float)data.id;
+			classes.push_back(temp2.clone());
 		}
+
+		coordinates[data.id].first = data.x;
+		coordinates[data.id].second = data.y;
 	}
-};
-
-Test *test = NULL;
-
-void localizer_rssi(const FrameMerger::Frame &frame, float &x, float &y){
-	if (test == NULL)
-		test = new Test();
-
-	test->test(frame, x, y);
 }
 
-int main(int argc, char *argv[]) {
-	std::string which = "localizer";
-	if (argc >= 2)
-		which = argv[1];
+void MiklosLoc::localize(const FrameMerger::Frame &frame, float &x, float &y) {
+	std::vector<float> sample = Competition::rssi_fingerprint(frame);
 
-	float err;
-	if (which.compare("null") == 0)
-		err = Competition::test_harness(localizer_null);
-	else if (which.compare("localizer") == 0)
-		err = Competition::test_harness(localizer_rssi);
-	else if (which.compare("miklos") == 0)
-		err = Competition::test_harness(MiklosLoc::static_localize);
+	cv::Mat temp(1, sample.size(),  CV_32FC1);
+	for(uint i = 0; i < sample.size(); i++) {
+		temp.at<float>(0, i) = sample[i];
+	}
+
+	CvKNearest knn(fingerprints, classes);
+	int result = (int) round(knn.find_nearest(temp, 5));
+
+	auto it = coordinates.find(result);
+	if (it == coordinates.end()) {
+		std::cerr << "Invalid class returned" << std::endl;
+		return;
+	}
 	else {
-		std::cout << "Unknown localizer" << std::endl;
-		return 1;
+		x = it->second.first;
+		y = it->second.second;
 	}
-
-	std::cout << std::endl << "RESULT: " << which << " AVG ERROR: " << err << std::endl;
-	return 0;
 }
+
+void MiklosLoc::static_localize(const FrameMerger::Frame &frame, float &x, float &y) {
+	if (instance == NULL)
+		instance = new MiklosLoc();
+
+	instance->localize(frame, x, y);
+}
+
+MiklosLoc *MiklosLoc::instance = NULL;

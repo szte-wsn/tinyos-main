@@ -768,7 +768,7 @@ float Competition::test_harness(localizer_func func, const std::string &config) 
 		float e = std::sqrt((x2-x)*(x2-x) + (y2-y)*(y2-y));
 
 		std::cout << "Testing " << logfile << " " << x << " " << y << " with " << result.size() << " frames ";
-		std::cout << "\t position: " << x2 << " " << y2 << "\t error: " << e << std::endl;
+		std::cout << "\t pos: " << x2 << " " << y2 << " err: " << e << std::endl;
 
 		avg_error += e;
 		avg_count += 1;
