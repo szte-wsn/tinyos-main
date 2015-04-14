@@ -560,6 +560,8 @@ uint Competition::MOBILE_NODEID = 31;
 
 std::vector<uint> Competition::RSSI_FINGERPRINT_SLOTS = { 0,1, 3,4, 7,8, 10,11, 14,15, 17,18, 21,22, 24,25, 28,29, 31,32 };
 
+int Competition::FINGERPRINTS_PER_LOG = 10;
+
 std::vector<float> Competition::rssi_fingerprint(const FrameMerger::Frame &frame) {
 	std::vector<float> fingerprint;
 
@@ -679,8 +681,8 @@ int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints
 		throw std::runtime_error("Could not open logfile: " + logfile);
 
 	Collector<FrameMerger::Frame> collector;
-	FrameMerger merger(20);
-	BasicFilter filter(99, 3);
+	FrameMerger merger;
+	BasicFilter filter;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
@@ -697,7 +699,7 @@ int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints
 	reader.wait();
 
 	std::vector<FrameMerger::Frame> result = collector.get_result();
-	int count = std::min(10, (int) result.size());
+	int count = std::min(FINGERPRINTS_PER_LOG, (int) result.size());
 
 	for (uint i = result.size() - count; i < result.size(); i++)
 		fingerprints.push_back(which_fingerprint(which, result[i]));
@@ -785,8 +787,8 @@ float Competition::test_harness(localizer_func func, const std::string &config) 
 			throw std::runtime_error("Could not open logfile: " + logfile);
 
 		Collector<FrameMerger::Frame> collector;
-		FrameMerger merger(20);
-		BasicFilter filter(99, 3);
+		FrameMerger merger;
+		BasicFilter filter;
 		RipsDat ripsdat;
 		RipsMsg ripsmsg;
 		TosMsg tosmsg;

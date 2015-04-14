@@ -42,8 +42,8 @@
 int main(int argc, char *argv[]) {
 	Writer<Position<double>> writer;
 	Localizer localizer(0.05,-50.0,50.0,0.0,0.0);
-	FrameMerger merger(50);
-	BasicFilter filter(16,1);
+	FrameMerger merger;
+	BasicFilter filter;
 	RipsDat ripsdat;
 	RipsMsg ripsmsg;
 	TosMsg tosmsg;
