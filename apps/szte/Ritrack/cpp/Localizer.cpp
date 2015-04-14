@@ -53,8 +53,8 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 	Localizer::binaryMap = cv::Mat::zeros(round(1+(yStart-yEnd)/step),round(1+(xEnd-xStart)/step), CV_8UC1);
 	Localizer::mask = cv::imread("mask.bmp",CV_LOAD_IMAGE_GRAYSCALE);
 	cv::resize(mask,mask,locationMap.size());
-	boxPairs.push_back(std::pair<uint,uint>(1,2));
 	boxPairs.push_back(std::pair<uint,uint>(2,3));
+	//boxPairs.push_back(std::pair<uint,uint>(2,3));
 	boxPairs.push_back(std::pair<uint,uint>(5,6));
 	boxPairs.push_back(std::pair<uint,uint>(6,7));
 	boxPairs.push_back(std::pair<uint,uint>(7,10));
@@ -108,10 +108,13 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 }
 
 void Localizer::decode(const FrameMerger::Frame &frame){
-	std::set<short> selectedSlots =  getSelectedSlots(frame);
-	getCorrelationMap(frame,selectedSlots);  //uses locationMap
+	//std::set<short> selectedSlots =  getSelectedSlots(frame);
+	//getCorrelationMap(frame,selectedSlots);  //uses locationMap
 	//displayMat(locationMap);
-	std::vector<Position<double>> maximums = getMaximumPositions(); //uses locationMap
+	//std::vector<Position<double>> maximums = getMaximumPositions(); //uses locationMap
+	std::vector<Position<double>> maximums;
+	std::set<short> selectedSlots;
+	
 	Position<double> maxPos = getMotePosition(maximums,frame,selectedSlots);
 	out.send(maxPos);
 }
@@ -320,7 +323,7 @@ std::vector<Position<double>> Localizer::getMaximumPositions(){
 
 Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximums, const FrameMerger::Frame& frame, std::set<short> selectedSlots){
 	Position<double> rssiPosition(NAN,NAN);
-	Position<double> finalPosition(NAN,NAN);
+	//Position<double> finalPosition(NAN,NAN);
 	std::vector<float> tempRSSIvector = Competition::rssi_fingerprint(frame);
 	cv::Mat temp(1 , tempRSSIvector.size() ,  CV_32FC1);
 	for(uint i=0; i<tempRSSIvector.size(); i++){
@@ -334,14 +337,14 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 			rssiPosition = Position<double>(-1.0*coordinates[i].second.first,coordinates[i].second.second);
 		}
 	}
-	double minimumDist = 100.0;
-	for(auto maxit = maximums.begin(); maxit != maximums.end(); maxit++){
-		if(maxit->distance(rssiPosition) < minimumDist){
-			minimumDist = maxit->distance(rssiPosition);
-			finalPosition = *maxit;
-		}
-	}
-	finalPosition.setX(-1.0*finalPosition.getX());
+	//double minimumDist = 100.0;
+	//for(auto maxit = maximums.begin(); maxit != maximums.end(); maxit++){
+	//	if(maxit->distance(rssiPosition) < minimumDist){
+	//		minimumDist = maxit->distance(rssiPosition);
+	//		finalPosition = *maxit;
+	//	}
+	//}
+	//finalPosition.setX(-1.0*finalPosition.getX());
 	
 	return rssiPosition;
 }
