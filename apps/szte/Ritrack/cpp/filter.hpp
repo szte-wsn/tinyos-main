@@ -230,7 +230,11 @@ public:
 	static uint MOBILE_NODEID;
 	static std::vector<uint> RSSI_FINGERPRINT_SLOTS;
 
-	static std::vector<float> rssi_fingerprint(const FrameMerger::Frame &frame);
+	static std::vector<float> rssi_fingerprint(const FrameMerger::Frame &frame);	// which = 0
+	static std::vector<float> rips_fingerprint(const FrameMerger::Frame &frame);	// which = 1
+	static std::vector<float> both_fingerprint(const FrameMerger::Frame &frame);	// which = 2
+	static std::vector<float> which_fingerprint(int which, const FrameMerger::Frame &frame);
+
 
 	struct TrainingData {
 		int id;
@@ -240,8 +244,8 @@ public:
 		std::vector<std::vector<float>> fingerprints;
 	};
 
-	static void read_training_data(std::vector<TrainingData> &training_data, const std::string &config = "config.txt");
-	static int read_fingerprints(std::vector<std::vector<float>> &fingerprints, const std::string &logfile);
+	static void read_training_data(std::vector<TrainingData> &training_data, int which = 0, const std::string &config = "config.txt");
+	static int read_fingerprints(std::vector<std::vector<float>> &fingerprints, int which, const std::string &logfile);
 
 	struct StaticNode {
 		int nodeid;

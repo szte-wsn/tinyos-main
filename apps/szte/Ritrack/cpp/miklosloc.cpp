@@ -36,7 +36,7 @@
 
 MiklosLoc::MiklosLoc() {
 	std::vector<Competition::TrainingData> training_data;
-	Competition::read_training_data(training_data);
+	Competition::read_training_data(training_data, 1);
 
 	for (const Competition::TrainingData &data : training_data) {
 		for (const std::vector<float> &fingerprint : data.fingerprints) {
@@ -56,7 +56,7 @@ MiklosLoc::MiklosLoc() {
 }
 
 void MiklosLoc::localize(const FrameMerger::Frame &frame, float &x, float &y) {
-	std::vector<float> sample = Competition::rssi_fingerprint(frame);
+	std::vector<float> sample = Competition::which_fingerprint(1, frame);
 
 	cv::Mat temp(1, sample.size(),  CV_32FC1);
 	for(uint i = 0; i < sample.size(); i++) {
@@ -64,7 +64,7 @@ void MiklosLoc::localize(const FrameMerger::Frame &frame, float &x, float &y) {
 	}
 
 	CvKNearest knn(fingerprints, classes);
-	int result = (int) round(knn.find_nearest(temp, 5));
+	int result = (int) round(knn.find_nearest(temp, 3));
 
 	auto it = coordinates.find(result);
 	if (it == coordinates.end()) {

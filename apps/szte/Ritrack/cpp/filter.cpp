@@ -574,7 +574,53 @@ std::vector<float> Competition::rssi_fingerprint(const FrameMerger::Frame &frame
 	return fingerprint;
 }
 
-void Competition::read_training_data(std::vector<TrainingData> &training_data, const std::string &config) {
+std::vector<float> Competition::rips_fingerprint(const FrameMerger::Frame &frame) {
+	std::vector<float> fingerprint;
+
+	float TWOPI = 6.2831853f;
+
+	for (uint slotid : RSSI_FINGERPRINT_SLOTS) {
+		const FrameMerger::Slot *slot = frame.get_slot(slotid);
+		const FrameMerger::Data *data = slot != NULL ? slot->get_data(MOBILE_NODEID) : NULL;
+
+		if (data == NULL || slot->data.size() < 2 || data->phase == -1.0f) {
+			fingerprint.push_back(0.0f);
+			fingerprint.push_back(0.0f);
+		}
+		else {
+			assert(0.0f <= data->phase && data->phase <= 1.0f);
+			assert(0.0f <= data->conf && data->conf <= 1.0f);
+
+			fingerprint.push_back(data->conf * std::cos(data->phase * TWOPI));
+			fingerprint.push_back(data->conf * std::sin(data->phase * TWOPI));
+		}
+	}
+
+	return fingerprint;
+}
+
+std::vector<float> Competition::both_fingerprint(const FrameMerger::Frame &frame) {
+	std::vector<float> fingerprint = rssi_fingerprint(frame);
+
+	std::vector<float> temp = rips_fingerprint(frame);
+	for (float a : temp)
+		fingerprint.push_back(a * 2.0f);
+
+	return fingerprint;
+}
+
+std::vector<float> Competition::which_fingerprint(int which, const FrameMerger::Frame &frame) {
+	if (which == 0)
+		return rssi_fingerprint(frame);
+	else if (which == 1)
+		return rips_fingerprint(frame);
+	else if (which == 2)
+		return both_fingerprint(frame);
+	else
+		throw std::runtime_error("Invalid fingerprint selector");
+}
+
+void Competition::read_training_data(std::vector<TrainingData> &training_data, int which, const std::string &config) {
 	training_data.clear();
 
 	std::ifstream config_ifs;
@@ -615,7 +661,7 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 			data.logfiles.push_back(logfile);
 
 			std::cout << "Reading " << logfile << "\tfor " << data.x << " " << data.y << std::endl;
-			fingerprint_count += read_fingerprints(data.fingerprints, logfile);
+			fingerprint_count += read_fingerprints(data.fingerprints, which, logfile);
 		}
 
 		if (data.fingerprints.size() != 0)
@@ -626,7 +672,7 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, c
 	config_ifs.close();
 }
 
-int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints, const std::string &logfile) {
+int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints, int which, const std::string &logfile) {
 	std::ifstream log;
 	log.open(logfile, std::ifstream::in);
 	if (log.fail())
@@ -651,10 +697,10 @@ int Competition::read_fingerprints(std::vector<std::vector<float>> &fingerprints
 	reader.wait();
 
 	std::vector<FrameMerger::Frame> result = collector.get_result();
-	int count = std::min(5, (int) result.size());
+	int count = std::min(10, (int) result.size());
 
 	for (uint i = result.size() - count; i < result.size(); i++)
-		fingerprints.push_back(rssi_fingerprint(result[i]));
+		fingerprints.push_back(which_fingerprint(which, result[i]));
 
 	log.close();
 	return count;
