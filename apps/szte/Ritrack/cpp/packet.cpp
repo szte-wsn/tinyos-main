@@ -643,7 +643,7 @@ void RipsDat::search(const RipsMsg::Packet &rips) {
 		throw std::runtime_error("RipsDat input contradicts all schedules");
 	else if (possibilities.size() == 1) {
 		uint n = possibilities.front();
-		std::cerr << "RipsDat detecting " << NAMES[n].first << " schedule\n";
+		// std::cerr << "RipsDat detecting " << NAMES[n].first << " schedule\n";
 
 		schedule = &(NAMES[n].second);
 		analize_schedule();

@@ -258,6 +258,7 @@ public:
 
 	typedef void (*localizer_func)(const FrameMerger::Frame &frame, float &x, float &y);
 	static float test_harness(localizer_func func, const std::string &config = "config.txt");
+	static void do_final_localization(localizer_func func);
 
 	static float get_total_confidence(const FrameMerger::Frame &frame);
 	static bool compare_total_confidence(const FrameMerger::Frame &a, const FrameMerger::Frame &b) {

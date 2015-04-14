@@ -662,7 +662,7 @@ void Competition::read_training_data(std::vector<TrainingData> &training_data, i
 			stream >> logfile >> std::ws;
 			data.logfiles.push_back(logfile);
 
-			std::cout << "Reading " << logfile << "\tfor " << data.x << " " << data.y << std::endl;
+			// std::cout << "Reading " << logfile << "\tfor " << data.x << " " << data.y << std::endl;
 			fingerprint_count += read_fingerprints(data.fingerprints, which, logfile);
 		}
 
@@ -827,6 +827,38 @@ float Competition::test_harness(localizer_func func, const std::string &config) 
 	std::cout << "AVG ERROR: " << e << std::endl;
 
 	return e;
+}
+
+void Competition::do_final_localization(localizer_func func) {
+	Collector<FrameMerger::Frame> collector;
+	FrameMerger merger;
+	BasicFilter filter;
+	RipsDat ripsdat;
+	RipsMsg ripsmsg;
+	TosMsg tosmsg;
+	Reader<std::vector<unsigned char>> reader;
+
+	connect(reader.out, tosmsg.sub_in);
+	connect(tosmsg.out, ripsmsg.in);
+	connect(ripsmsg.out, ripsdat.in);
+	connect(ripsdat.out, filter.in);
+	connect(filter.out, merger.in);
+	connect(merger.out, collector.in);
+
+	reader.run();
+	reader.wait();
+
+	std::vector<FrameMerger::Frame> result = collector.get_result();
+	result = get_best_frames(result, 1);
+	if (result.size() < 1)
+		throw std::runtime_error("No valid frames");
+
+	float x2 = 0.0f;
+	float y2 = 0.0f;
+
+	func(result.back(), x2, y2);
+
+	std::cout << "Position: " << x2 << " " << y2 << std::endl;
 }
 
 float Competition::get_total_confidence(const FrameMerger::Frame &frame) {

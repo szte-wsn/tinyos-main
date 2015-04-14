@@ -9,7 +9,7 @@ DEPENDS = ${SOURCES:.cpp=.d}
 OPENCVCFLAGS = -ggdb `pkg-config --cflags opencv`
 OPENCVLFLAGS = `pkg-config --libs opencv`
 
-all: recorder phaseplot dump dump2 test test2 testRSSIFilter xfilter
+all: recorder phaseplot dump dump2 test test2 testRSSIFilter xfilter localize
 
 testLocalizer: testLocalizer.cpp Localizer.cpp Config.o Mote.o Position.o PhaseCalculator.o block.o serial.o packet.o filter.o
 	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LDFLAGS) $(OPENCVLFLAGS)
@@ -21,6 +21,9 @@ testRSSIFilter: testRSSIFilter.o block.o serial.o packet.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 test: test.o Localizer.cpp Config.o Mote.o Position.o PhaseCalculator.o block.o serial.o packet.o viterbi.o filter.o miklosloc.o
+	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LDFLAGS) $(OPENCVLFLAGS)
+
+localize: localize.o Localizer.cpp Config.o Mote.o Position.o PhaseCalculator.o block.o serial.o packet.o viterbi.o filter.o miklosloc.o
 	$(CXX) $(CXXFLAGS) $(OPENCVCFLAGS) -o $@ $^ $(LDFLAGS) $(OPENCVLFLAGS)
 
 test2: test2.o block.o serial.o packet.o viterbi.o filter.o

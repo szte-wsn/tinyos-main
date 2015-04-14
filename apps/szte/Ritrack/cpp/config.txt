@@ -57,7 +57,7 @@ log	0.62	-0.1	p1.log
 log	0.84	4.5	p2.log
 log	1.78	9.5	p3.log
 log	2	14.74	p4.log
-test	5.52	15.04	p5.log
+log	5.52	15.04	p5.log
 log	5.54	11.31	p6.log
 log	6	7.16	p7.log
 log	6.34	2.22	p8.log
