@@ -54,14 +54,15 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 	Localizer::mask = cv::imread("mask.bmp",CV_LOAD_IMAGE_GRAYSCALE);
 	cv::resize(mask,mask,locationMap.size());
 	boxPairs.push_back(std::pair<uint,uint>(1,2));
-	//boxPairs.push_back(std::pair<uint,uint>(2,3));
-	//boxPairs.push_back(std::pair<uint,uint>(3,4));
-	//boxPairs.push_back(std::pair<uint,uint>(1,4));
-	//boxPairs.push_back(std::pair<uint,uint>(5,6));
-	//boxPairs.push_back(std::pair<uint,uint>(6,7));
-	//boxPairs.push_back(std::pair<uint,uint>(7,8));
-	//boxPairs.push_back(std::pair<uint,uint>(5,8));
-	//boxPairs.push_back(std::pair<uint,uint>(9,10));
+	boxPairs.push_back(std::pair<uint,uint>(2,3));
+	boxPairs.push_back(std::pair<uint,uint>(5,6));
+	boxPairs.push_back(std::pair<uint,uint>(6,7));
+	boxPairs.push_back(std::pair<uint,uint>(7,10));
+	boxPairs.push_back(std::pair<uint,uint>(5,7));
+	boxPairs.push_back(std::pair<uint,uint>(5,10));
+	boxPairs.push_back(std::pair<uint,uint>(4,5));
+	boxPairs.push_back(std::pair<uint,uint>(4,9));
+	boxPairs.push_back(std::pair<uint,uint>(8,9));
 	for(uint i=0;i<boxPairs.size();i++){
 		maxRSSIs.push_back(0);
 	}
@@ -81,7 +82,7 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 			datas.push_back(temp.clone());
 			classes.push_back(classesTemp.clone());
 		}
-		coordinates.push_back(std::pair<int,std::pair<float,float>>(data[i].id,std::pair<float,float>(data[i].x,data[i].y)));
+		coordinates.push_back(std::pair<int,std::pair<float,float>>(data[i].id,std::pair<float,float>(-1.0*data[i].x,data[i].y)));
 	}
 	
 	
@@ -89,7 +90,7 @@ Localizer::Localizer(float step_in, float xStart_in, float yStart_in, float xEnd
 	std::vector<Competition::StaticNode> nodes;
 	Competition::read_static_nodes(nodes);
 	for(uint i=0;i<nodes.size();i++){
-		stables.push_back(Mote((short)nodes[i].nodeid,nodes[i].x,nodes[i].y));
+		stables.push_back(Mote((short)nodes[i].nodeid,-1.0*nodes[i].x,nodes[i].y));
 		config.addStable(stables[i]);
 	}
 	Localizer::mobileId = Competition::MOBILE_NODEID;
@@ -191,10 +192,6 @@ std::set<short> Localizer::getSelectedSlots(const FrameMerger::Frame& frame){
 			}
 		}
 	}
-	//selected Slots:
-	//for(auto it = selectedSlots.begin(); it != selectedSlots.end(); it++){
-	//	std::cout << *it << std::endl;
-	//}
 	return selectedSlots;
 }
 
@@ -329,12 +326,12 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 	for(uint i=0; i<tempRSSIvector.size(); i++){
 		temp.at<float>(0,i) = tempRSSIvector[i];
 	}
-	int K=5;
+	int K=1;
 	CvKNearest knn(datas,classes);
 	int result = (int)round(knn.find_nearest(temp , K));
 	for(uint i=0;i<coordinates.size();i++){
 		if(coordinates[i].first == result){
-			rssiPosition = Position<double>(coordinates[i].second.first,coordinates[i].second.second);
+			rssiPosition = Position<double>(-1.0*coordinates[i].second.first,coordinates[i].second.second);
 		}
 	}
 	double minimumDist = 100.0;
@@ -344,7 +341,7 @@ Position<double> Localizer::getMotePosition(std::vector<Position<double>> maximu
 			finalPosition = *maxit;
 		}
 	}
-	
+	finalPosition.setX(-1.0*finalPosition.getX());
 	
 	return rssiPosition;
 }
